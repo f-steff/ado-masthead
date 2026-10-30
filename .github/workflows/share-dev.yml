@@ -1,0 +1,57 @@
+name: Share dev
+
+on:
+  workflow_dispatch:
+    inputs:
+      organization:
+        description: "Organization to share with or unshare from (masked in logs)"
+        type: string
+        required: true
+      action:
+        description: "Access change"
+        type: choice
+        default: share
+        options: [share, unshare]
+
+# Private organization names must not appear in public run names or step names.
+run-name: "Change dev edition access"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  share:
+    if: >-
+      vars.MARKETPLACE_PUBLISH_ENABLED == 'true' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    runs-on: ubuntu-24.04
+    environment: marketplace
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+      - name: Acquire short-lived publishing token
+        run: |
+          TOKEN="$(az account get-access-token --resource 499b84ac-1321-427f-aa17-267ca6975798 --query accessToken -o tsv)"
+          test -n "$TOKEN"
+          echo "::add-mask::$TOKEN"
+          echo "TFS_PAT=$TOKEN" >> "$GITHUB_ENV"
+      - name: Apply access change
+        env:
+          SHARE_ACTION: ${{ inputs.action }}
+        run: |
+          case "$SHARE_ACTION" in
+            share|unshare) node scripts/tfx.js "$SHARE_ACTION" dev ;;
+            *) exit 1 ;;
+          esac
+      - name: Summarize access change
+        run: echo "Dev edition access updated. Private organization names are not reported." >> "$GITHUB_STEP_SUMMARY"

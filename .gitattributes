@@ -1,0 +1,5 @@
+# Keep committed scripts portable between Windows development and Linux runners.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.vsix binary

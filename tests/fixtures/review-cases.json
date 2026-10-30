@@ -1,0 +1,287 @@
+[
+  {
+    "id": "correctness-null-profile",
+    "lens": "correctness",
+    "title": "Missing null check before reading profile email",
+    "changedFiles": [
+      {
+        "path": "src/user.ts",
+        "changeType": "edit",
+        "diff": "+  return user.profile.email.toLowerCase();"
+      }
+    ],
+    "expected": {
+      "mustFind": ["null or undefined profile"],
+      "mustNotFind": ["formatting", "pre-existing issue"]
+    }
+  },
+  {
+    "id": "correctness-negative-rename",
+    "lens": "correctness",
+    "title": "Mechanical rename with no behavior change",
+    "changedFiles": [
+      {
+        "path": "src/order.ts",
+        "changeType": "edit",
+        "diff": "-const total = sum(items);\n+const orderTotal = sum(items);"
+      }
+    ],
+    "expected": {
+      "mustFind": [],
+      "mustNotFind": ["missing test", "style preference"]
+    }
+  },
+  {
+    "id": "security-sql-concatenation",
+    "lens": "security",
+    "title": "SQL query constructed from request input",
+    "changedFiles": [
+      {
+        "path": "src/orders.ts",
+        "changeType": "edit",
+        "diff": "+const sql = \"SELECT * FROM orders WHERE id = \" + req.query.id;"
+      }
+    ],
+    "expected": {
+      "mustFind": ["SQL injection"],
+      "mustNotFind": ["generic hardening"]
+    }
+  },
+  {
+    "id": "security-negative-safe-parameter",
+    "lens": "security",
+    "title": "Parameterized query with unchanged authorization",
+    "changedFiles": [
+      {
+        "path": "src/orders.ts",
+        "changeType": "edit",
+        "diff": "+const result = await db.query('SELECT * FROM orders WHERE id = $1', [id]);"
+      }
+    ],
+    "expected": {
+      "mustFind": [],
+      "mustNotFind": ["SQL injection"]
+    }
+  },
+  {
+    "id": "tests-missing-edge-case",
+    "lens": "tests",
+    "title": "Behavior change without a test for the new failure mode",
+    "changedFiles": [
+      {
+        "path": "src/parser.ts",
+        "changeType": "edit",
+        "diff": "+if (input === '') return null;"
+      }
+    ],
+    "expected": {
+      "mustFind": ["missing test for empty input"],
+      "mustNotFind": ["coverage percentage"]
+    }
+  },
+  {
+    "id": "tests-negative-rename",
+    "lens": "tests",
+    "title": "Mechanical test rename only",
+    "changedFiles": [
+      {
+        "path": "tests/parser.test.ts",
+        "changeType": "rename",
+        "diff": "-describe('parse', ...)\n+describe('parseInput', ...)"
+      }
+    ],
+    "expected": {
+      "mustFind": [],
+      "mustNotFind": ["missing test"]
+    }
+  },
+  {
+    "id": "license-missing-root-license",
+    "lens": "license",
+    "title": "Repository has no root LICENSE",
+    "repositoryLicense": {
+      "missing": true,
+      "warning": "No root LICENSE file was found."
+    },
+    "changedFiles": [
+      {
+        "path": "src/copied-parser.ts",
+        "changeType": "add",
+        "diff": "+// Adapted from an external project."
+      }
+    ],
+    "expected": {
+      "mustFind": ["repository-level missing LICENSE warning", "provenance unclear"],
+      "mustNotFind": ["legal conclusion", "warning per file"]
+    }
+  },
+  {
+    "id": "license-gpl-file-in-mit-repository",
+    "lens": "license",
+    "title": "New GPL file in a repository with an MIT LICENSE",
+    "repositoryLicense": {
+      "path": "LICENSE",
+      "text": "MIT License\n\nPermission is hereby granted, free of charge..."
+    },
+    "changedFiles": [
+      {
+        "path": "src/vendor/external-widget.ts",
+        "changeType": "add",
+        "diff": "+// SPDX-License-Identifier: GPL-3.0-only\n+// Copied from an external widget project."
+      }
+    ],
+    "expected": {
+      "mustFind": ["GPL-3.0-only", "MIT policy incompatibility"],
+      "mustNotFind": ["legal conclusion", "code style"]
+    }
+  },
+  {
+    "id": "license-negative-mit-compatible",
+    "lens": "license",
+    "title": "New MIT file in a repository with an MIT LICENSE",
+    "repositoryLicense": {
+      "path": "LICENSE",
+      "text": "MIT License\n\nPermission is hereby granted, free of charge..."
+    },
+    "changedFiles": [
+      {
+        "path": "src/format.ts",
+        "changeType": "add",
+        "diff": "+// SPDX-License-Identifier: MIT\n+export const format = (value: string) => value.trim();"
+      }
+    ],
+    "expected": {
+      "mustFind": [],
+      "mustNotFind": ["license incompatibility", "missing provenance"]
+    }
+  },
+  {
+    "id": "performance-n-plus-one",
+    "lens": "performance",
+    "title": "N+1 query introduced in a request loop",
+    "changedFiles": [
+      {
+        "path": "src/orders.ts",
+        "changeType": "edit",
+        "diff": "+for (const order of orders) {\n+  order.customer = await repository.findCustomer(order.customerId);\n+}"
+      }
+    ],
+    "expected": {
+      "mustFind": ["N+1 query"],
+      "mustNotFind": ["micro-optimization"]
+    }
+  },
+  {
+    "id": "performance-negative-small-loop",
+    "lens": "performance",
+    "title": "Small bounded loop with no I/O",
+    "changedFiles": [
+      {
+        "path": "src/math.ts",
+        "changeType": "edit",
+        "diff": "+for (let i = 0; i < 3; i++) { values.push(values[i] * 2); }"
+      }
+    ],
+    "expected": {
+      "mustFind": [],
+      "mustNotFind": ["premature optimization"]
+    }
+  },
+  {
+    "id": "maintainability-duplicated-logic",
+    "lens": "maintainability",
+    "title": "New code reimplements an existing helper",
+    "changedFiles": [
+      {
+        "path": "src/pricing.ts",
+        "changeType": "edit",
+        "diff": "+const tax = price * 0.25;\n+const total = price + tax;"
+      }
+    ],
+    "context": "The repository already exposes calculateTax(price, region) in src/tax.ts.",
+    "expected": {
+      "mustFind": ["duplicated tax logic"],
+      "mustNotFind": ["naming preference"]
+    }
+  },
+  {
+    "id": "maintainability-negative-formatting",
+    "lens": "maintainability",
+    "title": "Formatting-only change",
+    "changedFiles": [
+      {
+        "path": "src/format.ts",
+        "changeType": "edit",
+        "diff": "-const value={a:1};\n+const value = { a: 1 };"
+      }
+    ],
+    "expected": {
+      "mustFind": [],
+      "mustNotFind": ["formatting"]
+    }
+  },
+  {
+    "id": "data-destructive-migration",
+    "lens": "data",
+    "title": "Migration drops a populated column",
+    "changedFiles": [
+      {
+        "path": "migrations/20261030-drop-email.sql",
+        "changeType": "add",
+        "diff": "+ALTER TABLE users DROP COLUMN email;"
+      }
+    ],
+    "expected": {
+      "mustFind": ["destructive schema change", "data loss"],
+      "mustNotFind": ["migration style"]
+    }
+  },
+  {
+    "id": "data-negative-additive-column",
+    "lens": "data",
+    "title": "Additive nullable column",
+    "changedFiles": [
+      {
+        "path": "migrations/20261030-add-locale.sql",
+        "changeType": "add",
+        "diff": "+ALTER TABLE users ADD COLUMN locale text NULL;"
+      }
+    ],
+    "expected": {
+      "mustFind": [],
+      "mustNotFind": ["data loss"]
+    }
+  },
+  {
+    "id": "dependencies-untrusted-install",
+    "lens": "dependencies",
+    "title": "Pipeline executes a remote install script",
+    "changedFiles": [
+      {
+        "path": "azure-pipelines.yml",
+        "changeType": "edit",
+        "diff": "+  - script: curl -fsSL https://example.invalid/install.sh | bash"
+      }
+    ],
+    "expected": {
+      "mustFind": ["remote install script", "unverified executable download"],
+      "mustNotFind": ["unrelated dependency upgrade"]
+    }
+  },
+  {
+    "id": "dependencies-negative-lockfile-refresh",
+    "lens": "dependencies",
+    "title": "Lockfile refresh with no new package source",
+    "changedFiles": [
+      {
+        "path": "package-lock.json",
+        "changeType": "edit",
+        "diff": "+  \"lockfileVersion\": 3"
+      }
+    ],
+    "expected": {
+      "mustFind": [],
+      "mustNotFind": ["generic supply-chain warning"]
+    }
+  }
+]

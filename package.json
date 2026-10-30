@@ -1,0 +1,35 @@
+{
+  "name": "ado-masthead",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Context-aware AI pull request reviews for Azure DevOps.",
+  "license": "MIT",
+  "scripts": {
+    "clean": "rimraf ./dist",
+    "build:dev": "npm run clean && node scripts/build.js --mode=development",
+    "build:prod": "npm run clean && node scripts/build.js --mode=production",
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/test.js",
+    "test:broker": "node --test broker/lib.test.mjs",
+    "eval:live": "node scripts/live-eval.js",
+    "package:dev": "node scripts/tfx.js create dev",
+    "package:stable": "node scripts/tfx.js create stable",
+    "publish:dev": "node scripts/tfx.js publish dev",
+    "publish:stable": "node scripts/tfx.js publish stable",
+    "share:dev": "node scripts/tfx.js share dev",
+    "unshare:dev": "node scripts/tfx.js unshare dev",
+    "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\" --max-warnings 0",
+    "verify:clean": "node ci/scan-identifiers.js"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@typescript-eslint/eslint-plugin": "^8.14.0",
+    "@typescript-eslint/parser": "^8.14.0",
+    "esbuild": "^0.28.1",
+    "eslint": "^9.12.0",
+    "rimraf": "^5.0.5",
+    "tfx-cli": "^0.24.2",
+    "yaml": "^2.8.1",
+    "typescript": "^5.6.0"
+  }
+}

@@ -1,0 +1,28 @@
+name: Release guard
+
+# This check must also succeed on feature -> develop PRs, not just release PRs.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  release-source:
+    runs-on: ubuntu-24.04
+    steps:
+      # No checkout is needed: branch and repository metadata are the only inputs.
+      - name: Only the repository's develop branch may merge into main
+        env:
+          BASE: ${{ github.base_ref }}
+          HEAD: ${{ github.head_ref }}
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          node <<'NODE'
+          const { BASE, HEAD, HEAD_REPOSITORY, REPOSITORY } = process.env;
+          if (BASE === "main" && (HEAD !== "develop" || HEAD_REPOSITORY !== REPOSITORY)) {
+            console.error("Only this repository's develop branch may target main.");
+            process.exitCode = 1;
+          }
+          NODE

@@ -1,0 +1,42 @@
+name: CI
+
+# Required checks run on every PR; path filtering could leave protected branches waiting forever.
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      # Some npm policies block esbuild's install script; the pinned package supplies it explicitly.
+      - name: Ensure esbuild binary
+        run: node node_modules/esbuild/install.js
+      - name: Type check
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Unit tests
+        run: npm test
+      - name: Identifier scan
+        run: npm run verify:clean
+      - name: Build production core
+        run: npm run build:prod
+      - name: Package stable VSIX (artifact only)
+        run: npm run package:stable
+      - uses: actions/upload-artifact@v7
+        with:
+          name: vsix
+          path: "*.vsix"
+          if-no-files-found: error
