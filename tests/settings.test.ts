@@ -19,12 +19,14 @@ test("repositories are disabled until explicitly enabled", () => {
   const project = defaultProjectSettings();
   assert.equal(isRepositoryEnabled(project, "repo-a"), false);
   const seeded = seedRepositories(project, ["repo-a", "repo-b"]);
-  assert.equal(isRepositoryEnabled(seeded, "repo-a"), true);
-  assert.equal(isRepositoryEnabled(seeded, "repo-b"), true);
+  assert.equal(isRepositoryEnabled(seeded, "repo-a"), false);
+  assert.equal(isRepositoryEnabled(seeded, "repo-b"), false);
+  const enabled = seedRepositories(project, ["repo-a"], true);
+  assert.equal(isRepositoryEnabled(enabled, "repo-a"), true);
 });
 
 test("a project-wide disable overrides a repository choice", () => {
-  const project = seedRepositories(defaultProjectSettings(), ["repo-a"]);
+  const project = seedRepositories(defaultProjectSettings(), ["repo-a"], true);
   assert.equal(isRepositoryEnabled({ ...project, enabled: false }, "repo-a"), false);
 });
 
@@ -35,7 +37,7 @@ test("syncing repositories does not re-enable an explicit disable", () => {
   };
   const synced = seedRepositories(project, ["repo-a", "repo-b"]);
   assert.equal(isRepositoryEnabled(synced, "repo-a"), false);
-  assert.equal(isRepositoryEnabled(synced, "repo-b"), true);
+  assert.equal(isRepositoryEnabled(synced, "repo-b"), false);
 });
 
 test("a repository can override its project review profile", () => {

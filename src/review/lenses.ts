@@ -120,7 +120,8 @@ export const REVIEW_LENSES: readonly ReviewLensDefinition[] = [
     ],
     ignore: [
       "definitive legal conclusions, including that distribution is unlawful or definitely incompatible",
-      "accusations that code was copied without provenance evidence"
+      "accusations that code was copied without provenance evidence",
+      "claims that notices or attribution are absent solely because their files were not supplied; disclose that verification is needed instead"
     ]
   },
   {
@@ -219,6 +220,7 @@ export const REVIEW_LENS_BY_ID: ReadonlyMap<ReviewLensId, ReviewLensDefinition> 
 
 const ALL_REVIEW_LENS_IDS = new Set<ReviewLensId>(REVIEW_LENSES.map((lens) => lens.id));
 
+/** Keep project defaults independent of mutable UI form state. */
 export function defaultReviewProfile(): ReviewProfile {
   return {
     enabledLenses: REVIEW_LENSES.filter((lens) => lens.defaultEnabled).map((lens) => lens.id),
@@ -226,11 +228,15 @@ export function defaultReviewProfile(): ReviewProfile {
   };
 }
 
+/** Reject corrupt persisted configuration instead of silently changing its policy. */
 export function resolveReviewProfile(
   requested: Partial<ReviewProfile> | undefined
 ): ReviewProfile {
   const merged = { ...defaultReviewProfile(), ...requested };
-  const requestedIds = Array.isArray(merged.enabledLenses) ? merged.enabledLenses : [];
+  if (!Array.isArray(merged.enabledLenses) || typeof merged.reviewGuide !== "boolean") {
+    throw new Error("Invalid review profile.");
+  }
+  const requestedIds = merged.enabledLenses;
   const selected = new Set<ReviewLensId>();
 
   for (const id of requestedIds) {
@@ -251,6 +257,7 @@ export function resolveReviewProfile(
   };
 }
 
+/** Suggestions never mutate the selected profile or implicitly spend more tokens. */
 export function suggestedLensesForPaths(paths: readonly string[]): ReviewLensId[] {
   const suggestions = new Set<ReviewLensId>();
   for (const lens of REVIEW_LENSES) {
@@ -264,14 +271,23 @@ export function suggestedLensesForPaths(paths: readonly string[]): ReviewLensId[
   return [...suggestions];
 }
 
+/** Small path-glob matcher: recursive folders can occur zero or more times. */
 function pathMatches(pattern: string, path: string): boolean {
   const normalizedPath = path.replace(/\\/g, "/").toLowerCase();
-  // A leading "**/" means "any folder depth", including the repository root.
-  const normalizedPattern = pattern.toLowerCase().replace(/^\*\*\//, "");
-  const escaped = normalizedPattern
-    .replace(/[.+^${}()|[\]\\]/g, "\\$&")
-    .replace(/\*\*/g, "__DOUBLE_STAR__")
-    .replace(/\*/g, "[^/]*")
-    .replace(/__DOUBLE_STAR__/g, ".*");
-  return new RegExp(`^${escaped}$`).test(normalizedPath);
+  let expression = "^";
+  for (let index = 0; index < pattern.length; index += 1) {
+    const suffix = pattern.slice(index);
+    if (suffix.startsWith("**/")) {
+      expression += "(?:.*/)?";
+      index += 2;
+    } else if (suffix.startsWith("**")) {
+      expression += ".*";
+      index += 1;
+    } else if (pattern[index] === "*") {
+      expression += "[^/]*";
+    } else {
+      expression += pattern[index].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+  }
+  return new RegExp(expression + "$", "i").test(normalizedPath);
 }

@@ -2,7 +2,8 @@
   {
     "id": "correctness-null-profile",
     "lens": "correctness",
-    "title": "Missing null check before reading profile email",
+    "title": "Normalize email addresses",
+    "context": "The function accepts user records with profile?: { email: string }. The existing callers pass users before their optional profile is created.",
     "changedFiles": [
       {
         "path": "src/user.ts",
@@ -18,7 +19,7 @@
   {
     "id": "correctness-negative-rename",
     "lens": "correctness",
-    "title": "Mechanical rename with no behavior change",
+    "title": "Rename the order total variable",
     "changedFiles": [
       {
         "path": "src/order.ts",
@@ -34,7 +35,7 @@
   {
     "id": "security-sql-concatenation",
     "lens": "security",
-    "title": "SQL query constructed from request input",
+    "title": "Find orders by request ID",
     "changedFiles": [
       {
         "path": "src/orders.ts",
@@ -50,7 +51,7 @@
   {
     "id": "security-negative-safe-parameter",
     "lens": "security",
-    "title": "Parameterized query with unchanged authorization",
+    "title": "Use SQL parameters for order lookup",
     "changedFiles": [
       {
         "path": "src/orders.ts",
@@ -66,7 +67,8 @@
   {
     "id": "tests-missing-edge-case",
     "lens": "tests",
-    "title": "Behavior change without a test for the new failure mode",
+    "title": "Handle empty parser input",
+    "context": "This patch introduces an empty-input branch in an exported parser. The existing parser tests cover only nonempty values. No tests are added or updated.",
     "changedFiles": [
       {
         "path": "src/parser.ts",
@@ -82,7 +84,7 @@
   {
     "id": "tests-negative-rename",
     "lens": "tests",
-    "title": "Mechanical test rename only",
+    "title": "Rename the parser test group",
     "changedFiles": [
       {
         "path": "tests/parser.test.ts",
@@ -98,7 +100,7 @@
   {
     "id": "license-missing-root-license",
     "lens": "license",
-    "title": "Repository has no root LICENSE",
+    "title": "Add a parser implementation",
     "repositoryLicense": {
       "missing": true,
       "warning": "No root LICENSE file was found."
@@ -118,9 +120,10 @@
   {
     "id": "license-gpl-file-in-mit-repository",
     "lens": "license",
-    "title": "New GPL file in a repository with an MIT LICENSE",
+    "title": "Add a widget implementation",
     "repositoryLicense": {
       "path": "LICENSE",
+      "missing": false,
       "text": "MIT License\n\nPermission is hereby granted, free of charge..."
     },
     "changedFiles": [
@@ -131,16 +134,17 @@
       }
     ],
     "expected": {
-      "mustFind": ["GPL-3.0-only", "MIT policy incompatibility"],
+      "mustFind": ["GPL-3.0-only", "GPL terms needing compatibility review"],
       "mustNotFind": ["legal conclusion", "code style"]
     }
   },
   {
     "id": "license-negative-mit-compatible",
     "lens": "license",
-    "title": "New MIT file in a repository with an MIT LICENSE",
+    "title": "Add a formatting helper",
     "repositoryLicense": {
       "path": "LICENSE",
+      "missing": false,
       "text": "MIT License\n\nPermission is hereby granted, free of charge..."
     },
     "changedFiles": [
@@ -156,9 +160,32 @@
     }
   },
   {
+    "id": "license-negative-spdx-test-data",
+    "lens": "license",
+    "title": "Exercise SPDX parsing",
+    "context": "The repository already provides extractSpdx and a test runner. This change adds only a regression test with a synthetic header string, not third-party implementation code.",
+    "repositoryLicense": {
+      "path": "LICENSE",
+      "missing": false,
+      "text": "MIT License\n\nPermission is hereby granted, free of charge..."
+    },
+    "changedFiles": [
+      {
+        "path": "tests/license.test.ts",
+        "changeType": "edit",
+        "diff": "+it('reads SPDX labels', () => {\n+  const header = '// SPDX-License-Identifier: GPL-3.0-only';\n+  assert.equal(extractSpdx(header), 'GPL-3.0-only');\n+});"
+      }
+    ],
+    "expected": {
+      "mustFind": [],
+      "mustNotFind": ["GPL introduced as the file license", "legal conclusion"]
+    }
+  },
+  {
     "id": "performance-n-plus-one",
     "lens": "performance",
-    "title": "N+1 query introduced in a request loop",
+    "title": "Include customer details in the orders endpoint",
+    "context": "Orders can contain thousands of entries. Each findCustomer call makes one separate database query. The database adapter supports a batch query by customer IDs.",
     "changedFiles": [
       {
         "path": "src/orders.ts",
@@ -174,7 +201,8 @@
   {
     "id": "performance-negative-small-loop",
     "lens": "performance",
-    "title": "Small bounded loop with no I/O",
+    "title": "Extend derived values",
+    "context": "The enclosing function initializes values as a number[] with three entries before this loop. This patch adds exactly three derived values.",
     "changedFiles": [
       {
         "path": "src/math.ts",
@@ -190,7 +218,7 @@
   {
     "id": "maintainability-duplicated-logic",
     "lens": "maintainability",
-    "title": "New code reimplements an existing helper",
+    "title": "Calculate order totals",
     "changedFiles": [
       {
         "path": "src/pricing.ts",
@@ -207,7 +235,7 @@
   {
     "id": "maintainability-negative-formatting",
     "lens": "maintainability",
-    "title": "Formatting-only change",
+    "title": "Format object literals",
     "changedFiles": [
       {
         "path": "src/format.ts",
@@ -223,7 +251,8 @@
   {
     "id": "data-destructive-migration",
     "lens": "data",
-    "title": "Migration drops a populated column",
+    "title": "Change user contact storage",
+    "context": "The users table contains production email addresses. There is no other copy of those addresses and this patch contains no data migration or backup step.",
     "changedFiles": [
       {
         "path": "migrations/20261030-drop-email.sql",
@@ -239,7 +268,7 @@
   {
     "id": "data-negative-additive-column",
     "lens": "data",
-    "title": "Additive nullable column",
+    "title": "Add a user locale column",
     "changedFiles": [
       {
         "path": "migrations/20261030-add-locale.sql",
@@ -255,7 +284,7 @@
   {
     "id": "dependencies-untrusted-install",
     "lens": "dependencies",
-    "title": "Pipeline executes a remote install script",
+    "title": "Install build tooling",
     "changedFiles": [
       {
         "path": "azure-pipelines.yml",
@@ -271,7 +300,7 @@
   {
     "id": "dependencies-negative-lockfile-refresh",
     "lens": "dependencies",
-    "title": "Lockfile refresh with no new package source",
+    "title": "Refresh the dependency lockfile",
     "changedFiles": [
       {
         "path": "package-lock.json",

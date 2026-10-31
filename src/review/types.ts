@@ -14,11 +14,21 @@ export interface ReviewFinding {
   title: string;
   body: string;
   suggestion?: string;
+  /** Only trusted worker-generated warnings use repository scope. */
+  scope?: "repository";
 }
 
 export interface ReviewResult {
   summary: string;
   findings: ReviewFinding[];
+  guide?: ReviewGuide;
+}
+
+export interface ReviewGuide {
+  intent: string;
+  readingOrder: string[];
+  attention: string[];
+  verification: string[];
 }
 
 export interface ReviewInput {
@@ -27,6 +37,11 @@ export interface ReviewInput {
   changedFiles: ReviewChangedFile[];
   repositoryLicense?: RepositoryLicense;
   context?: string;
+  relatedFiles?: Array<{ path: string; content: string }>;
+  previousFindings?: Array<{
+    finding: ReviewFinding;
+    state: "active" | "resolved" | "dismissed";
+  }>;
 }
 
 export interface ReviewChangedFile {

@@ -6,12 +6,10 @@ import { RepositoryLicense } from "./types";
 const LICENSE_FILE_NAMES = [
   "LICENSE",
   "LICENSE.md",
-  "LICENSE.txt",
-  "COPYING",
-  "COPYING.md",
-  "COPYING.txt"
+  "LICENSE.txt"
 ];
 
+/** Only a root LICENSE convention establishes the requested repository policy. */
 export function detectRepositoryLicense(
   files: Readonly<Record<string, string>>
 ): RepositoryLicense {

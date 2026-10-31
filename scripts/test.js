@@ -8,7 +8,7 @@ const path = require("path");
 
 const rootDir = path.join(__dirname, "..");
 const outDir = path.join(rootDir, "dist-test");
-const testFiles = ["logic.test.ts", "settings.test.ts"].map((name) =>
+const testFiles = ["logic.test.ts", "settings.test.ts", "worker.test.ts", "events.test.ts"].map((name) =>
   path.join(rootDir, "tests", name)
 );
 
@@ -32,6 +32,7 @@ const result = spawnSync(
     "--test",
     ...testFiles.map((file) => path.join(outDir, path.basename(file, ".ts") + ".mjs")),
     path.join(rootDir, "broker", "lib.test.mjs"),
+    path.join(rootDir, "broker", "app.test.mjs"),
     path.join(rootDir, "tests", "repository.test.mjs")
   ],
   { stdio: "inherit" }

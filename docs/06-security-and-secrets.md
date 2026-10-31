@@ -48,6 +48,16 @@ Logs must not contain provider keys, raw prompts containing secrets, or full
 private repository content. Review state and guide content follow the project's
 retention rules. A review failure must not be reported as a clean pass.
 
+Provider calls have a timeout and support cancellation. API keys are carried
+in headers only. Remote endpoints require HTTPS; HTTP is allowed only for
+loopback tests. Redirects are refused so credentials are not forwarded to a
+different endpoint. Network errors and response bodies are replaced by fixed
+diagnostic messages. Truncated provider output fails review validation.
+
+The broker authenticates the caller with a shared secret over TLS. Its health
+endpoint does not prove permission to queue work. Native mode remains a public
+trigger: source validation and repository switches do not make it authenticated.
+
 ## Output validation
 
 Model output is parsed into a strict result shape. A missing or invalid finding

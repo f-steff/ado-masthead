@@ -79,8 +79,8 @@ test("the prompt contains selected lenses and excludes opt-in lenses by default"
   const ids = lensesInPrompt(prompt);
   assert.deepEqual(ids, ["correctness", "security", "tests", "license"]);
   assert.equal(prompt.system.includes("untrusted data"), true);
-  assert.equal(prompt.user.includes("Output contract"), true);
-  assert.match(prompt.user, /review guide/i);
+  assert.equal(prompt.system.includes("Output contract"), true);
+  assert.match(prompt.system, /review guide/i);
 });
 
 test("selecting an opt-in lens adds it to the prompt", () => {
@@ -91,8 +91,8 @@ test("selecting an opt-in lens adds it to the prompt", () => {
     },
     { enabledLenses: ["correctness", "performance"], reviewGuide: false }
   );
-  assert.equal(prompt.user.includes("Performance and scalability"), true);
-  assert.doesNotMatch(prompt.user, /review guide/i);
+  assert.equal(prompt.system.includes("Performance and scalability"), true);
+  assert.doesNotMatch(prompt.system, /review guide/i);
 });
 
 test("a missing root license becomes one explicit repository warning", () => {
@@ -124,7 +124,7 @@ test("the license lens requires policy evidence, not a legal conclusion", () => 
   });
   assert.match(prompt.system, /never/i);
   assert.match(prompt.system, /policy conflicts/i);
-  assert.match(prompt.user, /definitive legal conclusions/i);
+  assert.match(prompt.system, /definitive legal conclusions/i);
 });
 
 test("the prompt marks a missing license as one repository-level warning", () => {
@@ -133,8 +133,8 @@ test("the prompt marks a missing license as one repository-level warning", () =>
     changedFiles: [{ path: "vendor/file.ts", changeType: "add", content: "content" }],
     repositoryLicense: detectRepositoryLicense({ "src/app.ts": "export const x = 1;" })
   });
-  assert.match(prompt.user, /No root LICENSE file/);
-  assert.match(prompt.user, /warning must not be repeated for every file/);
+  assert.match(prompt.system, /No root LICENSE file/);
+  assert.match(prompt.system, /warning must not be repeated for every file/);
 });
 
 test("a missing license produces exactly one deterministic warning", () => {

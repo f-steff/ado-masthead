@@ -1,6 +1,6 @@
 // Persisted configuration for the organization and its projects. Repository
 // IDs are kept as opaque strings because they are stable across renames.
-import { ReviewProfile, ReviewLensId } from "../review";
+import { ReviewProfile, ReviewLensId, resolveReviewProfile } from "../review/lenses";
 
 export type DeploymentMode = "native" | "broker";
 
@@ -24,6 +24,7 @@ export interface ProjectSettings {
   repositories: Record<string, RepositorySettings>;
 }
 
+/** Do not assume a broker or service connection was verified during installation. */
 export function defaultOrganizationSettings(): OrganizationSettings {
   return {
     deploymentMode: "native",
@@ -32,14 +33,14 @@ export function defaultOrganizationSettings(): OrganizationSettings {
   };
 }
 
+/** A project is eligible, but no repository spends tokens until explicitly enabled. */
 export function defaultProjectSettings(): ProjectSettings {
   return { enabled: true, repositories: {} };
 }
 
 /**
  * A project can be disabled independently of its repositories. A repository
- * is eligible only when both levels are enabled and the repository has not
- * explicitly been disabled.
+ * is eligible only when both levels are explicitly enabled.
  */
 export function isRepositoryEnabled(
   project: ProjectSettings,
@@ -52,14 +53,13 @@ export function isRepositoryEnabled(
 }
 
 /**
- * Applies a project-level default to repositories that have not been visited
- * yet. Existing explicit choices always win, so a sync of new repositories
- * cannot silently re-enable one that an administrator disabled.
+ * Discovery must never opt a new repository into paid analysis. An explicit
+ * administrator action may pass true when bulk-enabling selected repositories.
  */
 export function seedRepositories(
   project: ProjectSettings,
   repositoryIds: readonly string[],
-  enabledByDefault = true
+  enabledByDefault = false
 ): ProjectSettings {
   const repositories = { ...project.repositories };
   for (const repositoryId of repositoryIds) {
@@ -86,6 +86,7 @@ export function profileForRepository(
   return repository.profile ?? fallback;
 }
 
+/** Editing a profile changes review behavior, never the repository's eligibility. */
 export function setRepositoryProfile(
   project: ProjectSettings,
   repositoryId: string,
@@ -97,8 +98,8 @@ export function setRepositoryProfile(
     repositories: {
       ...project.repositories,
       [repositoryId]: {
-        ...(project.repositories[repositoryId] ?? { enabled: true }),
-        profile: { enabledLenses, reviewGuide }
+        ...(project.repositories[repositoryId] ?? { enabled: false }),
+        profile: resolveReviewProfile({ enabledLenses, reviewGuide })
       }
     }
   };

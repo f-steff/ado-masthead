@@ -10,7 +10,7 @@
     "build:prod": "npm run clean && node scripts/build.js --mode=production",
     "typecheck": "tsc --noEmit",
     "test": "node scripts/test.js",
-    "test:broker": "node --test broker/lib.test.mjs",
+    "test:broker": "node --test broker/lib.test.mjs broker/app.test.mjs",
     "eval:live": "node scripts/live-eval.js",
     "package:dev": "node scripts/tfx.js create dev",
     "package:stable": "node scripts/tfx.js create stable",

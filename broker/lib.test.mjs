@@ -15,11 +15,12 @@ test("broker accepts the shared secret through Basic auth or its header", () => 
 test("broker accepts only PR events with a delivery id", () => {
   const raw = JSON.stringify({
     eventType: "git.pullrequest.updated",
+    id: "event-42",
     notificationId: 42,
-    resource: { pullRequestId: 7, repository: { id: "repo" } }
+    resource: { pullRequestId: 7, repository: { id: "repo", project: { id: "project" } } }
   });
   const event = parseEvent(raw);
-  assert.equal(event.deliveryKey, "git.pullrequest.updated:42");
+  assert.equal(event.deliveryKey, "git.pullrequest.updated:event-42");
   assert.equal(buildQueueBody(event, "99").definition.id, 99);
 });
 

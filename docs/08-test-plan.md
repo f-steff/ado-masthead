@@ -2,7 +2,9 @@
 
 ## Deterministic suite
 
-`npm test` runs pure tests with no network and no model key. It checks:
+`npm test` needs no external network or model key. Broker HTTP tests use an
+ephemeral loopback port with a fake ADO response; no real organization is
+contacted. The suite checks:
 
 - default and mandatory lens selection;
 - unknown lens rejection;
@@ -10,7 +12,15 @@
 - prompt composition and output contract;
 - missing-LICENSE behavior;
 - structured output validation;
-- fixture coverage for every lens.
+- fixture coverage for every lens;
+- default-off repository discovery and profile editing;
+- trusted prompt/data separation and actual repository license context;
+- output path, lens, line, guide and duplicate-ID validation;
+- disabled licensing, input budgets, noise limits and cancellation;
+- provider protocols, sanitized errors and truncated responses;
+- explicit fix verification, human decisions, regressions and stale revisions;
+- PR events, author replies, own-comment loops and repeated comment revisions;
+- nested comment payloads and retryable broker queue failures.
 
 ## Repository and release checks
 
@@ -47,7 +57,7 @@ evaluation, GitHub Actions run or ADO installation was performed in this step.
 | Correctness | `correctness-null-profile` | `correctness-negative-rename` |
 | Security | `security-sql-concatenation` | `security-negative-safe-parameter` |
 | Tests | `tests-missing-edge-case` | `tests-negative-rename` |
-| License | `license-missing-root-license`, `license-gpl-file-in-mit-repository` | `license-negative-mit-compatible` |
+| License | `license-missing-root-license`, `license-gpl-file-in-mit-repository` | `license-negative-mit-compatible`, `license-negative-spdx-test-data` |
 | Performance | `performance-n-plus-one` | `performance-negative-small-loop` |
 | Maintainability | `maintainability-duplicated-logic` | `maintainability-negative-formatting` |
 | Data | `data-destructive-migration` | `data-negative-additive-column` |
@@ -57,18 +67,36 @@ The fixtures are in `tests/fixtures/review-cases.json`. Assertions should be
 semantic: expected issue class, file, approximate line and absence of listed
 false positives. Do not assert exact model prose.
 
+Every fixture runs through the real local worker with a deterministic model
+substitute. This tests orchestration and output handling, not whether an LLM
+discovers the intended bug. Live prompt-quality evaluation remains separate.
+Fixture PR titles do not reveal the issue the model is expected to discover.
+
 ## Live model evaluation
 
 `npm run eval:live -- <case-id>` runs the selected fixture against the provider
 configured by `MASTHEAD_PROVIDER` and `MASTHEAD_MODEL`. It uses the real network
-and is never part of CI. It records:
+and is never part of CI. It prints a validated response, elapsed time and
+suppression count for manual assessment. Automated semantic grading and cost
+estimation are not yet implemented; fixture metadata is not evidence that a
+model passed a case.
 
-- whether expected findings were found;
-- whether forbidden findings appeared;
-- parse success;
-- latency and token cost.
+Assess expected concepts and unwanted findings against the fixture catalogue.
+Live results are evidence for prompt tuning, not a CI gate. Do not mistake
+missing context for evidence that notices or attribution do not exist.
 
-Live results are evidence for prompt tuning, not a CI gate.
+## Local worker validation (2026-10-31)
+
+The expanded suite has 81 passing tests, including loopback HTTP integration,
+all-lens worker fixtures, conversation replies and reconciliation policy.
+Typecheck, lint, identifier checks, production build and both VSIX packages
+pass. The dependency audit reports no known vulnerabilities.
+
+Two bounded DeepSeek smoke checks used synthetic data: the GPL-header/MIT case
+produced a license review finding, and the parameterized SQL case produced no
+findings. These are narrow observations, not a prompt-quality certification or
+an end-to-end ADO test. No feature branch was pushed and no ADO settings were
+changed.
 
 ## ADO integration tests (postponed)
 

@@ -9,10 +9,17 @@ repository. It does not audit Masthead's own source.
 ## Repository policy
 
 - Read the root `LICENSE` file.
-- Common root names such as `LICENSE.md` and `COPYING` are accepted.
+- Root `LICENSE.md` and `LICENSE.txt` are accepted conventions.
+- A `COPYING` file or nested third-party LICENSE can supply context, but does
+  not replace the requested root LICENSE policy.
 - A package manifest or package metadata is supplementary, not a substitute.
 - If no root license file exists, emit one repository-level warning.
 - Do not repeat the missing-license warning for each changed file.
+
+The worker adds that warning deterministically after model validation, with a
+stable repository-level ID. It does not rely on the model to remember it or
+mistake a missing-attribution finding for the root-license warning. Disabling
+the license lens disables this warning as well as the AI license analysis.
 
 If the license text cannot be identified confidently, warn and ask for human
 confirmation instead of guessing.

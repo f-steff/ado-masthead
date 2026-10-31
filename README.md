@@ -12,6 +12,10 @@ adapters and an informational organization-settings page. Automatic PR reviews,
 deployment controls and the PR tab are still being built. The features below
 describe the intended complete product.
 
+Local tests now exercise review validation, repository gating, finding
+reconciliation policy and the broker's HTTP delivery/retry handling. These do
+not replace installation or end-to-end testing against Azure DevOps.
+
 ## What it does
 
 - Starts a review when a pull request is created or updated.

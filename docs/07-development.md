@@ -9,7 +9,7 @@
 | `src/settings/` | Organization, project and repository gating model. |
 | `broker/` | Optional Docker event receiver and its tests. |
 | `src/extension/` | Extension settings and PR-tab surfaces (next slice). |
-| `src/worker/` | Review execution and queue adapter (next slice). |
+| `src/worker/` | Validated local review execution and PR-event decision policy. |
 | `tests/` | Deterministic unit tests and review fixtures. |
 | `scripts/` | Build and test entry points. |
 | `ci/` | Repository checks used by the local gate and CI. |
@@ -91,7 +91,14 @@ MASTHEAD_PROVIDER=anthropic MASTHEAD_MODEL=<model> npm run eval:live -- correctn
 ```
 
 The command reads the selected fixture, builds the prompt, calls the provider
-and prints the validated result. It never logs the API key.
+through the same worker as the unit tests, and prints the validated result.
+It never logs the API key. Findings and model responses are not written to git.
+
+Provider options include `MASTHEAD_MAX_TOKENS` (default 4096),
+`MASTHEAD_TIMEOUT_MS` (default 60000), and optional `MASTHEAD_TEMPERATURE`.
+Temperature is omitted unless configured. Modern OpenAI chat models use
+`max_completion_tokens`; DeepSeek uses `max_tokens` and Anthropic uses its
+native Messages API. Live compatibility still needs testing per model.
 
 ## Development sequence
 

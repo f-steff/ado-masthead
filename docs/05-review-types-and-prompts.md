@@ -23,7 +23,18 @@ automatically enabled.
 8. No prompt can disable the output validation or secret boundary.
 
 The output contract is defined in `src/review/prompt.ts` and parsed by
-`src/review/result.ts`.
+`src/review/result.ts`. Trusted instructions and selected lens modules stay in
+the system message. PR data, including actual LICENSE text, is serialized as
+untrusted JSON in the user message. Disabled lenses do not receive their
+optional context.
+
+`src/worker/review.ts` is the executable local boundary. It rejects unknown or
+disabled lenses, unknown files, unsafe paths, invalid lines, duplicate finding
+IDs and missing requested guides. Low-confidence findings are suppressed;
+high-confidence minor findings have a configurable cap. Critical/major
+findings are not limited by that cap. The worker fails rather than silently
+truncate an oversized input. It can consume supplied related unchanged files;
+automatic repository retrieval and tool-driven investigation are not wired yet.
 
 ## Correctness and impact
 
@@ -86,7 +97,9 @@ and asks the author to confirm origin and obligations.
 repository and no copied-code evidence.
 
 **Fixtures:** `license-missing-root-license`,
-`license-gpl-file-in-mit-repository`, `license-negative-mit-compatible`.
+`license-gpl-file-in-mit-repository`, `license-negative-mit-compatible`,
+`license-negative-spdx-test-data`. An SPDX string inside a synthetic parser
+test is not a declaration that the test file or repository is GPL-licensed.
 
 ## Performance and scalability
 

@@ -1,7 +1,7 @@
 FROM node:22-alpine
 
 WORKDIR /app
-COPY lib.mjs server.mjs ./
+COPY lib.mjs app.mjs server.mjs ./
 
 USER node
 ENV PORT=8080

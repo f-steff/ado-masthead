@@ -31,7 +31,10 @@ and a short reason.
   implemented but the local Docker daemon was not running during the first check.
 - First UI slice for organization deploy action, project repository switches and
   the PR tab.
-- Live provider adapters and cost accounting.
+- Live compatibility checks for individual models, cost accounting and
+  automated semantic grading of fixture evaluations.
+- Persistent run locking and finding storage; the tested lifecycle layer
+  currently creates action plans rather than publishing to ADO.
 - Optional pipeline task design.
 - ADO test project and repository seed.
 - Marketplace metadata and release workflows.
