@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <title>Masthead crow's nest lookout</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b2a4a"/>
+      <stop offset="1" stop-color="#0e7490"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="256" height="256" rx="52" fill="url(#bg)"/>
+
+  <!-- Mast and pennant above the lookout. -->
+  <polygon points="120,44 136,44 136,102 120,102" fill="#eaf9ff"/>
+  <polygon points="136,44 141,44 141,102 136,102" fill="#5fb0d4"/>
+  <polygon points="136,44 214,62 136,80" fill="#bfe9ff"/>
+
+  <!-- The wider lookout basket is the primary silhouette. -->
+  <g stroke="#eaf9ff" stroke-width="6" stroke-linecap="round">
+    <line x1="80" y1="102" x2="80" y2="82"/>
+    <line x1="176" y1="102" x2="176" y2="82"/>
+    <line x1="76" y1="84" x2="180" y2="84"/>
+  </g>
+  <polygon points="77,102 179,102 170,117 86,117" fill="#e9f7ff"/>
+  <polygon points="86,117 170,117 160,160 96,160" fill="#9fdcf2"/>
+  <polygon points="170,117 179,102 173,155 160,160" fill="#5fb0d4"/>
+  <g stroke="#0e7490" stroke-width="5" stroke-linecap="round" opacity="0.55">
+    <line x1="108" y1="125" x2="106" y2="150"/>
+    <line x1="128" y1="125" x2="128" y2="152"/>
+    <line x1="148" y1="125" x2="150" y2="150"/>
+  </g>
+
+  <!-- A shorter lower mast keeps the basket dominant. -->
+  <polygon points="120,160 128,160 128,220 120,220" fill="#e9f7ff"/>
+  <polygon points="128,160 136,160 136,220 128,220" fill="#5fb0d4"/>
+</svg>

@@ -10,6 +10,7 @@
 | `broker/` | Optional Docker event receiver and its tests. |
 | `src/extension/` | Extension settings and PR-tab surfaces (next slice). |
 | `src/worker/` | Validated local review execution and PR-event decision policy. |
+| `images/` | Editable SVG icon source and rendered PNG sizes. |
 | `tests/` | Deterministic unit tests and review fixtures. |
 | `scripts/` | Build and test entry points. |
 | `ci/` | Repository checks used by the local gate and CI. |
@@ -39,6 +40,21 @@ The generated review core is written to `dist/core/`.
 The informational organization-settings page is copied to `dist/extension/`.
 VSIX packages currently validate the release scaffold; they do not deploy a
 review service or add working PR-review controls.
+
+## Icons
+
+The editable source is `images/icon.svg`. The 32, 128 and 256 px PNGs are
+committed because CI does not install an SVG renderer. Regenerate them locally
+after changing the source:
+
+```sh
+rsvg-convert -w 32 -h 32 -o images/icon-32.png images/icon.svg
+rsvg-convert -w 128 -h 128 -o images/icon-128.png images/icon.svg
+rsvg-convert -w 256 -h 256 -o images/icon-256.png images/icon.svg
+```
+
+Do not edit a PNG directly. The manifest uses the 128 px icon as `default`, the
+256 px icon as `large`, and the 32 px icon for the hub.
 
 ## Branching
 

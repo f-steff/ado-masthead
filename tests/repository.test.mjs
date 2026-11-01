@@ -56,6 +56,32 @@ test("edition manifests retain one code package and distinct public/private iden
   }
 });
 
+test("the extension manifest ships the approved icon set", () => {
+  const base = JSON.parse(fs.readFileSync(path.join(root, "ado-manifests/azure-devops-extension-base.json"), "utf8"));
+  assert.deepEqual(base.icons, {
+    default: "images/icon-128.png",
+    large: "images/icon-256.png"
+  });
+  assert.deepEqual(base.branding, { color: "#0e7490", theme: "dark" });
+
+  const files = new Set(base.files.map((entry) => entry.path));
+  for (const size of [32, 128, 256]) {
+    const file = `images/icon-${size}.png`;
+    assert.ok(files.has(file), file);
+    const data = fs.readFileSync(path.join(root, file));
+    assert.equal(data.toString("ascii", 1, 4), "PNG");
+    assert.equal(data.readUInt32BE(16), size);
+    assert.equal(data.readUInt32BE(20), size);
+  }
+
+  const hub = base.contributions.find((entry) => entry.targets.includes("ms.vss-web.collection-admin-hub-group"));
+  assert.ok(hub);
+  assert.equal(hub.properties.icon, "images/icon-32.png");
+  const svg = fs.readFileSync(path.join(root, "images/icon.svg"), "utf8");
+  assert.match(svg, /viewBox="0 0 256 256"/);
+  assert.match(svg, /Masthead crow's nest lookout/);
+});
+
 test("the early organization page describes its limits instead of offering fake deployment actions", () => {
   const html = fs.readFileSync(path.join(root, "src/extension/about/index.html"), "utf8");
   assert.match(html, /Masthead/);
