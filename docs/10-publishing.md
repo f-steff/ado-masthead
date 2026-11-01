@@ -1,8 +1,9 @@
 # 10 - Publishing
 
-Release publication is prepared locally and intentionally disabled. The
-repository variable `MARKETPLACE_PUBLISH_ENABLED` is `false`. CI and packaging
-require no publishing identity or model credentials.
+Release publication is configured and armed. The repository variable
+`MARKETPLACE_PUBLISH_ENABLED` is `true`. CI and packaging require no publishing
+identity or model credentials; only publication and sharing jobs use the
+`marketplace` environment.
 
 ## Editions
 
@@ -50,25 +51,20 @@ Publishing uses GitHub OIDC and a Microsoft Entra identity with a federated
 credential for the `marketplace` environment. No long-lived Marketplace PAT is
 stored in the repository.
 
-The GitHub `marketplace` environment already exists with no credentials. It
-uses the same default OIDC configuration and immutable repository subject as
-the existing release setup. Do not copy its other repository's subject or IDs.
+The GitHub `marketplace` environment uses this repository's own Entra identity;
+it does not reuse Static's client ID or federated subject. The environment holds
+`AZURE_CLIENT_ID` and `AZURE_TENANT_ID` as variables. It has no environment
+secrets and no long-lived Marketplace PAT.
 
-Before publishing:
+The identity has a federated credential for the immutable subject
+`repo:f-steff@7275320/ado-masthead@1440330013:environment:marketplace`. It is a
+Contributor on publisher `f-steff`, which allows it to publish both the stable
+and dev editions. A read-only GitHub Actions OIDC check authenticated
+successfully and returned the expected Azure DevOps profile.
 
-1. Configure the publishing Entra application and publisher membership.
-2. Add `AZURE_CLIENT_ID` and `AZURE_TENANT_ID` as `marketplace` environment
-   variables. A client secret and a Marketplace PAT are not needed.
-3. Register a federated credential for this repository's exact OIDC subject.
-   Read `sub_claim_prefix` from the repository's
-   `actions/oidc/customization/sub` REST endpoint and append
-   `:environment:marketplace`; do not assume the old name-only subject format.
-4. Review the installable features, package contents and tests.
-5. Set repository variable `MARKETPLACE_PUBLISH_ENABLED` to `true` only when
-   release publication is intended.
-
-These Entra and Marketplace setup steps are deferred. No provider keys are
-needed for publication, and live review credentials are not copied to GitHub.
+The environment has no approval or branch protection rules, matching Static's
+setup. The environment name in the workflow and the federated subject must stay
+identical.
 
 ## Release gate
 
@@ -84,9 +80,20 @@ A publish runs only after:
 The license-review lens is a product feature; the repository itself still
 keeps a valid LICENSE and third-party notices for its own dependencies.
 
-## Postponed setup
+## Remaining activation
 
-- Configure the GitHub `marketplace` identity variables and Entra trust.
-- Enable publication explicitly after the extension is ready.
-- Share `masthead-dev` with the test organization.
-- Publish and verify the private extension in the ADO test organization.
+Configuration alone does not publish anything. The publish workflows must be
+present on their target branches and receive a shipped-code change.
+
+1. Merge the implementation into `develop`. This publishes the private
+   `masthead-dev` edition after the local gate passes.
+2. Run the **Share dev** workflow for the test organization, then install the
+   private extension there.
+3. Merge a release into `main` only after the installable features are ready.
+   That publishes stable and dev at the same version.
+4. Verify both listings and the Azure DevOps installation in the test
+   organization.
+
+The first dev publish creates the private listing. The first stable publish
+creates the public listing. No provider keys are needed for publication, and
+live review credentials are not copied to GitHub.

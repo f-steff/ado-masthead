@@ -23,7 +23,7 @@ and a short reason.
 | D14 | Masthead's own distribution remains MIT. The license lens is not a provenance gate for Masthead's source. |
 | D15 | CI uses deterministic tests with mocked model output. Live model tests are opt-in and use environment keys. |
 | D16 | Browser testing uses the dedicated debug Chrome profile and only tabs opened for Masthead. |
-| D17 | Publishing follows the ado-static OIDC dev/stable model. GitHub and ADO credential setup is postponed. |
+| D17 | Publishing follows the ado-static OIDC dev/stable model. A dedicated Entra app, GitHub environment variables, federated credential and publisher Contributor membership are configured; no Marketplace PAT is stored. |
 
 ## Open items
 
@@ -37,4 +37,4 @@ and a short reason.
   currently creates action plans rather than publishing to ADO.
 - Optional pipeline task design.
 - ADO test project and repository seed.
-- Marketplace metadata and release workflows.
+- First dev/stable publication, dev sharing and installation verification.
