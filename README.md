@@ -50,9 +50,10 @@ Masthead supports two deployment paths:
   queues the same pipeline. This is the safer option when the public incoming
   webhook endpoint is not acceptable.
 
-The organization settings page records the chosen delivery mode and validates
-the central pipeline. Each project settings page lists its repositories and lets
-an administrator enable or disable PR reviews per repository.
+The organization settings page records the chosen delivery mode, validates the
+central pipeline, and can install or delete a pipeline definition from a trusted
+repository and YAML path. Each project settings page lists its repositories and
+lets an administrator enable or disable PR reviews per repository.
 
 ## Review types
 

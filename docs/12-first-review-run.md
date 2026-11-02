@@ -87,6 +87,16 @@ that is not available in the hosting organization, supply the same shape through
 The settings page still owns the persisted documents. A snapshot is a deliberate
 deployment input, not a second editable settings store.
 
+## Pipeline definition installation
+
+The organization Setup page can create or delete an Azure Pipelines definition
+from a selected trusted repository and YAML path. It verifies that the YAML file
+exists, but does not edit the repository or inspect the YAML contents. Use a
+review pipeline that contains the Masthead step and the secret variable group.
+
+Deleting from Setup removes only the pipeline definition and clears the saved
+binding. Repositories, YAML files and pull request threads remain.
+
 ## Pipeline step
 
 The repository must be built before this step:
