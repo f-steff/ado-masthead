@@ -6,7 +6,8 @@ import {
   loadReviewSettings,
   readExtensionSetting,
   reviewGate,
-  SettingsAccessError
+  SettingsAccessError,
+  writeExtensionSetting
 } from "../src/worker/settings";
 import {
   defaultOrganizationSettings,
@@ -44,6 +45,20 @@ test("extension settings use the collection-scoped documents endpoint", async ()
     `https://extmgmt.dev.azure.com/contoso/_apis/ExtensionManagement/InstalledExtensions/f-steff/masthead-dev/` +
       "Data/Scopes/Default/Current/Collections/%24settings/Documents/organization?api-version=6.0-preview.1"
   );
+});
+
+test("model metadata can be written back to the same settings document", async () => {
+  let method = "";
+  let body: Record<string, unknown> = {};
+  await writeExtensionSetting(options(async (_url, init) => {
+    method = init?.method ?? "";
+    body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    return new Response("{}", { status: 200 });
+  }), "modelCatalog", { deepseek: { models: ["deepseek-chat"] } });
+  assert.equal(method, "PUT");
+  assert.equal(body.id, "modelCatalog");
+  assert.deepEqual(body.value, { deepseek: { models: ["deepseek-chat"] } });
+  assert.equal(body.__etag, -1);
 });
 
 test("a missing settings document is distinct from an access failure", async () => {

@@ -10,7 +10,9 @@ import {
   ProjectSettings
 } from "../../settings";
 import { defaultReviewProfile, resolveReviewProfile } from "../../review/lenses";
+import { ModelCatalog, normalizeModelCatalog } from "../../models/catalog";
 import { initializeHost, notifyHostFailed, notifyHostLoaded, organizationUrl } from "../shared/host";
+import { fillModelOptions } from "../shared/model-suggestions";
 import { filterPipelines, pipelineLabel, PipelineOption } from "../shared/pipelines";
 import { renderLensOptions, selectedLenses } from "../shared/review-profile";
 import { loadSetting, saveSetting } from "../shared/storage";
@@ -50,6 +52,11 @@ const extensionId = document.querySelector<HTMLElement>("#extension-id");
 const extensionPublisher = document.querySelector<HTMLElement>("#extension-publisher");
 const reviewProvider = document.querySelector<HTMLSelectElement>("#review-provider");
 const reviewModel = document.querySelector<HTMLInputElement>("#review-model");
+const reviewModelOptions = document.querySelector<HTMLDataListElement>("#review-model-options");
+const reasoningEffort = document.querySelector<HTMLSelectElement>("#reasoning-effort");
+const thinkingBudget = document.querySelector<HTMLSelectElement>("#thinking-budget");
+const reasoningField = document.querySelector<HTMLElement>("#reasoning-field");
+const thinkingField = document.querySelector<HTMLElement>("#thinking-field");
 const orgLensList = document.querySelector<HTMLElement>("#org-lens-list");
 const orgReviewGuide = document.querySelector<HTMLInputElement>("#org-review-guide");
 const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-tab]"));
@@ -57,6 +64,7 @@ const panels = Array.from(document.querySelectorAll<HTMLElement>("[data-panel]")
 
 let hostName = "";
 let currentTab = "general";
+let modelCatalog: ModelCatalog = {};
 let settings = defaultOrganizationSettings();
 let projects: ProjectRow[] = [];
 let pipelines: PipelineOption[] = [];
@@ -277,9 +285,20 @@ function renderOrganization(value: OrganizationSettings): void {
   if (brokerUrl) brokerUrl.value = value.brokerUrl ?? "";
   if (reviewProvider) reviewProvider.value = value.provider ?? "";
   if (reviewModel) reviewModel.value = value.model ?? "";
+  fillModelOptions(reviewModelOptions, value.provider, modelCatalog);
+  if (reasoningEffort) reasoningEffort.value = value.reasoningEffort ?? "";
+  if (thinkingBudget) thinkingBudget.value = value.thinkingBudget ? String(value.thinkingBudget) : "";
+  syncProviderOptions();
   const profile = resolveReviewProfile(value.profile ?? defaultReviewProfile());
   renderLensOptions(orgLensList, profile.enabledLenses);
   if (orgReviewGuide) orgReviewGuide.checked = profile.reviewGuide;
+}
+
+/** Show only the reasoning control that the chosen provider can consume. */
+function syncProviderOptions(): void {
+  const provider = reviewProvider?.value ?? "";
+  if (reasoningField) reasoningField.hidden = provider === "anthropic" || provider === "deepseek";
+  if (thinkingField) thinkingField.hidden = provider === "openai" || provider === "deepseek";
 }
 
 function syncDeliveryChoice(): void {
@@ -329,6 +348,8 @@ async function save(): Promise<void> {
     brokerVerified: false,
     provider: reviewProvider?.value || undefined,
     model: reviewModel?.value.trim() || undefined,
+    reasoningEffort: (reasoningEffort?.value as "low" | "medium" | "high" | "") || undefined,
+    thinkingBudget: thinkingBudget?.value ? Number(thinkingBudget.value) : undefined,
     profile: resolveReviewProfile({
       enabledLenses: selectedLenses(orgLensList),
       reviewGuide: orgReviewGuide?.checked !== false
@@ -437,6 +458,11 @@ async function main(): Promise<void> {
   activateTab(initialTab);
 
   try {
+    modelCatalog = normalizeModelCatalog(await loadSetting<ModelCatalog>("modelCatalog", {}));
+  } catch {
+    modelCatalog = {};
+  }
+  try {
     renderOrganization(normalizeOrganizationSettings(await loadSetting<OrganizationSettings>("organization", defaultOrganizationSettings())));
   } catch {
     setMessage(saveStatus, "Organization settings could not be loaded. The host connection is still working.", "error");
@@ -459,6 +485,10 @@ async function main(): Promise<void> {
   nativeRadio?.addEventListener("change", syncDeliveryChoice);
   brokerRadio?.addEventListener("change", syncDeliveryChoice);
   enabled?.addEventListener("change", syncProjectUseState);
+  reviewProvider?.addEventListener("change", () => {
+    fillModelOptions(reviewModelOptions, reviewProvider.value, modelCatalog);
+    syncProviderOptions();
+  });
   pipelineSearch?.addEventListener("input", () => {
     renderPipelineOptions(pipelineSearch.value);
     selectPipelineFromSearch();

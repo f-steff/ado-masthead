@@ -45,6 +45,8 @@ argument.
 | `MASTHEAD_MODEL` | Provider model name; a settings override takes precedence. |
 | `MASTHEAD_MAX_TOKENS` | Optional output budget. |
 | `MASTHEAD_TIMEOUT_MS` | Optional provider timeout. |
+| `MASTHEAD_REASONING_EFFORT` | Optional OpenAI reasoning effort: `low`, `medium` or `high`. |
+| `MASTHEAD_THINKING_BUDGET` | Optional Anthropic extended-thinking budget in tokens. |
 | `MASTHEAD_EXTENSION_ID` | Installed extension id, for example `masthead-dev`. Recommended; when omitted, one configured Masthead edition is auto-detected. |
 | `MASTHEAD_EXTENSION_PUBLISHER` | Optional publisher id; defaults to `f-steff`. |
 | `MASTHEAD_SETTINGS_JSON` | Optional controlled settings snapshot for local or isolated tests. |
@@ -54,6 +56,10 @@ argument.
 
 The provider key variables must remain secret variables or be mapped from a
 secret variable group. The other names are ordinary pipeline configuration.
+Provider and model values in the saved review profile take precedence over
+these environment fallbacks. The worker also refreshes a non-secret model
+catalogue in extension data so the settings page can offer provider-specific
+model suggestions; a catalogue failure never blocks a review.
 
 The worker reads the organization document and the document for the PR's
 destination project before it configures a provider. The organization, project

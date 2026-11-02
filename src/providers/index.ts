@@ -10,6 +10,10 @@ export interface ProviderConfig {
   maxTokens?: number;
   temperature?: number;
   timeoutMs?: number;
+  /** OpenAI-compatible reasoning control for models that support it. */
+  reasoningEffort?: "low" | "medium" | "high";
+  /** Anthropic extended-thinking budget in tokens. */
+  thinkingBudget?: number;
   /** Older compatible endpoints may require the legacy max_tokens field. */
   tokenParameter?: "max_tokens" | "max_completion_tokens";
 }
@@ -38,7 +42,12 @@ export interface ProviderHttpRequest {
  */
 export function providerFromEnvironment(
   env: NodeJS.ProcessEnv = process.env,
-  overrides: { name?: string; model?: string } = {}
+  overrides: {
+    name?: string;
+    model?: string;
+    reasoningEffort?: "low" | "medium" | "high";
+    thinkingBudget?: number;
+  } = {}
 ): ProviderConfig {
   const name = (overrides.name || env.MASTHEAD_PROVIDER || "").trim().toLowerCase();
   if (name !== "anthropic" && name !== "openai" && name !== "deepseek") {
@@ -61,6 +70,8 @@ export function providerFromEnvironment(
     throw new Error(`Set ${keyName} before running a live review.`);
   }
 
+  const reasoningEffort = overrides.reasoningEffort ?? optionalReasoningEffort(env.MASTHEAD_REASONING_EFFORT);
+  const thinkingBudget = overrides.thinkingBudget ?? optionalThinkingBudget(env.MASTHEAD_THINKING_BUDGET);
   return {
     name,
     apiKey,
@@ -68,8 +79,58 @@ export function providerFromEnvironment(
     baseUrl: (env.MASTHEAD_BASE_URL || "").trim() || undefined,
     maxTokens: positiveNumber(env.MASTHEAD_MAX_TOKENS, 4096),
     temperature: optionalTemperature(env.MASTHEAD_TEMPERATURE),
-    timeoutMs: positiveNumber(env.MASTHEAD_TIMEOUT_MS, 60_000)
+    timeoutMs: positiveNumber(env.MASTHEAD_TIMEOUT_MS, 60_000),
+    ...(reasoningEffort ? { reasoningEffort } : {}),
+    ...(thinkingBudget ? { thinkingBudget } : {})
   };
+}
+
+/** Fetch the provider's current chat model ids; failures do not block a review. */
+export async function listProviderModels(
+  config: ProviderConfig,
+  fetchImpl: typeof fetch = fetch,
+  signal?: AbortSignal
+): Promise<string[]> {
+  const base = config.name === "anthropic"
+    ? safeBaseUrl(config.baseUrl ?? "https://api.anthropic.com")
+    : safeBaseUrl(config.baseUrl ?? (config.name === "openai" ? "https://api.openai.com/v1" : "https://api.deepseek.com/v1"));
+  const url = config.name === "anthropic" ? `${base}/v1/models` : `${base}/models`;
+  const timeout = AbortSignal.timeout(config.timeoutMs ?? 30_000);
+  const requestSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
+  let response: Response;
+  try {
+    response = await fetchImpl(url, {
+      headers: config.name === "anthropic"
+        ? {
+            "x-api-key": config.apiKey,
+            "anthropic-version": "2023-06-01",
+            accept: "application/json"
+          }
+        : {
+            authorization: `Bearer ${config.apiKey}`,
+            accept: "application/json"
+          },
+      signal: requestSignal,
+      redirect: "error"
+    });
+  } catch {
+    throw new Error("Provider model list could not be requested.");
+  }
+  if (!response.ok) {
+    throw new Error(`Provider model list failed with HTTP ${response.status}.`);
+  }
+  let payload: unknown;
+  try {
+    payload = await response.json();
+  } catch {
+    throw new Error("Provider model list returned invalid JSON.");
+  }
+  const data = isRecord(payload) && Array.isArray(payload.data) ? payload.data : [];
+  return [...new Set(data
+    .filter((item): item is Record<string, unknown> => isRecord(item))
+    .map((item) => typeof item.id === "string" ? item.id.trim() : "")
+    .filter((id) => id.length > 0 && id.length <= 200)
+  )].slice(0, 200);
 }
 
 /** Provider protocols differ even when they serve the same review contract. */
@@ -87,9 +148,16 @@ export function buildProviderRequest(
   if (config.temperature !== undefined && (!Number.isFinite(config.temperature) || config.temperature < 0 || config.temperature > 2)) {
     throw new Error("Invalid provider temperature.");
   }
+  if (config.thinkingBudget !== undefined &&
+      (!Number.isSafeInteger(config.thinkingBudget) || config.thinkingBudget < 1 || config.thinkingBudget > 100_000)) {
+    throw new Error("Invalid thinking budget.");
+  }
   const sampling = config.temperature === undefined ? {} : { temperature: config.temperature };
 
   if (config.name === "anthropic") {
+    const thinking = config.thinkingBudget
+      ? { thinking: { type: "enabled", budget_tokens: config.thinkingBudget } }
+      : {};
     return {
       url: `${safeBaseUrl(config.baseUrl ?? "https://api.anthropic.com")}/v1/messages`,
       headers: {
@@ -99,8 +167,10 @@ export function buildProviderRequest(
       },
       body: {
         model: config.model,
-        max_tokens: maxTokens,
-        ...sampling,
+        // Extended thinking consumes output budget; leave room for the review JSON.
+        max_tokens: config.thinkingBudget ? Math.max(maxTokens, config.thinkingBudget + 1024) : maxTokens,
+        ...(config.thinkingBudget ? {} : sampling),
+        ...thinking,
         system: request.system,
         messages: [{ role: "user", content: request.user }]
       }
@@ -119,6 +189,9 @@ export function buildProviderRequest(
       model: config.model,
       [config.tokenParameter ?? (config.name === "openai" ? "max_completion_tokens" : "max_tokens")]: maxTokens,
       ...sampling,
+      ...(config.name === "openai" && config.reasoningEffort
+        ? { reasoning_effort: config.reasoningEffort }
+        : {}),
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: request.system },
@@ -242,6 +315,24 @@ function positiveNumber(value: string | undefined, fallback: number): number {
   const parsed = Number(value);
   if (!Number.isSafeInteger(parsed) || parsed <= 0) {
     throw new Error("Provider limits must be positive integers.");
+  }
+  return parsed;
+}
+
+/** Restrict reasoning controls to the provider-supported values. */
+function optionalReasoningEffort(value: string | undefined): "low" | "medium" | "high" | undefined {
+  const normalized = (value || "").trim().toLowerCase();
+  return normalized === "low" || normalized === "medium" || normalized === "high"
+    ? normalized
+    : undefined;
+}
+
+/** Anthropic thinking budgets are token counts; reject arbitrary strings. */
+function optionalThinkingBudget(value: string | undefined): number | undefined {
+  if (!value?.trim()) return undefined;
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < 1 || parsed > 100_000) {
+    throw new Error("MASTHEAD_THINKING_BUDGET must be a positive integer.");
   }
   return parsed;
 }

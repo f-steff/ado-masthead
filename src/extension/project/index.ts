@@ -12,7 +12,9 @@ import {
   seedProjectRepositories
 } from "../../settings";
 import { defaultReviewProfile, resolveReviewProfile } from "../../review/lenses";
+import { ModelCatalog, normalizeModelCatalog } from "../../models/catalog";
 import { initializeHost, notifyHostFailed, notifyHostLoaded, organizationUrl } from "../shared/host";
+import { fillModelOptions } from "../shared/model-suggestions";
 import { renderLensOptions, selectedLenses, setLensOptionsDisabled } from "../shared/review-profile";
 import { loadSetting, saveSetting } from "../shared/storage";
 
@@ -36,6 +38,8 @@ const inheritProfile = document.querySelector<HTMLInputElement>("#inherit-profil
 const orgProfileSummary = document.querySelector<HTMLElement>("#org-profile-summary");
 const projectProvider = document.querySelector<HTMLSelectElement>("#project-review-provider");
 const projectModel = document.querySelector<HTMLInputElement>("#project-review-model");
+const projectModelOptions = document.querySelector<HTMLDataListElement>("#project-model-options");
+const allModelOptions = document.querySelector<HTMLDataListElement>("#all-model-options");
 const projectLensList = document.querySelector<HTMLElement>("#project-lens-list");
 const projectReviewGuide = document.querySelector<HTMLInputElement>("#project-review-guide");
 const repoProfileList = document.querySelector<HTMLElement>("#repo-profile-list");
@@ -48,6 +52,7 @@ let projectId = "";
 let projectName = "";
 let settings: ProjectSettings = defaultProjectSettings();
 let organization: OrganizationSettings = defaultOrganizationSettings();
+let modelCatalog: ModelCatalog = {};
 let repositories: Repository[] = [];
 
 /** Report host failure without exposing organization details. */
@@ -162,6 +167,8 @@ function renderReviewProfiles(): void {
   }
   if (projectProvider) projectProvider.value = settings.provider ?? "";
   if (projectModel) projectModel.value = settings.model ?? "";
+  fillModelOptions(projectModelOptions, settings.provider ?? organization.provider, modelCatalog);
+  fillModelOptions(allModelOptions, undefined, modelCatalog);
   renderLensOptions(projectLensList, projectProfile.enabledLenses, settings.inheritProfile);
   if (projectReviewGuide) projectReviewGuide.checked = projectProfile.reviewGuide;
   setLensOptionsDisabled(projectLensList, settings.inheritProfile);
@@ -221,6 +228,7 @@ function renderRepositoryProfiles(): void {
     model.className = "repo-profile-model";
     model.maxLength = 200;
     model.autocomplete = "off";
+    model.setAttribute("list", "all-model-options");
     model.placeholder = "Inherit project or organization model";
     model.value = stored.model ?? "";
     const modelLabel = document.createElement("label");
@@ -368,6 +376,11 @@ async function main(): Promise<void> {
   try {
     organization = normalizeOrganizationSettings(await loadSetting<OrganizationSettings>("organization", defaultOrganizationSettings()));
     if (orgState) orgState.textContent = organization.enabled ? "enabled" : "disabled";
+    try {
+      modelCatalog = normalizeModelCatalog(await loadSetting<ModelCatalog>("modelCatalog", {}));
+    } catch {
+      modelCatalog = {};
+    }
     const fallback: ProjectSettings = {
       ...defaultProjectSettings(),
       enabled: organization.defaultProjectEnabled
@@ -394,6 +407,9 @@ async function main(): Promise<void> {
   });
   projectEnabled?.addEventListener("change", syncProjectState);
   inheritProfile?.addEventListener("change", syncProfileControls);
+  projectProvider?.addEventListener("change", () => {
+    fillModelOptions(projectModelOptions, projectProvider.value || organization.provider, modelCatalog);
+  });
   for (const tab of tabs) {
     tab.addEventListener("click", () => activateTab(tab.dataset.tab ?? "general"));
   }

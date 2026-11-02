@@ -114,9 +114,19 @@ test("persisted malformed settings cannot silently enable a repository", () => {
   const named = normalizeOrganizationSettings({
     pipelineProject: "SampleProject",
     pipelineId: 7,
-    pipelineName: " Masthead review "
+    pipelineName: " Masthead review ",
+    reasoningEffort: "high",
+    thinkingBudget: 4096
   });
   assert.equal(named.pipelineName, "Masthead review");
+  assert.equal(named.reasoningEffort, "high");
+  assert.equal(named.thinkingBudget, 4096);
+  const invalidReasoning = normalizeOrganizationSettings({
+    reasoningEffort: "extreme",
+    thinkingBudget: -4
+  });
+  assert.equal(invalidReasoning.reasoningEffort, undefined);
+  assert.equal(invalidReasoning.thinkingBudget, undefined);
 
   const project = normalizeProjectSettings({
     enabled: true,
@@ -192,6 +202,14 @@ test("review profiles inherit from organization to project to repository", () =>
   assert.equal(inherited.profile.reviewGuide, false);
   assert.equal(inherited.provider, "openai");
   assert.equal(inherited.model, "project-model");
+
+  const reasoning = reviewSelection({
+    ...organization,
+    reasoningEffort: "high",
+    thinkingBudget: 4096
+  }, project, "repo-a");
+  assert.equal(reasoning.reasoningEffort, "high");
+  assert.equal(reasoning.thinkingBudget, 4096);
 
   const overridden = reviewSelection(
     organization,

@@ -91,7 +91,8 @@
               </label>
               <label class="field">
                 <span>Model override</span>
-                <input type="text" id="project-review-model" maxlength="200" autocomplete="off" placeholder="Inherit organization or pipeline model">
+                <input type="text" id="project-review-model" list="project-model-options" maxlength="200" autocomplete="off" placeholder="Inherit organization or pipeline model">
+                <datalist id="project-model-options"></datalist>
               </label>
             </div>
             <fieldset class="choice-group">
@@ -110,6 +111,7 @@
           <section class="panel" aria-labelledby="repository-profile-heading">
             <h2 id="repository-profile-heading">Repository overrides</h2>
             <p class="note">Open a repository to give it a different provider, model, lens set or guide. Repository overrides apply only while the repository switch is enabled.</p>
+            <datalist id="all-model-options"></datalist>
             <div id="repo-profile-list" class="repo-profile-list" aria-live="polite">Loading repositories...</div>
           </section>
         </section>

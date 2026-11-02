@@ -38,6 +38,17 @@ export class SettingsAccessError extends Error {
   }
 }
 
+/** Build the extension-data URL once so reads and writes cannot diverge. */
+function settingUrl(options: SettingsSourceOptions, key: string): string {
+  const publisher = requiredSegment(options.publisher, "publisher");
+  const extensionId = requiredSegment(options.extensionId, "extension id");
+  const documentId = requiredSegment(key, "settings key");
+  const base = extensionManagementUrl(options.organizationUrl);
+  return `${base}/_apis/ExtensionManagement/InstalledExtensions/${encodeURIComponent(publisher)}/` +
+    `${encodeURIComponent(extensionId)}/Data/Scopes/Default/Current/Collections/%24settings/Documents/` +
+    `${encodeURIComponent(documentId)}?api-version=6.0-preview.1`;
+}
+
 /** Return a setting document value, or undefined when it was never created. */
 export async function readExtensionSetting(
   options: SettingsSourceOptions,
@@ -45,13 +56,7 @@ export async function readExtensionSetting(
 ): Promise<unknown | undefined> {
   if (!key.trim()) throw new Error("A settings key is required.");
   if (!options.token.trim()) throw new Error("An Azure DevOps token is required to read settings.");
-  const publisher = requiredSegment(options.publisher, "publisher");
-  const extensionId = requiredSegment(options.extensionId, "extension id");
-  const documentId = requiredSegment(key, "settings key");
-  const base = extensionManagementUrl(options.organizationUrl);
-  const url = `${base}/_apis/ExtensionManagement/InstalledExtensions/${encodeURIComponent(publisher)}/` +
-    `${encodeURIComponent(extensionId)}/Data/Scopes/Default/Current/Collections/%24settings/Documents/` +
-    `${encodeURIComponent(documentId)}?api-version=6.0-preview.1`;
+  const url = settingUrl(options, key);
   const timeout = AbortSignal.timeout(options.timeoutMs ?? 30_000);
   let response: Response;
   try {
@@ -92,6 +97,39 @@ export async function readExtensionSetting(
     throw new SettingsAccessError("Masthead settings returned an invalid document.");
   }
   return "value" in payload ? payload.value : undefined;
+}
+
+/**
+ * Refresh non-secret UI metadata such as the provider model catalogue. A
+ * failure is advisory: reviews must continue even when metadata cannot be
+ * written back to extension data.
+ */
+export async function writeExtensionSetting(
+  options: SettingsSourceOptions,
+  key: string,
+  value: unknown
+): Promise<void> {
+  if (!options.token.trim()) throw new Error("An Azure DevOps token is required to write settings.");
+  const url = settingUrl(options, key);
+  const timeout = AbortSignal.timeout(options.timeoutMs ?? 30_000);
+  const response = await (options.fetchImpl ?? fetch)(url, {
+    method: "PUT",
+    headers: {
+      authorization: options.tokenScheme === "bearer"
+        ? `Bearer ${options.token}`
+        : `Basic ${Buffer.from(`:${options.token}`, "utf8").toString("base64")}`,
+      "content-type": "application/json",
+      accept: "application/json"
+    },
+    body: JSON.stringify({ id: key, value, __etag: -1 }),
+    signal: timeout,
+    redirect: "error"
+  }).catch(() => {
+    throw new SettingsAccessError("Masthead metadata could not be written.");
+  });
+  if (!response.ok) {
+    throw new SettingsAccessError(`Masthead metadata write failed with HTTP ${response.status}.`, response.status);
+  }
 }
 
 /**
