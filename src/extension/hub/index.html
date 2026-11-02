@@ -45,10 +45,26 @@
             </span>
           </label>
 
-          <fieldset>
+          <fieldset class="choice-group">
             <legend>Event delivery</legend>
-            <label class="radio-row"><input type="radio" name="delivery" value="native" id="delivery-native"> Native incoming webhook</label>
-            <label class="radio-row"><input type="radio" name="delivery" value="broker" id="delivery-broker"> Docker broker</label>
+            <label class="choice" id="native-choice">
+              <input type="radio" name="delivery" value="native" id="delivery-native">
+              <span class="choice-mark" aria-hidden="true"></span>
+              <span class="choice-copy">
+                <strong>Native incoming webhook</strong>
+                <small>Azure DevOps service hooks deliver events directly to the central pipeline.</small>
+              </span>
+              <span class="choice-badge" aria-hidden="true">Selected</span>
+            </label>
+            <label class="choice" id="broker-choice">
+              <input type="radio" name="delivery" value="broker" id="delivery-broker">
+              <span class="choice-mark" aria-hidden="true"></span>
+              <span class="choice-copy">
+                <strong>Docker broker</strong>
+                <small>A customer-hosted broker authenticates events before queueing the pipeline.</small>
+              </span>
+              <span class="choice-badge" aria-hidden="true">Selected</span>
+            </label>
           </fieldset>
 
           <div class="field-grid">

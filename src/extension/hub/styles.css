@@ -179,8 +179,7 @@ legend {
   font-weight: 600;
 }
 
-.switch-row,
-.radio-row {
+.switch-row {
   display: flex;
   gap: 10px;
   align-items: flex-start;
@@ -188,9 +187,90 @@ legend {
   cursor: pointer;
 }
 
-.switch-row input,
-.radio-row input {
+.switch-row input {
   margin-top: 4px;
+}
+
+.choice-group {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.choice-group legend {
+  margin-bottom: 2px;
+}
+
+.choice {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 13px 14px;
+  border: 1px solid var(--callout-border-color, #d0d7de);
+  border-radius: 8px;
+  background: var(--background-color, #fff);
+  cursor: pointer;
+}
+
+.choice:hover {
+  border-color: #0e7490;
+}
+
+.choice.selected {
+  border-color: #0e7490;
+  background: rgba(14, 116, 144, 0.12);
+  box-shadow: 0 0 0 1px #0e7490 inset;
+}
+
+.choice input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.choice-mark {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  border: 2px solid #6e7781;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.choice.selected .choice-mark {
+  border-color: #0e7490;
+  background: radial-gradient(circle, #0e7490 0 46%, transparent 48%);
+}
+
+.choice-copy strong,
+.choice-copy small {
+  display: block;
+}
+
+.choice-copy small {
+  margin-top: 2px;
+  color: var(--text-secondary-color, #57606a);
+  font-size: 13px;
+}
+
+.choice-badge {
+  display: none;
+  align-self: center;
+  margin-left: auto;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #0e7490;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.choice.selected .choice-badge {
+  display: inline-block;
 }
 
 .switch-row small {
