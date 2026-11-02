@@ -117,6 +117,8 @@ test("the organization and project pages initialize the ADO host and split setti
   assert.match(orgHtml, /id="org-enabled"/);
   assert.match(orgHtml, /id="default-project"/);
   assert.match(orgHtml, /id="default-repository"/);
+  assert.match(orgHtml, /id="pipeline-search"/);
+  assert.match(orgHtml, /id="pipeline-options"/);
   assert.match(orgHtml, /class="tab active"/);
   assert.match(orgHtml, /class="choice-badge"/);
   assert.match(orgHtml, /Repository review gates are controlled in each project's settings page/);

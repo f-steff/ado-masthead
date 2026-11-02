@@ -118,17 +118,13 @@
 
           <section class="panel" aria-labelledby="pipeline-heading">
             <h2 id="pipeline-heading">Central review pipeline</h2>
-            <p class="note">Create the pipeline separately, then record its project and ID here. Masthead validates the target; it does not create the pipeline yet.</p>
-            <div class="field-grid">
-              <label class="field">
-                <span>Pipeline project</span>
-                <input type="text" id="pipeline-project" maxlength="200" autocomplete="off" placeholder="SampleProject">
-              </label>
-              <label class="field">
-                <span>Pipeline ID</span>
-                <input type="number" id="pipeline-id" min="1" step="1" inputmode="numeric">
-              </label>
-            </div>
+            <p class="note">Create the pipeline separately, then search for it here. Masthead validates the target; it does not create the pipeline yet.</p>
+            <label class="field pipeline-picker">
+              <span>Central review pipeline</span>
+              <input type="text" id="pipeline-search" list="pipeline-options" maxlength="300" autocomplete="off" placeholder="Search by project or pipeline name">
+              <datalist id="pipeline-options"></datalist>
+            </label>
+            <p class="meta" id="pipeline-selected"></p>
             <div class="actions">
               <button type="button" class="secondary" id="validate-pipeline">Validate pipeline</button>
               <p id="pipeline-status" class="status-message" role="status" aria-live="polite"></p>
