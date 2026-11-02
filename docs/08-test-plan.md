@@ -103,11 +103,17 @@ changed.
 When browser and ADO credentials are available:
 
 1. Install the private extension in a test organization.
-2. Connect two projects and verify per-project gating.
-3. Open, update and comment on PRs in a repository with no application pipeline.
-4. Verify cross-project event delivery, duplicate delivery and stale-run cancellation.
-5. Verify branch-policy status behavior independently from review eligibility.
-6. Uninstall and verify hook and pipeline cleanup guidance.
+2. Set `MASTHEAD_EXTENSION_ID` on the review pipeline and confirm it can read
+   the organization and project settings documents.
+3. Connect two projects and verify organization, project and repository gating.
+4. Open, update and comment on PRs in a repository with no application pipeline.
+5. Test a fork or cross-project PR and confirm the destination repository's
+   project and repository switches decide eligibility.
+6. Verify a new repository follows the configured project or organization
+   default when no repository document exists.
+7. Verify duplicate delivery and stale-run cancellation.
+8. Verify branch-policy status behavior independently from review eligibility.
+9. Uninstall and verify hook and pipeline cleanup guidance.
 
 ## Browser tests (postponed)
 

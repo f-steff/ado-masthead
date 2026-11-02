@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { filterPipelines, pipelineLabel } from "../src/extension/shared/pipelines";
+import type { ReviewLensId } from "../src";
 import {
   defaultOrganizationSettings,
   defaultProjectSettings,
@@ -9,6 +10,7 @@ import {
   newRepositoryEnabled,
   normalizeOrganizationSettings,
   normalizeProjectSettings,
+  reviewSelection,
   seedProjectRepositories,
   seedRepositories,
   setRepositoryProfile
@@ -55,6 +57,31 @@ test("the organization master switch overrides project and repository choices", 
   assert.equal(isReviewEnabled(organization, { ...project, enabled: false }, "repo-a"), false);
 });
 
+test("new repositories follow the configured defaults when no switch exists", () => {
+  const project = defaultProjectSettings();
+  assert.equal(isReviewEnabled(defaultOrganizationSettings(), project, "new-repo"), false);
+  assert.equal(isReviewEnabled(
+    { ...defaultOrganizationSettings(), defaultRepositoryEnabled: true },
+    project,
+    "new-repo"
+  ), true);
+  assert.equal(isReviewEnabled(
+    defaultOrganizationSettings(),
+    { ...project, defaultRepositoryEnabled: "enabled" },
+    "new-repo"
+  ), true);
+  assert.equal(isReviewEnabled(
+    { ...defaultOrganizationSettings(), defaultRepositoryEnabled: true },
+    { ...project, defaultRepositoryEnabled: "disabled" },
+    "new-repo"
+  ), false);
+  assert.equal(isReviewEnabled(
+    { ...defaultOrganizationSettings(), defaultRepositoryEnabled: true },
+    { ...project, repositories: { "new-repo": { enabled: false } } },
+    "new-repo"
+  ), false);
+});
+
 test("persisted malformed settings cannot silently enable a repository", () => {
   const organization = normalizeOrganizationSettings({
     enabled: false,
@@ -66,6 +93,13 @@ test("persisted malformed settings cannot silently enable a repository", () => {
   assert.equal(organization.deploymentMode, "broker");
   assert.equal(organization.pipelineId, undefined);
   assert.equal(organization.pipelineProject, "SampleProject");
+  assert.equal(organization.pipelineName, undefined);
+  const named = normalizeOrganizationSettings({
+    pipelineProject: "SampleProject",
+    pipelineId: 7,
+    pipelineName: " Masthead review "
+  });
+  assert.equal(named.pipelineName, "Masthead review");
 
   const project = normalizeProjectSettings({
     enabled: true,
@@ -121,4 +155,62 @@ test("a repository can override its project review profile", () => {
     enabledLenses: ["correctness", "security", "license"],
     reviewGuide: false
   });
+});
+
+test("review profiles inherit from organization to project to repository", () => {
+  const organization = {
+    ...defaultOrganizationSettings(),
+    provider: "deepseek",
+    model: "org-model",
+    profile: { enabledLenses: ["correctness", "license"] as ReviewLensId[], reviewGuide: false }
+  };
+  const project = {
+    ...defaultProjectSettings(),
+    provider: "openai",
+    model: "project-model",
+    profile: { enabledLenses: ["correctness", "tests"] as ReviewLensId[], reviewGuide: true }
+  };
+  const inherited = reviewSelection(organization, project, "repo-a");
+  assert.deepEqual(inherited.profile.enabledLenses, ["correctness", "license"]);
+  assert.equal(inherited.profile.reviewGuide, false);
+  assert.equal(inherited.provider, "openai");
+  assert.equal(inherited.model, "project-model");
+
+  const overridden = reviewSelection(
+    organization,
+    {
+      ...project,
+      inheritProfile: false,
+      repositories: {
+        "repo-a": {
+          enabled: true,
+          profile: { enabledLenses: ["correctness", "security"], reviewGuide: false },
+          provider: "anthropic",
+          model: "repo-model"
+        }
+      }
+    },
+    "repo-a"
+  );
+  assert.deepEqual(overridden.profile.enabledLenses, ["correctness", "security"]);
+  assert.equal(overridden.provider, "anthropic");
+  assert.equal(overridden.model, "repo-model");
+});
+
+test("malformed profile data is dropped rather than trusted", () => {
+  const organization = normalizeOrganizationSettings({
+    enabled: true,
+    profile: { enabledLenses: ["made-up"], reviewGuide: true }
+  });
+  assert.equal(organization.profile, undefined);
+  const project = normalizeProjectSettings({
+    enabled: true,
+    inheritProfile: false,
+    profile: { enabledLenses: ["correctness"] },
+    repositories: {
+      "repo-a": { enabled: true, profile: { enabledLenses: ["unknown"] } }
+    }
+  });
+  assert.equal(project.profile?.enabledLenses?.[0], "correctness");
+  assert.equal(project.repositories["repo-a"].profile, undefined);
 });

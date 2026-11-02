@@ -379,6 +379,75 @@ select {
   margin-bottom: 8px;
 }
 
+.lens-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.lens-option {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  padding: 9px 10px;
+  border: 1px solid var(--callout-border-color, #d0d7de);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.lens-option:has(input:checked) {
+  border-color: rgba(14, 116, 144, 0.55);
+  background: rgba(14, 116, 144, 0.07);
+}
+
+.lens-option input {
+  margin-top: 2px;
+}
+
+.lens-option strong,
+.lens-option small {
+  display: block;
+}
+
+.lens-option small {
+  margin-top: 2px;
+  color: var(--text-secondary-color, #57606a);
+  font-weight: 400;
+}
+
+.lens-option input:disabled + span {
+  opacity: 0.65;
+}
+
+.repo-profile-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.repo-profile {
+  border: 1px solid var(--callout-border-color, #d0d7de);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.repo-profile > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.repo-profile-body {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.profile-inherit {
+  max-width: 420px;
+  margin-top: 10px;
+}
+
 .default-field {
   max-width: 360px;
   margin-top: 14px;
@@ -535,7 +604,8 @@ button:disabled {
     margin-bottom: 2px;
   }
 
-  .field-grid {
+  .field-grid,
+  .lens-list {
     grid-template-columns: 1fr;
   }
 }

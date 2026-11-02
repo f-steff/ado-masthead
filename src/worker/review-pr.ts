@@ -3,8 +3,11 @@
 // variables; this process never prints either value.
 import { AdoClient } from "../ado/client";
 import { complete, providerFromEnvironment } from "../providers";
+import { reviewSelection } from "../settings";
 import { runAdoReview } from "./ado-review";
+import { resolveAdoAuth } from "./auth";
 import { ReviewModel } from "./review";
+import { loadReviewSettings, reviewGate } from "./settings";
 
 async function main(): Promise<void> {
   const env = process.env;
@@ -12,24 +15,62 @@ async function main(): Promise<void> {
   const project = required(env, "MASTHEAD_PROJECT");
   const repositoryId = required(env, "MASTHEAD_REPOSITORY");
   const pullRequestId = positive(required(env, "MASTHEAD_PULL_REQUEST_ID"));
-  const systemToken = (env.SYSTEM_ACCESSTOKEN || "").trim();
-  const token = (systemToken || env.AZURE_DEVOPS_TOKEN || "").trim();
-  if (!token) {
-    throw new Error("Set SYSTEM_ACCESSTOKEN in the pipeline or AZURE_DEVOPS_TOKEN locally.");
-  }
-  const provider = providerFromEnvironment(env);
+  const auth = resolveAdoAuth(env);
   const client = new AdoClient({
     organizationUrl,
     project,
     repositoryId,
-    token,
-    tokenScheme: systemToken ? "bearer" : "basic"
+    token: auth.token,
+    tokenScheme: auth.scheme
   });
+
+  // Read the destination repository's project and gate before the provider is
+  // configured, so a disabled review cannot spend tokens or create comments.
+  const pr = await client.getPullRequest(pullRequestId);
+  const destinationProjectId = pr.repository.project?.id || (env.MASTHEAD_PROJECT_ID || "").trim();
+  if (!destinationProjectId || !pr.repository.id) {
+    throw new Error("Azure DevOps did not return the pull request's destination project and repository.");
+  }
+  const snapshot = (env.MASTHEAD_SETTINGS_JSON || "").trim();
+  const extensionId = (env.MASTHEAD_EXTENSION_ID || "").trim();
+  if (!snapshot && !extensionId) {
+    throw new Error(
+      "Set MASTHEAD_EXTENSION_ID to the installed Masthead extension id, or set MASTHEAD_SETTINGS_JSON for a controlled snapshot."
+    );
+  }
+  const settings = await loadReviewSettings({
+    organizationUrl,
+    token: auth.token,
+    tokenScheme: auth.scheme,
+    publisher: (env.MASTHEAD_EXTENSION_PUBLISHER || "f-steff").trim(),
+    extensionId,
+    projectId: destinationProjectId,
+    repositoryId: pr.repository.id,
+    ...(snapshot ? { snapshot } : {})
+  });
+  if (!reviewGate(settings)) {
+    console.log(JSON.stringify({
+      skipped: "review-disabled",
+      organizationEnabled: settings.organization.enabled,
+      projectEnabled: settings.project.enabled,
+      repositoryEnabled: settings.project.repositories[settings.repositoryId]?.enabled === true,
+      pullRequestId
+    }, null, 2));
+    return;
+  }
+
+  const selection = reviewSelection(settings.organization, settings.project, settings.repositoryId);
+  const provider = providerFromEnvironment(env, selection);
   const model: ReviewModel = (request, signal) => complete(provider, request, fetch, signal);
-  const run = await runAdoReview(client, { pullRequestId, model });
+  const run = await runAdoReview(client, {
+    pullRequestId,
+    model,
+    profile: selection.profile
+  });
   console.log(JSON.stringify({
     provider: provider.name,
     model: provider.model,
+    settingsSource: settings.source,
     pullRequestId,
     summary: run.review.result.summary,
     findingCount: run.review.result.findings.length,

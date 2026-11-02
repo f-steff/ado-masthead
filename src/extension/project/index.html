@@ -34,6 +34,7 @@
 
       <div class="tabs" role="tablist" aria-label="Masthead project settings">
         <button type="button" class="tab active" role="tab" aria-selected="true" data-tab="general">General</button>
+        <button type="button" class="tab" role="tab" aria-selected="false" data-tab="profile">Review profile</button>
         <button type="button" class="tab" role="tab" aria-selected="false" data-tab="about">About</button>
       </div>
 
@@ -67,12 +68,59 @@
           </section>
         </section>
 
+        <section class="tab-panel" data-panel="profile" role="tabpanel" hidden>
+          <section class="panel" aria-labelledby="project-profile-heading">
+            <h2 id="project-profile-heading">Project review profile</h2>
+            <p class="note">The organization profile is inherited by default. A project override applies to every repository that does not define its own override.</p>
+            <label class="switch-row">
+              <input type="checkbox" id="inherit-profile">
+              <span>
+                <strong>Use the organization review profile</strong>
+                <small id="org-profile-summary">Loading the organization profile...</small>
+              </span>
+            </label>
+            <div class="field-grid">
+              <label class="field">
+                <span>Provider override</span>
+                <select id="project-review-provider">
+                  <option value="">Inherit organization or pipeline provider</option>
+                  <option value="anthropic">Anthropic</option>
+                  <option value="openai">OpenAI</option>
+                  <option value="deepseek">DeepSeek</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Model override</span>
+                <input type="text" id="project-review-model" maxlength="200" autocomplete="off" placeholder="Inherit organization or pipeline model">
+              </label>
+            </div>
+            <fieldset class="choice-group">
+              <legend>Enabled lenses</legend>
+              <div id="project-lens-list" class="lens-list"></div>
+            </fieldset>
+            <label class="switch-row">
+              <input type="checkbox" id="project-review-guide">
+              <span>
+                <strong>Publish a review guide</strong>
+                <small>Used only when this project does not inherit the organization profile.</small>
+              </span>
+            </label>
+          </section>
+
+          <section class="panel" aria-labelledby="repository-profile-heading">
+            <h2 id="repository-profile-heading">Repository overrides</h2>
+            <p class="note">Open a repository to give it a different provider, model, lens set or guide. Repository overrides apply only while the repository switch is enabled.</p>
+            <div id="repo-profile-list" class="repo-profile-list" aria-live="polite">Loading repositories...</div>
+          </section>
+        </section>
+
         <section class="tab-panel" data-panel="about" role="tabpanel" hidden>
           <section class="panel help-panel">
             <h2>About Masthead in this project</h2>
             <p><strong>Version</strong> <span id="about-version">loading...</span></p>
             <p>Masthead reviews are gated at three levels: the organization master switch, this project switch, and each repository switch. A pull request is reviewed only when all three are enabled.</p>
             <p>Use <strong>General</strong> to enable the project, choose what a newly discovered repository inherits, and turn individual repositories on or off. New repositories are disabled unless the project default says otherwise.</p>
+            <p>Use <strong>Review profile</strong> to inherit the organization's provider, model, lenses and review guide, or to override them for this project. Each repository can have its own override as well.</p>
             <p>The destination repository decides the gate. A pull request from a fork or another project is checked against the project and repository that receive the merge.</p>
             <p>Organization administrators control the master switch, defaults, event delivery, central pipeline and the default review profile on the organization settings page.</p>
             <p>Provider keys are never entered here. They belong in an Azure DevOps secret variable group linked only to the central review pipeline.</p>

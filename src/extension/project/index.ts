@@ -11,7 +11,9 @@ import {
   RepositoryDefault,
   seedProjectRepositories
 } from "../../settings";
+import { defaultReviewProfile, resolveReviewProfile } from "../../review/lenses";
 import { initializeHost, notifyHostFailed, notifyHostLoaded, organizationUrl } from "../shared/host";
+import { renderLensOptions, selectedLenses, setLensOptionsDisabled } from "../shared/review-profile";
 import { loadSetting, saveSetting } from "../shared/storage";
 
 interface Repository {
@@ -30,6 +32,13 @@ const repositoryStatus = document.querySelector<HTMLElement>("#repository-status
 const saveStatus = document.querySelector<HTMLElement>("#save-status");
 const saveButton = document.querySelector<HTMLButtonElement>("#save-project");
 const aboutVersion = document.querySelector<HTMLElement>("#about-version");
+const inheritProfile = document.querySelector<HTMLInputElement>("#inherit-profile");
+const orgProfileSummary = document.querySelector<HTMLElement>("#org-profile-summary");
+const projectProvider = document.querySelector<HTMLSelectElement>("#project-review-provider");
+const projectModel = document.querySelector<HTMLInputElement>("#project-review-model");
+const projectLensList = document.querySelector<HTMLElement>("#project-lens-list");
+const projectReviewGuide = document.querySelector<HTMLInputElement>("#project-review-guide");
+const repoProfileList = document.querySelector<HTMLElement>("#repo-profile-list");
 const form = document.querySelector<HTMLFormElement>("#project-form");
 const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-tab]"));
 const panels = Array.from(document.querySelectorAll<HTMLElement>("[data-panel]"));
@@ -135,20 +144,191 @@ function syncProjectState(): void {
   }
 }
 
+/** The organization profile is the baseline for every project control. */
+function organizationProfile() {
+  return resolveReviewProfile(organization.profile ?? defaultReviewProfile());
+}
+
+/** Render project-level profile and one collapsible editor per repository. */
+function renderReviewProfiles(): void {
+  if (!inheritProfile) return;
+  inheritProfile.checked = settings.inheritProfile;
+  const orgProfile = organizationProfile();
+  const projectProfile = settings.inheritProfile ? orgProfile : resolveReviewProfile(settings.profile ?? orgProfile);
+  if (orgProfileSummary) {
+    orgProfileSummary.textContent = settings.inheritProfile
+      ? `Inheriting organization lenses: ${orgProfile.enabledLenses.join(", ")}.`
+      : "Project override is active. The organization profile is not used for lenses.";
+  }
+  if (projectProvider) projectProvider.value = settings.provider ?? "";
+  if (projectModel) projectModel.value = settings.model ?? "";
+  renderLensOptions(projectLensList, projectProfile.enabledLenses, settings.inheritProfile);
+  if (projectReviewGuide) projectReviewGuide.checked = projectProfile.reviewGuide;
+  setLensOptionsDisabled(projectLensList, settings.inheritProfile);
+  if (projectReviewGuide) projectReviewGuide.disabled = settings.inheritProfile;
+  renderRepositoryProfiles();
+}
+
+/** Give each repository an opt-in editor without hiding its eligibility switch. */
+function renderRepositoryProfiles(): void {
+  if (!repoProfileList) return;
+  repoProfileList.replaceChildren();
+  const projectProfile = settings.inheritProfile
+    ? organizationProfile()
+    : resolveReviewProfile(settings.profile ?? organizationProfile());
+  for (const repository of repositories) {
+    const stored = settings.repositories[repository.id] ?? { enabled: false };
+    const details = document.createElement("details");
+    details.className = "repo-profile";
+    details.dataset.repositoryId = repository.id;
+    details.dataset.repositoryName = repository.name;
+    const summary = document.createElement("summary");
+    const body = document.createElement("div");
+    body.className = "repo-profile-body";
+
+    const inherit = document.createElement("input");
+    inherit.type = "checkbox";
+    inherit.className = "repo-profile-inherit";
+    inherit.checked = !stored.profile && !stored.provider && !stored.model;
+    const inheritLabel = document.createElement("label");
+    inheritLabel.className = "switch-row";
+    const inheritCopy = document.createElement("span");
+    const inheritTitle = document.createElement("strong");
+    inheritTitle.textContent = "Use the project review profile";
+    const inheritNote = document.createElement("small");
+    inheritNote.textContent = "Clear this to override the provider, model, lenses or guide for this repository.";
+    inheritCopy.append(inheritTitle, inheritNote);
+    inheritLabel.append(inherit, inheritCopy);
+
+    const fields = document.createElement("div");
+    fields.className = "field-grid";
+    const provider = document.createElement("select");
+    provider.className = "repo-profile-provider";
+    provider.innerHTML = [
+      '<option value="">Inherit project or organization provider</option>',
+      '<option value="anthropic">Anthropic</option>',
+      '<option value="openai">OpenAI</option>',
+      '<option value="deepseek">DeepSeek</option>'
+    ].join("");
+    provider.value = stored.provider ?? "";
+    const providerLabel = document.createElement("label");
+    providerLabel.className = "field";
+    const providerTitle = document.createElement("span");
+    providerTitle.textContent = "Provider override";
+    providerLabel.append(providerTitle, provider);
+    const model = document.createElement("input");
+    model.type = "text";
+    model.className = "repo-profile-model";
+    model.maxLength = 200;
+    model.autocomplete = "off";
+    model.placeholder = "Inherit project or organization model";
+    model.value = stored.model ?? "";
+    const modelLabel = document.createElement("label");
+    modelLabel.className = "field";
+    const modelTitle = document.createElement("span");
+    modelTitle.textContent = "Model override";
+    modelLabel.append(modelTitle, model);
+    fields.append(providerLabel, modelLabel);
+
+    const lensList = document.createElement("div");
+    lensList.className = "lens-list repo-profile-lenses";
+    const repositoryProfile = resolveReviewProfile(stored.profile ?? projectProfile);
+    renderLensOptions(lensList, repositoryProfile.enabledLenses, inherit.checked);
+    const guide = document.createElement("input");
+    guide.type = "checkbox";
+    guide.className = "repo-profile-guide";
+    guide.checked = repositoryProfile.reviewGuide;
+    guide.disabled = inherit.checked;
+    const guideLabel = document.createElement("label");
+    guideLabel.className = "switch-row";
+    const guideCopy = document.createElement("span");
+    const guideTitle = document.createElement("strong");
+    guideTitle.textContent = "Publish a review guide for this repository";
+    const guideNote = document.createElement("small");
+    guideNote.textContent = "An override applies only when the repository switch is enabled.";
+    guideCopy.append(guideTitle, guideNote);
+    guideLabel.append(guide, guideCopy);
+
+    const sync = (): void => {
+      const disabled = inherit.checked;
+      provider.disabled = disabled;
+      model.disabled = disabled;
+      guide.disabled = disabled;
+      setLensOptionsDisabled(lensList, disabled);
+      summary.textContent = `${repository.name} - ${disabled ? "inherits project profile" : "custom override"}`;
+    };
+    inherit.addEventListener("change", sync);
+    sync();
+    body.append(inheritLabel, fields, lensList, guideLabel);
+    details.append(summary, body);
+    repoProfileList.append(details);
+  }
+  if (repositories.length === 0) {
+    repoProfileList.textContent = "No repositories were found in this project.";
+  }
+}
+
+/** Toggle the project profile editor between inherited and local. */
+function syncProfileControls(): void {
+  const inherited = inheritProfile?.checked !== false;
+  setLensOptionsDisabled(projectLensList, inherited);
+  if (projectReviewGuide) projectReviewGuide.disabled = inherited;
+  if (orgProfileSummary) {
+    orgProfileSummary.textContent = inherited
+      ? `Inheriting organization lenses: ${organizationProfile().enabledLenses.join(", ")}.`
+      : "Project override is active. The organization profile is not used for lenses.";
+  }
+}
+
 async function save(): Promise<void> {
   if (!projectEnabled || !repositoryList) return;
+  const inherit = inheritProfile?.checked !== false;
   const next: ProjectSettings = {
     ...settings,
     enabled: projectEnabled.checked,
     defaultRepositoryEnabled: (newRepositoryDefault?.value as RepositoryDefault | undefined) ?? "inherit",
+    inheritProfile: inherit,
+    provider: projectProvider?.value || undefined,
+    model: projectModel?.value.trim() || undefined,
     repositories: { ...settings.repositories }
   };
+  if (inherit) {
+    delete next.profile;
+  } else {
+    next.profile = resolveReviewProfile({
+      enabledLenses: selectedLenses(projectLensList),
+      reviewGuide: projectReviewGuide?.checked !== false
+    });
+  }
   for (const input of repositoryList.querySelectorAll<HTMLInputElement>("input[data-repository-id]")) {
     const repositoryId = input.dataset.repositoryId;
     if (!repositoryId) continue;
     next.repositories[repositoryId] = {
       ...(next.repositories[repositoryId] ?? { enabled: false }),
       enabled: input.checked
+    };
+  }
+  for (const details of repoProfileList?.querySelectorAll<HTMLDetailsElement>("details[data-repository-id]") ?? []) {
+    const repositoryId = details.dataset.repositoryId;
+    if (!repositoryId) continue;
+    const repository = next.repositories[repositoryId] ?? { enabled: false };
+    const inheritRepository = details.querySelector<HTMLInputElement>(".repo-profile-inherit")?.checked !== false;
+    if (inheritRepository) {
+      const inherited = { ...repository };
+      delete inherited.profile;
+      delete inherited.provider;
+      delete inherited.model;
+      next.repositories[repositoryId] = inherited;
+      continue;
+    }
+    next.repositories[repositoryId] = {
+      ...repository,
+      profile: resolveReviewProfile({
+        enabledLenses: selectedLenses(details.querySelector<HTMLElement>(".repo-profile-lenses")),
+        reviewGuide: details.querySelector<HTMLInputElement>(".repo-profile-guide")?.checked !== false
+      }),
+      provider: details.querySelector<HTMLSelectElement>(".repo-profile-provider")?.value || undefined,
+      model: details.querySelector<HTMLInputElement>(".repo-profile-model")?.value.trim() || undefined
     };
   }
   if (saveButton) saveButton.disabled = true;
@@ -199,6 +379,7 @@ async function main(): Promise<void> {
     if (projectEnabled) projectEnabled.checked = settings.enabled;
     if (newRepositoryDefault) newRepositoryDefault.value = settings.defaultRepositoryEnabled;
     renderRepositories();
+    renderReviewProfiles();
     const inherited = settings.defaultRepositoryEnabled === "inherit"
       ? ` (organization default: ${organization.defaultRepositoryEnabled ? "enabled" : "disabled"})`
       : "";
@@ -212,6 +393,7 @@ async function main(): Promise<void> {
     void save();
   });
   projectEnabled?.addEventListener("change", syncProjectState);
+  inheritProfile?.addEventListener("change", syncProfileControls);
   for (const tab of tabs) {
     tab.addEventListener("click", () => activateTab(tab.dataset.tab ?? "general"));
   }

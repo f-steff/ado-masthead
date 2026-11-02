@@ -9,8 +9,10 @@ import {
   OrganizationSettings,
   ProjectSettings
 } from "../../settings";
+import { defaultReviewProfile, resolveReviewProfile } from "../../review/lenses";
 import { initializeHost, notifyHostFailed, notifyHostLoaded, organizationUrl } from "../shared/host";
 import { filterPipelines, pipelineLabel, PipelineOption } from "../shared/pipelines";
+import { renderLensOptions, selectedLenses } from "../shared/review-profile";
 import { loadSetting, saveSetting } from "../shared/storage";
 
 interface ProjectRow {
@@ -40,12 +42,19 @@ const pipelineSelected = document.querySelector<HTMLElement>("#pipeline-selected
 const saveStatus = document.querySelector<HTMLElement>("#save-status");
 const pipelineStatus = document.querySelector<HTMLElement>("#pipeline-status");
 const validateButton = document.querySelector<HTMLButtonElement>("#validate-pipeline");
+const clearPipelineButton = document.querySelector<HTMLButtonElement>("#clear-pipeline");
 const saveButton = document.querySelector<HTMLButtonElement>("#save-settings");
 const aboutVersion = document.querySelector<HTMLElement>("#about-version");
+const extensionId = document.querySelector<HTMLElement>("#extension-id");
+const reviewProvider = document.querySelector<HTMLSelectElement>("#review-provider");
+const reviewModel = document.querySelector<HTMLInputElement>("#review-model");
+const orgLensList = document.querySelector<HTMLElement>("#org-lens-list");
+const orgReviewGuide = document.querySelector<HTMLInputElement>("#org-review-guide");
 const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-tab]"));
 const panels = Array.from(document.querySelectorAll<HTMLElement>("[data-panel]"));
 
 let hostName = "";
+let currentTab = "general";
 let settings = defaultOrganizationSettings();
 let projects: ProjectRow[] = [];
 let pipelines: PipelineOption[] = [];
@@ -75,8 +84,12 @@ function activateTab(tab: string): void {
   for (const panel of panels) {
     panel.hidden = panel.dataset.panel !== known;
   }
+  currentTab = known;
   if (window.location.hash !== `#${known}`) {
     history.replaceState(null, "", `#${known}`);
+  }
+  if (known === "setup" && selectedPipeline) {
+    void validatePipeline(true);
   }
 }
 
@@ -138,7 +151,7 @@ function restorePipelineSelection(): void {
   selectedPipeline = match ?? {
     project: settings.pipelineProject,
     id: settings.pipelineId,
-    name: "Saved pipeline"
+    name: settings.pipelineName ?? "Saved pipeline"
   };
   if (pipelineSearch) pipelineSearch.value = pipelineLabel(selectedPipeline);
   if (pipelineSelected) pipelineSelected.textContent = `Selected ${pipelineLabel(selectedPipeline)}.`;
@@ -236,6 +249,11 @@ function renderOrganization(value: OrganizationSettings): void {
   brokerChoice?.classList.toggle("selected", value.deploymentMode === "broker");
   if (nativeWebhook) nativeWebhook.value = value.nativeWebhookName ?? "MastheadPR";
   if (brokerUrl) brokerUrl.value = value.brokerUrl ?? "";
+  if (reviewProvider) reviewProvider.value = value.provider ?? "";
+  if (reviewModel) reviewModel.value = value.model ?? "";
+  const profile = resolveReviewProfile(value.profile ?? defaultReviewProfile());
+  renderLensOptions(orgLensList, profile.enabledLenses);
+  if (orgReviewGuide) orgReviewGuide.checked = profile.reviewGuide;
 }
 
 function syncDeliveryChoice(): void {
@@ -281,7 +299,14 @@ async function save(): Promise<void> {
     brokerUrl: url || undefined,
     pipelineProject: selectedPipeline?.project,
     pipelineId: selectedPipeline?.id,
-    brokerVerified: false
+    pipelineName: selectedPipeline?.name,
+    brokerVerified: false,
+    provider: reviewProvider?.value || undefined,
+    model: reviewModel?.value.trim() || undefined,
+    profile: resolveReviewProfile({
+      enabledLenses: selectedLenses(orgLensList),
+      reviewGuide: orgReviewGuide?.checked !== false
+    })
   };
   if (saveButton) saveButton.disabled = true;
   setMessage(saveStatus, "Saving...");
@@ -298,9 +323,9 @@ async function save(): Promise<void> {
 }
 
 /** Validate that the configured central pipeline is readable by this identity. */
-async function validatePipeline(): Promise<void> {
+async function validatePipeline(quiet = false): Promise<void> {
   if (!selectedPipeline) {
-    setMessage(pipelineStatus, "Select a pipeline from the searchable list first.", "error");
+    if (!quiet) setMessage(pipelineStatus, "Select a pipeline from the searchable list first.", "error");
     return;
   }
   if (validateButton) validateButton.disabled = true;
@@ -312,7 +337,17 @@ async function validatePipeline(): Promise<void> {
       { headers: { authorization: `Bearer ${token}`, accept: "application/json" }, redirect: "error" }
     );
     if (response.ok) {
-      setMessage(pipelineStatus, "Pipeline found and readable by this identity.", "success");
+      const value = await response.json().catch(() => undefined) as { name?: unknown } | undefined;
+      const actualName = typeof value?.name === "string" ? value.name : selectedPipeline.name;
+      if (settings.pipelineName && actualName !== settings.pipelineName) {
+        setMessage(
+          pipelineStatus,
+          `Pipeline is readable, but its name changed from "${settings.pipelineName}" to "${actualName}". Save settings to repair the binding.`,
+          "error"
+        );
+      } else {
+        setMessage(pipelineStatus, "Pipeline found and readable by this identity.", "success");
+      }
     } else {
       setMessage(pipelineStatus, `Pipeline was not accessible (HTTP ${response.status}).`, "error");
     }
@@ -340,6 +375,9 @@ async function loadProjects(): Promise<void> {
     pipelines = await fetchPipelines(discovered);
     renderPipelineOptions();
     restorePipelineSelection();
+    if (currentTab === "setup" && selectedPipeline) {
+      void validatePipeline(true);
+    }
     setMessage(projectStatus, `${projects.length} projects and ${pipelines.length} pipelines loaded.`, "success");
   } catch {
     projects = [];
@@ -359,6 +397,7 @@ async function main(): Promise<void> {
     if (statusText) statusText.textContent = "Connected to Azure DevOps.";
     if (hostMeta) hostMeta.textContent = `${hostName} - Masthead ${context.extension.version}`;
     if (aboutVersion) aboutVersion.textContent = context.extension.version;
+    if (extensionId) extensionId.textContent = context.extension.id;
     await notifyHostLoaded();
   } catch {
     showHostFailure();
@@ -382,6 +421,12 @@ async function main(): Promise<void> {
   });
   validateButton?.addEventListener("click", () => {
     void validatePipeline();
+  });
+  clearPipelineButton?.addEventListener("click", () => {
+    selectedPipeline = undefined;
+    if (pipelineSearch) pipelineSearch.value = "";
+    if (pipelineSelected) pipelineSelected.textContent = "No central pipeline selected.";
+    setMessage(pipelineStatus, "Pipeline binding cleared. Save settings to persist it.");
   });
   nativeRadio?.addEventListener("change", syncDeliveryChoice);
   brokerRadio?.addEventListener("change", syncDeliveryChoice);
