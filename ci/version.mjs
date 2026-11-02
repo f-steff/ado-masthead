@@ -34,6 +34,11 @@ export function nextVersion(edition, tags) {
   return `0.${minor}.${Math.max(0, ...revisions) + 1}`;
 }
 
+/** Detect the one publish failure that means the upload already happened. */
+export function isVersionAlreadyPublished(output) {
+  return /Version number must increase each time an extension is published/i.test(output);
+}
+
 /** Validate overrides before they become filenames, tags or workflow outputs. */
 export function validateVersion(value, edition) {
   if (edition !== "dev" && edition !== "stable") {
