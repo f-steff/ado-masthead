@@ -136,6 +136,9 @@ test("the organization and project pages initialize the ADO host and split setti
   assert.match(orgHtml, /id="clear-pipeline"/);
   assert.match(orgHtml, /data-tab="profile"/);
   assert.match(orgHtml, /id="org-lens-list"/);
+  assert.match(orgHtml, /id="review-model-options"/);
+  assert.match(orgHtml, /id="reasoning-effort"/);
+  assert.match(orgHtml, /id="thinking-budget"/);
   assert.match(orgHtml, /id="repo-profile-heading"/);
   assert.match(orgHtml, /class="tab active"/);
   assert.match(orgHtml, /class="choice-badge"/);
@@ -148,6 +151,8 @@ test("the organization and project pages initialize the ADO host and split setti
   assert.match(projectHtml, /data-tab="profile"/);
   assert.match(projectHtml, /id="inherit-profile"/);
   assert.match(projectHtml, /id="project-lens-list"/);
+  assert.match(projectHtml, /id="project-model-options"/);
+  assert.match(projectHtml, /id="all-model-options"/);
   assert.match(projectHtml, /id="repo-profile-list"/);
   assert.match(projectHtml, /About Masthead in this project/);
   assert.match(projectHtml, /\.\.\/\.\.\/\.\.\/images\/icon-128\.png/);
@@ -162,6 +167,8 @@ test("the organization and project pages initialize the ADO host and split setti
   assert.match(projectScript, /saveSetting\(`project\.\$\{projectId\}`/);
   assert.match(projectScript, /inheritProfile/);
   assert.match(projectScript, /renderRepositoryProfiles/);
+  assert.match(projectScript, /fillModelOptions/);
+  assert.match(orgScript, /fillModelOptions/);
   assert.match(orgHtml, /Use the organization review profile|Default review profile/);
   const styles = fs.readFileSync(path.join(root, "src/extension/hub/styles.css"), "utf8");
   assert.match(styles, /input\[type="checkbox"\]:checked/);

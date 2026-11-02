@@ -162,9 +162,32 @@
               </label>
               <label class="field">
                 <span>Model</span>
-                <input type="text" id="review-model" maxlength="200" autocomplete="off" placeholder="Use pipeline model">
+                <input type="text" id="review-model" list="review-model-options" maxlength="200" autocomplete="off" placeholder="Use pipeline model">
+                <datalist id="review-model-options"></datalist>
               </label>
             </div>
+            <div class="field-grid">
+              <label class="field" id="reasoning-field">
+                <span>Reasoning effort</span>
+                <select id="reasoning-effort">
+                  <option value="">Model default</option>
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </label>
+              <label class="field" id="thinking-field">
+                <span>Thinking budget</span>
+                <select id="thinking-budget">
+                  <option value="">Model default</option>
+                  <option value="1024">1,024 tokens</option>
+                  <option value="2048">2,048 tokens</option>
+                  <option value="4096">4,096 tokens</option>
+                  <option value="8192">8,192 tokens</option>
+                </select>
+              </label>
+            </div>
+            <p class="note">Model suggestions refresh after a review and are filtered by provider. You can still type a custom model. Reasoning effort applies to compatible OpenAI models; thinking budget applies to Anthropic models. DeepSeek uses its selected model's reasoning behavior.</p>
             <fieldset class="choice-group">
               <legend>Enabled lenses</legend>
               <div id="org-lens-list" class="lens-list"></div>
@@ -191,7 +214,7 @@
             <p><strong>Version</strong> <span id="about-version">loading...</span></p>
             <p>Use <strong>General</strong> to set the organization master switch and the defaults used when new projects and repositories are discovered. The project table lets an organization administrator disable reviews for one project without changing its repository settings.</p>
             <p>Use <strong>Setup</strong> to choose event delivery, identify the central review pipeline, and validate that the pipeline is readable by the current identity.</p>
-            <p>Use <strong>Review profile</strong> to choose the default provider, model, lenses and review guide. Projects and repositories can inherit or override those choices.</p>
+            <p>Use <strong>Review profile</strong> to choose the default provider, model, reasoning options, lenses and review guide. Model suggestions refresh from the provider after a review and remain editable for custom names. Projects and repositories can inherit or override provider and lens choices.</p>
             <p>Repository-level switches live under each project's <strong>Project settings &gt; Masthead</strong> page. A pull request is reviewed only when the organization, project and destination repository are all enabled. This also applies when the PR originates from a fork or another project: the destination repository supplies the gate.</p>
             <p>Provider keys are never entered in this browser page. Keep the provider key in an Azure DevOps secret variable group linked only to the central review pipeline.</p>
             <p>By default, comments use the pipeline's build-service identity. To show a dedicated review identity, create a service account and supply its short-lived PAT as the secret <code>MASTHEAD_ADO_TOKEN</code>; do not use your personal daily PAT.</p>

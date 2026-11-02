@@ -32,6 +32,10 @@ export interface OrganizationSettings {
   provider?: string;
   /** Optional model override for the selected provider. */
   model?: string;
+  /** Optional OpenAI reasoning effort for compatible models. */
+  reasoningEffort?: "low" | "medium" | "high";
+  /** Optional Anthropic extended-thinking budget. */
+  thinkingBudget?: number;
 }
 
 export type RepositorySettings = {
@@ -58,6 +62,8 @@ export interface ReviewSelection {
   profile: ReviewProfile;
   provider?: string;
   model?: string;
+  reasoningEffort?: "low" | "medium" | "high";
+  thinkingBudget?: number;
 }
 
 /** Do not assume a broker or service connection was verified during installation. */
@@ -192,7 +198,9 @@ export function reviewSelection(
       : {}),
     ...(repository?.model ?? project.model ?? organization.model
       ? { model: repository?.model ?? project.model ?? organization.model }
-      : {})
+      : {}),
+    ...(organization.reasoningEffort ? { reasoningEffort: organization.reasoningEffort } : {}),
+    ...(organization.thinkingBudget ? { thinkingBudget: organization.thinkingBudget } : {})
   };
 }
 
@@ -234,7 +242,9 @@ export function normalizeOrganizationSettings(value: unknown): OrganizationSetti
     ...(optionalString(value.pipelineName) ? { pipelineName: optionalString(value.pipelineName) } : {}),
     ...(validProfile(value.profile) ? { profile: value.profile } : {}),
     ...(optionalString(value.provider) ? { provider: optionalString(value.provider) } : {}),
-    ...(optionalString(value.model) ? { model: optionalString(value.model) } : {})
+    ...(optionalString(value.model) ? { model: optionalString(value.model) } : {}),
+    ...(reasoningEffort(value.reasoningEffort) ? { reasoningEffort: reasoningEffort(value.reasoningEffort) } : {}),
+    ...(thinkingBudget(value.thinkingBudget) ? { thinkingBudget: thinkingBudget(value.thinkingBudget) } : {})
   };
 }
 
@@ -291,4 +301,13 @@ function optionalString(value: unknown): string | undefined {
 
 function positiveInteger(value: unknown): number | undefined {
   return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : undefined;
+}
+
+function reasoningEffort(value: unknown): "low" | "medium" | "high" | undefined {
+  return value === "low" || value === "medium" || value === "high" ? value : undefined;
+}
+
+function thinkingBudget(value: unknown): number | undefined {
+  const parsed = positiveInteger(value);
+  return parsed && parsed <= 100_000 ? parsed : undefined;
 }

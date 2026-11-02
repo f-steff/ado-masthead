@@ -2,12 +2,13 @@
 // environment variables so the provider key and ADO token remain secret
 // variables; this process never prints either value.
 import { AdoClient } from "../ado/client";
-import { complete, providerFromEnvironment } from "../providers";
+import { complete, listProviderModels, providerFromEnvironment } from "../providers";
+import { normalizeModelCatalog } from "../models/catalog";
 import { reviewSelection } from "../settings";
 import { runAdoReview } from "./ado-review";
 import { resolveAdoAuth } from "./auth";
 import { ReviewModel } from "./review";
-import { loadReviewSettings, reviewGate } from "./settings";
+import { loadReviewSettings, readExtensionSetting, reviewGate, writeExtensionSetting } from "./settings";
 
 async function main(): Promise<void> {
   const env = process.env;
@@ -57,6 +58,7 @@ async function main(): Promise<void> {
 
   const selection = reviewSelection(settings.organization, settings.project, settings.repositoryId);
   const provider = providerFromEnvironment(env, selection);
+  await refreshModelCatalog(env, settings, provider);
   const model: ReviewModel = (request, signal) => complete(provider, request, fetch, signal);
   const run = await runAdoReview(client, {
     pullRequestId,
@@ -77,6 +79,35 @@ async function main(): Promise<void> {
     withdrawn: run.published.withdrawn,
     skipped: run.published.skipped
   }, null, 2));
+}
+
+/** Model metadata is best-effort; it must never block or fail a review. */
+async function refreshModelCatalog(
+  env: NodeJS.ProcessEnv,
+  settings: Awaited<ReturnType<typeof loadReviewSettings>>,
+  provider: ReturnType<typeof providerFromEnvironment>
+): Promise<void> {
+  if (!settings.extensionId) return;
+  const options = {
+    organizationUrl: required(env, "AZURE_DEVOPS_ORG_URL"),
+    token: resolveAdoAuth(env).token,
+    tokenScheme: resolveAdoAuth(env).scheme,
+    publisher: (env.MASTHEAD_EXTENSION_PUBLISHER || "f-steff").trim(),
+    extensionId: settings.extensionId,
+    timeoutMs: 8_000
+  };
+  try {
+    const models = await listProviderModels({ ...provider, timeoutMs: 5_000 });
+    if (models.length === 0) return;
+    const existing = normalizeModelCatalog(await readExtensionSetting(options, "modelCatalog"));
+    const next = {
+      ...existing,
+      [provider.name]: { models, refreshedAt: new Date().toISOString() }
+    };
+    await writeExtensionSetting(options, "modelCatalog", next);
+  } catch {
+    // The review still has its configured model and must proceed.
+  }
 }
 
 function required(env: NodeJS.ProcessEnv, name: string): string {
