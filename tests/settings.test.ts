@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { filterPipelines, pipelineLabel } from "../src/extension/shared/pipelines";
 import {
   defaultOrganizationSettings,
   defaultProjectSettings,
@@ -21,6 +22,18 @@ test("native deployment is the default and broker is opt-in", () => {
   assert.equal(settings.deploymentMode, "native");
   assert.equal(settings.brokerVerified, false);
   assert.equal(settings.nativeWebhookName, "MastheadPR");
+});
+
+test("pipeline search matches substrings in project, name and ID", () => {
+  const pipelines = [
+    { project: "SampleProject", id: 12, name: "Masthead review" },
+    { project: "Contoso", id: 7, name: "Nightly build" }
+  ];
+  assert.equal(pipelineLabel(pipelines[0]), "SampleProject / Masthead review (#12)");
+  assert.deepEqual(filterPipelines(pipelines, "mast").map((item) => item.id), [12]);
+  assert.deepEqual(filterPipelines(pipelines, "CONTOSO").map((item) => item.id), [7]);
+  assert.deepEqual(filterPipelines(pipelines, "#7").map((item) => item.id), [7]);
+  assert.equal(filterPipelines(pipelines, "", 1).length, 1);
 });
 
 test("new repositories follow the project default or inherit the organization default", () => {

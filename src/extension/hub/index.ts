@@ -10,6 +10,7 @@ import {
   ProjectSettings
 } from "../../settings";
 import { initializeHost, notifyHostFailed, notifyHostLoaded, organizationUrl } from "../shared/host";
+import { filterPipelines, pipelineLabel, PipelineOption } from "../shared/pipelines";
 import { loadSetting, saveSetting } from "../shared/storage";
 
 interface ProjectRow {
@@ -33,8 +34,9 @@ const nativeChoice = document.querySelector<HTMLElement>("#native-choice");
 const brokerChoice = document.querySelector<HTMLElement>("#broker-choice");
 const nativeWebhook = document.querySelector<HTMLInputElement>("#native-webhook");
 const brokerUrl = document.querySelector<HTMLInputElement>("#broker-url");
-const pipelineProject = document.querySelector<HTMLInputElement>("#pipeline-project");
-const pipelineId = document.querySelector<HTMLInputElement>("#pipeline-id");
+const pipelineSearch = document.querySelector<HTMLInputElement>("#pipeline-search");
+const pipelineOptions = document.querySelector<HTMLDataListElement>("#pipeline-options");
+const pipelineSelected = document.querySelector<HTMLElement>("#pipeline-selected");
 const saveStatus = document.querySelector<HTMLElement>("#save-status");
 const pipelineStatus = document.querySelector<HTMLElement>("#pipeline-status");
 const validateButton = document.querySelector<HTMLButtonElement>("#validate-pipeline");
@@ -46,6 +48,8 @@ const panels = Array.from(document.querySelectorAll<HTMLElement>("[data-panel]")
 let hostName = "";
 let settings = defaultOrganizationSettings();
 let projects: ProjectRow[] = [];
+let pipelines: PipelineOption[] = [];
+let selectedPipeline: PipelineOption | undefined;
 
 /** Report host failure without exposing organization details. */
 function showHostFailure(): void {
@@ -91,6 +95,76 @@ async function fetchProjects(): Promise<Array<{ id: string; name: string }>> {
     .filter((item) => typeof item.id === "string" && typeof item.name === "string")
     .map((item) => ({ id: item.id as string, name: item.name as string }))
     .sort((left, right) => left.name.localeCompare(right.name));
+}
+
+/** Rebuild the datalist with a case-insensitive substring filter. */
+function renderPipelineOptions(query = ""): void {
+  if (!pipelineOptions) return;
+  pipelineOptions.replaceChildren();
+  const matches = filterPipelines(pipelines, query);
+  for (const pipeline of matches) {
+    const option = document.createElement("option");
+    option.value = pipelineLabel(pipeline);
+    option.label = `${pipeline.project} pipeline`;
+    pipelineOptions.append(option);
+  }
+}
+
+/** Resolve the current input to an exact listed pipeline, if possible. */
+function selectPipelineFromSearch(): void {
+  const value = pipelineSearch?.value.trim() ?? "";
+  selectedPipeline = value ? pipelines.find((pipeline) => pipelineLabel(pipeline) === value) : undefined;
+  if (!pipelineSelected) return;
+  if (!value) {
+    pipelineSelected.textContent = "No central pipeline selected.";
+  } else if (selectedPipeline) {
+    pipelineSelected.textContent = `Selected ${pipelineLabel(selectedPipeline)}.`;
+  } else {
+    pipelineSelected.textContent = "Select a pipeline from the list.";
+  }
+}
+
+/** Restore a saved pipeline even when the current identity cannot list it. */
+function restorePipelineSelection(): void {
+  if (!settings.pipelineProject || !settings.pipelineId) {
+    if (pipelineSearch) pipelineSearch.value = "";
+    selectedPipeline = undefined;
+    if (pipelineSelected) pipelineSelected.textContent = "No central pipeline selected.";
+    return;
+  }
+  const match = pipelines.find((pipeline) =>
+    pipeline.project === settings.pipelineProject && pipeline.id === settings.pipelineId
+  );
+  selectedPipeline = match ?? {
+    project: settings.pipelineProject,
+    id: settings.pipelineId,
+    name: "Saved pipeline"
+  };
+  if (pipelineSearch) pipelineSearch.value = pipelineLabel(selectedPipeline);
+  if (pipelineSelected) pipelineSelected.textContent = `Selected ${pipelineLabel(selectedPipeline)}.`;
+}
+
+/** List pipelines in each visible project; a failed project is skipped. */
+async function fetchPipelines(discovered: Array<{ id: string; name: string }>): Promise<PipelineOption[]> {
+  const token = await SDK.getAccessToken();
+  const results = await Promise.all(discovered.map(async (project) => {
+    try {
+      const response = await fetch(
+        `${organizationUrl(hostName)}/${encodeURIComponent(project.name)}/_apis/pipelines?api-version=7.1`,
+        { headers: { authorization: `Bearer ${token}`, accept: "application/json" }, redirect: "error" }
+      );
+      if (!response.ok) return [];
+      const value = await response.json() as { value?: unknown };
+      if (!Array.isArray(value.value)) return [];
+      return value.value
+        .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null && !Array.isArray(item))
+        .filter((item) => typeof item.id === "number" && Number.isSafeInteger(item.id) && item.id > 0 && typeof item.name === "string")
+        .map((item) => ({ project: project.name, id: item.id as number, name: item.name as string }));
+    } catch {
+      return [];
+    }
+  }));
+  return results.flat().sort((left, right) => pipelineLabel(left).localeCompare(pipelineLabel(right)));
 }
 
 /** Render project switches without creating a settings document until Save. */
@@ -144,8 +218,6 @@ function renderOrganization(value: OrganizationSettings): void {
   brokerChoice?.classList.toggle("selected", value.deploymentMode === "broker");
   if (nativeWebhook) nativeWebhook.value = value.nativeWebhookName ?? "MastheadPR";
   if (brokerUrl) brokerUrl.value = value.brokerUrl ?? "";
-  if (pipelineProject) pipelineProject.value = value.pipelineProject ?? "";
-  if (pipelineId) pipelineId.value = value.pipelineId ? String(value.pipelineId) : "";
 }
 
 function syncDeliveryChoice(): void {
@@ -176,9 +248,9 @@ async function save(): Promise<void> {
     setMessage(saveStatus, "Broker URL must use HTTPS (or HTTP on loopback).", "error");
     return;
   }
-  const parsedPipelineId = pipelineId?.value.trim() ? Number(pipelineId.value) : undefined;
-  if (parsedPipelineId !== undefined && (!Number.isSafeInteger(parsedPipelineId) || parsedPipelineId < 1)) {
-    setMessage(saveStatus, "Pipeline ID must be a positive integer.", "error");
+  const pipelineValue = pipelineSearch?.value.trim() ?? "";
+  if (pipelineValue && !selectedPipeline) {
+    setMessage(saveStatus, "Select a central pipeline from the list or clear the field.", "error");
     return;
   }
   const next: OrganizationSettings = {
@@ -189,8 +261,8 @@ async function save(): Promise<void> {
     deploymentMode: selectedMode,
     nativeWebhookName: nativeWebhook?.value.trim() || "MastheadPR",
     brokerUrl: url || undefined,
-    pipelineProject: pipelineProject?.value.trim() || undefined,
-    pipelineId: parsedPipelineId,
+    pipelineProject: selectedPipeline?.project,
+    pipelineId: selectedPipeline?.id,
     brokerVerified: false
   };
   if (saveButton) saveButton.disabled = true;
@@ -209,10 +281,8 @@ async function save(): Promise<void> {
 
 /** Validate that the configured central pipeline is readable by this identity. */
 async function validatePipeline(): Promise<void> {
-  const project = pipelineProject?.value.trim() ?? "";
-  const id = Number(pipelineId?.value.trim() ?? "");
-  if (!project || !Number.isSafeInteger(id) || id < 1) {
-    setMessage(pipelineStatus, "Enter a pipeline project and positive pipeline ID.", "error");
+  if (!selectedPipeline) {
+    setMessage(pipelineStatus, "Select a pipeline from the searchable list first.", "error");
     return;
   }
   if (validateButton) validateButton.disabled = true;
@@ -220,7 +290,7 @@ async function validatePipeline(): Promise<void> {
   try {
     const token = await SDK.getAccessToken();
     const response = await fetch(
-      `${organizationUrl(hostName)}/${encodeURIComponent(project)}/_apis/pipelines/${id}?api-version=7.1`,
+      `${organizationUrl(hostName)}/${encodeURIComponent(selectedPipeline.project)}/_apis/pipelines/${selectedPipeline.id}?api-version=7.1`,
       { headers: { authorization: `Bearer ${token}`, accept: "application/json" }, redirect: "error" }
     );
     if (response.ok) {
@@ -249,10 +319,16 @@ async function loadProjects(): Promise<void> {
     }));
     projects = rows;
     renderProjectList();
-    setMessage(projectStatus, `${projects.length} projects loaded.`, "success");
+    pipelines = await fetchPipelines(discovered);
+    renderPipelineOptions();
+    restorePipelineSelection();
+    setMessage(projectStatus, `${projects.length} projects and ${pipelines.length} pipelines loaded.`, "success");
   } catch {
     projects = [];
+    pipelines = [];
     if (projectList) projectList.textContent = "Projects could not be loaded.";
+    renderPipelineOptions();
+    restorePipelineSelection();
     setMessage(projectStatus, "Project list could not be loaded. Organization settings can still be saved.", "error");
   }
 }
@@ -291,6 +367,11 @@ async function main(): Promise<void> {
   });
   nativeRadio?.addEventListener("change", syncDeliveryChoice);
   brokerRadio?.addEventListener("change", syncDeliveryChoice);
+  pipelineSearch?.addEventListener("input", () => {
+    renderPipelineOptions(pipelineSearch.value);
+    selectPipelineFromSearch();
+  });
+  pipelineSearch?.addEventListener("change", selectPipelineFromSearch);
   for (const tab of tabs) {
     tab.addEventListener("click", () => activateTab(tab.dataset.tab ?? "general"));
   }
