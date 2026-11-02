@@ -29,7 +29,10 @@ const repositoryList = document.querySelector<HTMLElement>("#repository-list");
 const repositoryStatus = document.querySelector<HTMLElement>("#repository-status");
 const saveStatus = document.querySelector<HTMLElement>("#save-status");
 const saveButton = document.querySelector<HTMLButtonElement>("#save-project");
+const aboutVersion = document.querySelector<HTMLElement>("#about-version");
 const form = document.querySelector<HTMLFormElement>("#project-form");
+const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-tab]"));
+const panels = Array.from(document.querySelectorAll<HTMLElement>("[data-panel]"));
 
 let hostName = "";
 let projectId = "";
@@ -49,6 +52,22 @@ function setMessage(element: HTMLElement | null, message: string, kind: "info" |
   if (!element) return;
   element.textContent = message;
   element.className = `status-message${kind === "info" ? "" : ` ${kind}`}`;
+}
+
+/** Switch the visible project tab and preserve it in the iframe hash. */
+function activateTab(tab: string): void {
+  const known = tabs.some((button) => button.dataset.tab === tab) ? tab : "general";
+  for (const button of tabs) {
+    const active = button.dataset.tab === known;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-selected", String(active));
+  }
+  for (const panel of panels) {
+    panel.hidden = panel.dataset.panel !== known;
+  }
+  if (window.location.hash !== `#${known}`) {
+    history.replaceState(null, "", `#${known}`);
+  }
 }
 
 /** Fetch repository names with the extension's read-only code token. */
@@ -97,12 +116,22 @@ function renderRepositories(): void {
   if (repositories.length === 0) {
     repositoryList.textContent = "No repositories were found in this project.";
   }
+  syncProjectState();
 }
 
 /** Disable repository controls when the project switch is off. */
 function syncProjectState(): void {
+  const projectOn = projectEnabled?.checked === true;
   for (const input of repositoryList?.querySelectorAll<HTMLInputElement>("input[data-repository-id]") ?? []) {
-    input.disabled = !projectEnabled?.checked;
+    input.disabled = !projectOn;
+    const row = input.closest<HTMLElement>(".switch-row");
+    row?.classList.toggle("inactive", !projectOn);
+    const state = row?.querySelector<HTMLElement>("small");
+    if (state) {
+      state.textContent = projectOn
+        ? (input.checked ? "Reviews enabled" : "Reviews disabled")
+        : "Project disabled";
+    }
   }
 }
 
@@ -146,12 +175,15 @@ async function main(): Promise<void> {
     if (statusDot) statusDot.className = "status-dot ready";
     if (statusText) statusText.textContent = "Connected to Azure DevOps.";
     if (hostMeta) hostMeta.textContent = `${hostName} - ${project.name} - Masthead ${context.extension.version}`;
+    if (aboutVersion) aboutVersion.textContent = context.extension.version;
     await notifyHostLoaded();
   } catch {
     showHostFailure();
     await notifyHostFailed("Masthead could not initialize the project settings page.");
     return;
   }
+
+  activateTab(window.location.hash.replace(/^#/, ""));
 
   try {
     organization = normalizeOrganizationSettings(await loadSetting<OrganizationSettings>("organization", defaultOrganizationSettings()));
@@ -180,6 +212,9 @@ async function main(): Promise<void> {
     void save();
   });
   projectEnabled?.addEventListener("change", syncProjectState);
+  for (const tab of tabs) {
+    tab.addEventListener("click", () => activateTab(tab.dataset.tab ?? "general"));
+  }
 }
 
 void main();

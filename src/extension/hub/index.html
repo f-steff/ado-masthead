@@ -12,9 +12,7 @@
     <main class="page">
       <header class="hero">
         <div class="mark" aria-hidden="true">
-          <svg viewBox="0 0 64 64" role="img">
-            <path d="M12 49h40M18 49V27l14-9 14 9v22M25 49V36h14v13M32 18V9l10 5-10 4" />
-          </svg>
+          <img src="../../images/icon-128.png" alt="">
         </div>
         <div>
           <p class="eyebrow">Azure DevOps extension</p>
@@ -52,16 +50,21 @@
               </span>
             </label>
 
+          </section>
+
+          <section class="panel" aria-labelledby="defaults-heading">
+            <h2 id="defaults-heading">Defaults for new projects and repositories</h2>
+            <p class="note">These defaults apply only when a project or repository is first discovered. Existing choices are not changed.</p>
             <div class="field-grid defaults-grid">
               <label class="field">
-                <span>Default for new projects</span>
+                <span>New projects</span>
                 <select id="default-project">
                   <option value="enabled">Enabled</option>
                   <option value="disabled">Disabled</option>
                 </select>
               </label>
               <label class="field">
-                <span>Default for new repositories</span>
+                <span>New repositories</span>
                 <select id="default-repository">
                   <option value="enabled">Enabled</option>
                   <option value="disabled">Disabled</option>
@@ -136,9 +139,11 @@
           <section class="panel help-panel">
             <h2>About Masthead</h2>
             <p><strong>Version</strong> <span id="about-version">loading...</span></p>
-            <p>The organization hub, project repository gates, review core, ADO publisher and verifier are implemented.</p>
-            <p>Automatic event delivery, central-pipeline creation, PR-tab publication and worker enforcement of these settings are still being built.</p>
-            <p>This page does not accept credentials or repository data. Repository review gates are controlled in each project's settings page under <strong>Masthead</strong>.</p>
+            <p>Use <strong>General</strong> to set the organization master switch and the defaults used when new projects and repositories are discovered. The project table lets an organization administrator disable reviews for one project without changing its repository settings.</p>
+            <p>Use <strong>Setup</strong> to choose event delivery, identify the central review pipeline, and validate that the pipeline is readable by the current identity.</p>
+            <p>Repository-level switches live under each project's <strong>Project settings &gt; Masthead</strong> page. A pull request is reviewed only when the organization, project and destination repository are all enabled. This also applies when the PR originates from a fork or another project: the destination repository supplies the gate.</p>
+            <p>Provider keys are never entered in this browser page. Keep the provider key in an Azure DevOps secret variable group linked only to the central review pipeline.</p>
+            <p>Automatic event delivery, central-pipeline creation, PR-tab publication, review-profile enforcement and worker use of these settings are still being built.</p>
             <p><a href="https://github.com/f-steff/ado-masthead#readme" target="_blank" rel="noopener noreferrer">Project documentation</a></p>
           </section>
         </section>

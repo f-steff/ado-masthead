@@ -12,9 +12,7 @@
     <main class="page">
       <header class="hero">
         <div class="mark" aria-hidden="true">
-          <svg viewBox="0 0 64 64" role="img">
-            <path d="M12 49h40M18 49V27l14-9 14 9v22M25 49V36h14v13M32 18V9l10 5-10 4" />
-          </svg>
+          <img src="../../images/icon-128.png" alt="">
         </div>
         <div>
           <p class="eyebrow">Azure DevOps project settings</p>
@@ -34,42 +32,59 @@
         </div>
       </section>
 
+      <div class="tabs" role="tablist" aria-label="Masthead project settings">
+        <button type="button" class="tab active" role="tab" aria-selected="true" data-tab="general">General</button>
+        <button type="button" class="tab" role="tab" aria-selected="false" data-tab="about">About</button>
+      </div>
+
       <form id="project-form">
-        <section class="panel" aria-labelledby="project-heading">
-          <h2 id="project-heading">Project access</h2>
-          <label class="switch-row">
-            <input type="checkbox" id="project-enabled">
-            <span>
-              <strong>Enable Masthead reviews for this project</strong>
-              <small>Organization master switch: <span id="org-state">loading...</span>. The organization switch overrides this project.</small>
-            </span>
-          </label>
-          <label class="field default-field">
-            <span>Default for new repositories</span>
-            <select id="new-repository-default">
-              <option value="inherit">Inherit organization setting</option>
-              <option value="enabled">Enabled</option>
-              <option value="disabled">Disabled</option>
-            </select>
-          </label>
-          <p class="note">New repositories use this default until an administrator changes the individual repository switch. Existing repositories keep their individual choice.</p>
+        <section class="tab-panel" data-panel="general" role="tabpanel">
+          <section class="panel" aria-labelledby="project-heading">
+            <h2 id="project-heading">Project access</h2>
+            <label class="switch-row">
+              <input type="checkbox" id="project-enabled">
+              <span>
+                <strong>Enable Masthead reviews for this project</strong>
+                <small>Organization master switch: <span id="org-state">loading...</span>. The organization switch overrides this project.</small>
+              </span>
+            </label>
+            <label class="field default-field">
+              <span>Default for new repositories</span>
+              <select id="new-repository-default">
+                <option value="inherit">Inherit organization setting</option>
+                <option value="enabled">Enabled</option>
+                <option value="disabled">Disabled</option>
+              </select>
+            </label>
+            <p class="note">New repositories use this default until an administrator changes the individual repository switch. Existing repositories keep their individual choice.</p>
+          </section>
+
+          <section class="panel" aria-labelledby="repositories-heading">
+            <h2 id="repositories-heading">Repositories</h2>
+            <p class="note">Review gating is based on the destination repository and its project, so PRs from forks or other projects follow the target repository's switch.</p>
+            <div id="repository-list" class="repository-list" aria-live="polite">Loading repositories...</div>
+            <p id="repository-status" class="status-message" role="status" aria-live="polite"></p>
+          </section>
         </section>
 
-        <section class="panel" aria-labelledby="repositories-heading">
-          <h2 id="repositories-heading">Repositories</h2>
-          <div id="repository-list" class="repository-list" aria-live="polite">Loading repositories...</div>
-          <p id="repository-status" class="status-message" role="status" aria-live="polite"></p>
+        <section class="tab-panel" data-panel="about" role="tabpanel" hidden>
+          <section class="panel help-panel">
+            <h2>About Masthead in this project</h2>
+            <p><strong>Version</strong> <span id="about-version">loading...</span></p>
+            <p>Masthead reviews are gated at three levels: the organization master switch, this project switch, and each repository switch. A pull request is reviewed only when all three are enabled.</p>
+            <p>Use <strong>General</strong> to enable the project, choose what a newly discovered repository inherits, and turn individual repositories on or off. New repositories are disabled unless the project default says otherwise.</p>
+            <p>The destination repository decides the gate. A pull request from a fork or another project is checked against the project and repository that receive the merge.</p>
+            <p>Organization administrators control the master switch, defaults, event delivery, central pipeline and the default review profile on the organization settings page.</p>
+            <p>Provider keys are never entered here. They belong in an Azure DevOps secret variable group linked only to the central review pipeline.</p>
+            <p><a href="https://github.com/f-steff/ado-masthead#readme" target="_blank" rel="noopener noreferrer">Project documentation</a></p>
+          </section>
         </section>
 
-        <div class="actions">
+        <div class="actions save-bar">
           <button type="submit" class="primary" id="save-project">Save settings</button>
           <p id="save-status" class="status-message" role="status" aria-live="polite"></p>
         </div>
       </form>
-
-      <footer>
-        <a href="https://github.com/f-steff/ado-masthead#readme" target="_blank" rel="noopener noreferrer">Project documentation</a>
-      </footer>
     </main>
     <script src="index.js"></script>
   </body>

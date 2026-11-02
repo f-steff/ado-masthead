@@ -193,9 +193,10 @@ function renderProjectList(): void {
     input.checked = project.settings.enabled;
     input.addEventListener("change", () => {
       project.settings = { ...project.settings, enabled: input.checked };
+      syncProjectUseState();
     });
     const state = document.createElement("span");
-    state.textContent = "Enabled";
+    state.textContent = input.checked ? "Enabled" : "Disabled";
     label.append(input, state);
     row.append(name, label);
     projectList.append(row);
@@ -203,6 +204,23 @@ function renderProjectList(): void {
 
   if (projects.length === 0) {
     projectList.textContent = "No projects were found.";
+  }
+  syncProjectUseState();
+}
+
+/** The organization master switch makes project controls visibly inactive. */
+function syncProjectUseState(): void {
+  if (!projectList) return;
+  const masterEnabled = enabled?.checked === true;
+  for (const row of projectList.querySelectorAll<HTMLElement>(".project-row")) {
+    const input = row.querySelector<HTMLInputElement>("input[type=checkbox]");
+    if (!input) continue;
+    input.disabled = !masterEnabled;
+    row.classList.toggle("inactive", !masterEnabled);
+    const state = row.querySelector<HTMLElement>("label span:last-child");
+    if (state) {
+      state.textContent = masterEnabled ? (input.checked ? "Enabled" : "Disabled") : "Not used";
+    }
   }
 }
 
@@ -367,6 +385,7 @@ async function main(): Promise<void> {
   });
   nativeRadio?.addEventListener("change", syncDeliveryChoice);
   brokerRadio?.addEventListener("change", syncDeliveryChoice);
+  enabled?.addEventListener("change", syncProjectUseState);
   pipelineSearch?.addEventListener("input", () => {
     renderPipelineOptions(pipelineSearch.value);
     selectPipelineFromSearch();
