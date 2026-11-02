@@ -139,6 +139,7 @@ test("the organization and project pages initialize the ADO host and split setti
   assert.match(orgHtml, /id="review-model-options"/);
   assert.match(orgHtml, /id="reasoning-effort"/);
   assert.match(orgHtml, /id="thinking-budget"/);
+  assert.match(orgHtml, /id="catalog-status"/);
   assert.match(orgHtml, /id="repo-profile-heading"/);
   assert.match(orgHtml, /class="tab active"/);
   assert.match(orgHtml, /class="choice-badge"/);

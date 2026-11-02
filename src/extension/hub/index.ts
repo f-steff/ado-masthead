@@ -53,6 +53,7 @@ const extensionPublisher = document.querySelector<HTMLElement>("#extension-publi
 const reviewProvider = document.querySelector<HTMLSelectElement>("#review-provider");
 const reviewModel = document.querySelector<HTMLInputElement>("#review-model");
 const reviewModelOptions = document.querySelector<HTMLDataListElement>("#review-model-options");
+const catalogStatus = document.querySelector<HTMLElement>("#catalog-status");
 const reasoningEffort = document.querySelector<HTMLSelectElement>("#reasoning-effort");
 const thinkingBudget = document.querySelector<HTMLSelectElement>("#thinking-budget");
 const reasoningField = document.querySelector<HTMLElement>("#reasoning-field");
@@ -286,12 +287,30 @@ function renderOrganization(value: OrganizationSettings): void {
   if (reviewProvider) reviewProvider.value = value.provider ?? "";
   if (reviewModel) reviewModel.value = value.model ?? "";
   fillModelOptions(reviewModelOptions, value.provider, modelCatalog);
+  renderCatalogStatus();
   if (reasoningEffort) reasoningEffort.value = value.reasoningEffort ?? "";
   if (thinkingBudget) thinkingBudget.value = value.thinkingBudget ? String(value.thinkingBudget) : "";
   syncProviderOptions();
   const profile = resolveReviewProfile(value.profile ?? defaultReviewProfile());
   renderLensOptions(orgLensList, profile.enabledLenses);
   if (orgReviewGuide) orgReviewGuide.checked = profile.reviewGuide;
+}
+
+/** Cached suggestions remain usable even when the catalogue pipeline is stale. */
+function renderCatalogStatus(): void {
+  if (!catalogStatus) return;
+  const provider = reviewProvider?.value;
+  const entry = provider === "anthropic" || provider === "openai" || provider === "deepseek"
+    ? modelCatalog[provider]
+    : undefined;
+  if (!entry?.refreshedAt) {
+    catalogStatus.textContent = "Using built-in model suggestions. The separate model catalogue pipeline has not refreshed this provider yet.";
+    return;
+  }
+  const date = new Date(entry.refreshedAt);
+  catalogStatus.textContent = Number.isFinite(date.getTime())
+    ? `Model suggestions last refreshed ${date.toLocaleString()}. Cached values remain available while the next refresh runs.`
+    : "Using cached model suggestions. The last refresh time is unavailable.";
 }
 
 /** Show only the reasoning control that the chosen provider can consume. */
@@ -487,6 +506,7 @@ async function main(): Promise<void> {
   enabled?.addEventListener("change", syncProjectUseState);
   reviewProvider?.addEventListener("change", () => {
     fillModelOptions(reviewModelOptions, reviewProvider.value, modelCatalog);
+    renderCatalogStatus();
     syncProviderOptions();
   });
   pipelineSearch?.addEventListener("input", () => {

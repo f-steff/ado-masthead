@@ -1,0 +1,47 @@
+# Run this as a separate Azure Pipeline, not as part of application CI.
+# It refreshes the cached provider model list at most once per hour. The review
+# pipeline never waits for the provider management API.
+trigger: none
+pr: none
+
+schedules:
+  - cron: "0 * * * *"
+    displayName: Hourly Masthead model catalogue refresh
+    branches:
+      include:
+        - develop
+    always: true
+
+pool:
+  vmImage: ubuntu-24.04
+
+variables:
+  - group: masthead-secrets
+  - name: MASTHEAD_EXTENSION_ID
+    value: masthead-dev
+  - name: MASTHEAD_EXTENSION_PUBLISHER
+    value: f-steff
+  - name: MASTHEAD_PROVIDER
+    value: deepseek
+  - name: MASTHEAD_MODEL
+    value: deepseek-flash
+
+steps:
+  - checkout: none
+  - bash: |
+      set -euo pipefail
+      git clone --depth 1 --branch develop https://github.com/f-steff/ado-masthead.git /tmp/masthead
+      cd /tmp/masthead
+      npm ci
+      node node_modules/esbuild/install.js
+      npm run build:prod
+      node dist/worker/discover-models.mjs
+    displayName: Refresh Masthead model catalogue
+    env:
+      AZURE_DEVOPS_ORG_URL: $(System.CollectionUri)
+      MASTHEAD_EXTENSION_ID: $(MASTHEAD_EXTENSION_ID)
+      MASTHEAD_EXTENSION_PUBLISHER: $(MASTHEAD_EXTENSION_PUBLISHER)
+      MASTHEAD_PROVIDER: $(MASTHEAD_PROVIDER)
+      MASTHEAD_MODEL: $(MASTHEAD_MODEL)
+      DEEPSEEK_API_KEY: $(DEEPSEEK_API_KEY)
+      SYSTEM_ACCESSTOKEN: $(System.AccessToken)

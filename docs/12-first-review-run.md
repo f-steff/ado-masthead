@@ -57,9 +57,14 @@ argument.
 The provider key variables must remain secret variables or be mapped from a
 secret variable group. The other names are ordinary pipeline configuration.
 Provider and model values in the saved review profile take precedence over
-these environment fallbacks. The worker also refreshes a non-secret model
-catalogue in extension data so the settings page can offer provider-specific
-model suggestions; a catalogue failure never blocks a review.
+these environment fallbacks.
+
+Model suggestions come from a non-secret model catalogue in extension data.
+Run `ado-pipelines/model-catalogue.yml` as a separate pipeline on an hourly
+schedule. It queries one provider at most once per hour and refreshes the cached
+list; the review pipeline never waits for a provider management API. The settings
+page always shows the cached or built-in fallback list immediately. Set
+`MASTHEAD_FORCE_MODEL_REFRESH=true` only for a deliberate manual refresh.
 
 The worker reads the organization document and the document for the PR's
 destination project before it configures a provider. The organization, project

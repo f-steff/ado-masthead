@@ -12,11 +12,12 @@ per project or per repository. The organization profile is the default; a
 project can inherit or override it, and an enabled repository can override the
 project. Provider and model names follow the same order, while the provider key
 always comes from a pipeline secret. The settings page offers provider-specific
-model suggestions from a non-secret catalogue refreshed by the worker, plus a
-custom model name. OpenAI reasoning effort and Anthropic thinking budget are
-stored only as non-secret provider options. DeepSeek's reasoning behavior is
-selected by model, such as `deepseek-reasoner`. Data and dependency lenses are
-suggested by paths but are not automatically enabled.
+model suggestions from a non-secret, hourly cached catalogue refreshed by the
+separate `ado-pipelines/model-catalogue.yml` pipeline, plus a custom model name.
+OpenAI reasoning effort and Anthropic thinking budget are stored only as
+non-secret provider options. DeepSeek's reasoning behavior is selected by model,
+for example `deepseek-v4-pro`. Data and dependency lenses are suggested by paths
+but are not automatically enabled.
 
 ## Prompt rules
 
