@@ -87,8 +87,11 @@ present on their target branches and receive a shipped-code change.
 
 1. Merge the implementation into `develop`. This publishes the private
    `masthead-dev` edition after the local gate passes.
-2. Run the **Share dev** workflow for the test organization, then install the
-   private extension there.
+2. Share `masthead-dev` with the test organization, then install the private
+   extension there. Until the workflow files are on `main`, use the publisher
+   page's **Share/Unshare** action. GitHub only exposes manual workflows from
+   the default branch, so **Share dev** appears after the first release to
+   `main`.
 3. Merge a release into `main` only after the installable features are ready.
    That publishes stable and dev at the same version.
 4. Verify both listings and the Azure DevOps installation in the test
