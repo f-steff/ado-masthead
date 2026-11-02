@@ -77,18 +77,18 @@ export function decodeFindingMetadata(content: string): FindingThreadMetadata | 
 export function renderFindingComment(metadata: FindingThreadMetadata): string {
   const finding = metadata.finding;
   const suggestion = finding.suggestion
-    ? `\n\n**Suggested change:** ${finding.suggestion}`
+    ? `\n\n**Suggested change:** ${escapeHtml(finding.suggestion)}`
     : "";
   const anchor = finding.line ? `:${finding.line}` : "";
   return `${encodeFindingMetadata(metadata)}
 
-**Masthead ${finding.severity} finding** - ${finding.lens}
+**Masthead ${escapeHtml(finding.severity)} finding** - ${escapeHtml(finding.lens)}
 
-### ${finding.title}
+### ${escapeHtml(finding.title)}
 
-${finding.body}${suggestion}
+${escapeHtml(finding.body)}${suggestion}
 
-<sub>Finding \`${finding.id}\` in \`${finding.file}${anchor}\`. This comment is advisory and does not approve or merge the pull request.</sub>`;
+<sub>Finding \`${escapeHtml(finding.id)}\` in \`${escapeHtml(finding.file)}${anchor}\`. This comment is advisory and does not approve or merge the pull request.</sub>`;
 }
 
 /** A resolution note carries the state transition so a later run can distinguish
@@ -102,9 +102,9 @@ export function renderResolutionComment(
 
 **Masthead ${verb} this finding.**
 
-${reason}
+${escapeHtml(reason)}
 
-<sub>Finding \`${metadata.finding.id}\` at source \`${metadata.revision.source}\` and target \`${metadata.revision.target}\`.</sub>`;
+<sub>Finding \`${escapeHtml(metadata.finding.id)}\` at source \`${escapeHtml(metadata.revision.source)}\` and target \`${escapeHtml(metadata.revision.target)}\`.</sub>`;
 }
 
 /** Recover findings from threads, accepting markers only from the bot identity. */
@@ -123,6 +123,7 @@ export function storedFindingsFromThreads(
       const metadata = decodeFindingMetadata(comment.content);
       if (metadata) items.push({ comment, metadata });
     }
+    items.sort((left, right) => left.comment.id - right.comment.id);
     const latest = items.at(-1);
     if (!latest) continue;
     const state = persistedState(thread.status, latest.metadata.state);
@@ -146,6 +147,14 @@ export function persistedState(
   if (status === "active" || status === "pending" || status === "unknown") return "active";
   if (status === "fixed") return "human-resolved";
   return "dismissed";
+}
+
+/** Keep model text from injecting raw HTML into an ADO comment. */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
 /** Validate a marker's finding as data; repository scope is allowed only because

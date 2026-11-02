@@ -4,11 +4,12 @@
 import { AdoReviewClient } from "../ado/client";
 import { storedFindingsFromThreads } from "../ado/metadata";
 import { publishReviewPlan, PublishReviewResult } from "../ado/publisher";
-import { ReviewRevision, reconcileFindings, ReconciliationPlan, StoredFinding } from "../review/lifecycle";
+import { FindingVerification, ReviewRevision, reconcileFindings, ReconciliationPlan, StoredFinding } from "../review/lifecycle";
 import { ReviewProfile } from "../review/lenses";
 import { detectRepositoryLicense } from "../review/license";
 import { ReviewInput } from "../review/types";
 import { ReviewModel, ReviewRun, runReview } from "./review";
+import { runVerification } from "./verification";
 
 export interface AdoReviewOptions {
   pullRequestId: number;
@@ -16,10 +17,13 @@ export interface AdoReviewOptions {
   profile?: Partial<ReviewProfile>;
   maxChangedFiles?: number;
   maxFileCharacters?: number;
+  /** A deterministic fake or a caller can disable the separate recheck. */
+  verifyPrevious?: boolean;
 }
 
 export interface AdoReviewRun {
   review: ReviewRun;
+  verification: FindingVerification[];
   plan: ReconciliationPlan;
   published: PublishReviewResult;
   storedBefore: StoredFinding[];
@@ -64,7 +68,10 @@ export async function runAdoReview(
     ...(previousFindings.length === 0 ? {} : { previousFindings })
   };
   const review = await runReview(input, options.profile, options.model);
-  const plan = reconcileFindings(storedBefore, review.result, [], revision, revision, identity.id);
+  const verification = options.verifyPrevious === false
+    ? []
+    : (await runVerification({ findings: storedBefore, changedFiles, revision }, options.model)).verifications;
+  const plan = reconcileFindings(storedBefore, review.result, verification, revision, revision, identity.id);
   const published = plan.actions.length === 0
     ? { created: [], resolved: [], withdrawn: [], skipped: [] }
     : await publishReviewPlan(client, {
@@ -73,7 +80,7 @@ export async function runAdoReview(
         botId: identity.id,
         plan
       });
-  return { review, plan, published, storedBefore, revision };
+  return { review, verification, plan, published, storedBefore, revision };
 }
 
 /** Read the existing bot-owned metadata without treating threads as trusted input. */

@@ -11,6 +11,7 @@ import {
   AdoThread,
   CreateThreadInput,
   runAdoReview,
+  runVerification,
   storedFindingsFromThreads
 } from "../src";
 import type { ReviewFinding, ReviewRevision } from "../src";
@@ -45,6 +46,8 @@ function pr(): AdoPullRequest {
 class FakeReviewClient implements AdoReviewClient {
   threads: AdoThread[] = [];
   created: CreateThreadInput[] = [];
+  comments: AdoComment[] = [];
+  statusUpdates: Array<{ threadId: number; status: AdoThread["status"] }> = [];
   private nextThreadId = 10;
   private nextCommentId = 100;
 
@@ -82,12 +85,30 @@ class FakeReviewClient implements AdoReviewClient {
     return created;
   }
 
-  async addThreadComment(): Promise<{ comment: AdoComment }> {
-    throw new Error("not used");
+  async addThreadComment(
+    _pullRequestId: number,
+    threadId: number,
+    content: string,
+    parentCommentId = 0
+  ): Promise<{ comment: AdoComment }> {
+    const thread = this.threads.find((item) => item.id === threadId);
+    if (!thread) throw new Error("missing thread");
+    const comment = {
+      id: this.nextCommentId++,
+      parentCommentId,
+      author: { id: botId },
+      content
+    };
+    thread.comments.push(comment);
+    this.comments.push(comment);
+    return { comment };
   }
 
-  async updateThreadStatus(): Promise<void> {
-    throw new Error("not used");
+  async updateThreadStatus(_pullRequestId: number, threadId: number, status: AdoThread["status"]): Promise<void> {
+    const thread = this.threads.find((item) => item.id === threadId);
+    if (!thread) throw new Error("missing thread");
+    thread.status = status;
+    this.statusUpdates.push({ threadId, status });
   }
 }
 
@@ -125,10 +146,20 @@ test("the ADO runner fetches source, runs the worker and publishes validated fin
 
 test("a second run reuses published findings instead of creating duplicate threads", async () => {
   const client = new FakeReviewClient();
-  const model = async () => ({
-    model: "fixture-model",
-    text: JSON.stringify({ summary: "Same finding.", findings: [finding] })
-  });
+  const model = async (prompt: { system: string }) => prompt.system.includes("rechecking earlier review findings")
+    ? {
+        model: "fixture-model",
+        text: JSON.stringify({
+          verifications: [
+            { findingId: "repository-license-missing", outcome: "still-present", reason: "The root LICENSE is still absent." },
+            { findingId: finding.id, outcome: "still-present", reason: "The same unguarded access remains." }
+          ]
+        })
+      }
+    : {
+        model: "fixture-model",
+        text: JSON.stringify({ summary: "Same finding.", findings: [finding] })
+      };
   await runAdoReview(client, {
     pullRequestId: 2,
     profile: { enabledLenses: ["correctness", "license"], reviewGuide: false },
@@ -142,6 +173,36 @@ test("a second run reuses published findings instead of creating duplicate threa
   });
   assert.equal(client.created.length, firstCount);
   assert.deepEqual(second.published.created, []);
+  assert.equal(second.verification.length, 2);
+});
+
+test("an evidence-backed verification resolves only the bot finding thread", async () => {
+  const client = new FakeReviewClient();
+  const first = await runAdoReview(client, {
+    pullRequestId: 2,
+    profile: { enabledLenses: ["correctness"], reviewGuide: false },
+    model: async () => ({
+      model: "fixture-model",
+      text: JSON.stringify({ summary: "One finding.", findings: [finding] })
+    })
+  });
+  assert.equal(first.published.created.length, 1);
+  const threadId = first.published.created[0].threadId;
+  const second = await runAdoReview(client, {
+    pullRequestId: 2,
+    profile: { enabledLenses: ["correctness"], reviewGuide: false },
+    model: async (prompt: { system: string }) => prompt.system.includes("rechecking earlier review findings")
+      ? {
+          model: "fixture-model",
+          text: JSON.stringify({
+            verifications: [{ findingId: finding.id, outcome: "fixed", reason: "The current code guards profile before reading email." }]
+          })
+        }
+      : { model: "fixture-model", text: JSON.stringify({ summary: "No new findings.", findings: [] }) }
+  });
+  assert.deepEqual(second.published.resolved, [{ findingId: finding.id, threadId }]);
+  assert.equal(client.statusUpdates[0].status, "fixed");
+  assert.equal(client.threads.find((item) => item.id === threadId)?.status, "fixed");
 });
 
 test("the runner refuses to publish against a closed pull request", async () => {
@@ -169,6 +230,40 @@ test("the runner rejects changed files that exceed its bounded input", async () 
     }),
     /content budget/
   );
+});
+
+test("verification requires known finding IDs and evidence for a fix", async () => {
+  const stored = [{ finding, threadId: 1, ownerId: botId, state: "active" as const }];
+  const changedFiles = [{ path: "src/user.ts", changeType: "edit" as const, content: "const email = user.profile?.email;" }];
+  const fixed = await runVerification(
+    { findings: stored, changedFiles, revision },
+    async () => ({
+      model: "fixture",
+      text: JSON.stringify({
+        verifications: [{ findingId: finding.id, outcome: "fixed", reason: "The profile is optional-chained at the same call site." }]
+      })
+    })
+  );
+  assert.deepEqual(fixed.verifications.map((item) => [item.findingId, item.outcome]), [
+    [finding.id, "fixed"]
+  ]);
+  await assert.rejects(() => runVerification(
+    { findings: stored, changedFiles, revision },
+    async () => ({
+      model: "fixture",
+      text: JSON.stringify({ verifications: [{ findingId: "unknown", outcome: "fixed", reason: "x" }] })
+    })
+  ), /unknown/);
+  let calls = 0;
+  const empty = await runVerification(
+    { findings: [], changedFiles, revision },
+    async () => {
+      calls += 1;
+      return { model: "fixture", text: "{}" };
+    }
+  );
+  assert.deepEqual(empty.verifications, []);
+  assert.equal(calls, 0);
 });
 
 test("the publisher helper accepts only bot-owned metadata from the runner's thread state", async () => {

@@ -84,11 +84,15 @@ thread author, and uses a versioned hidden marker for finding identity and
 state. It preserves human statuses and does not reopen closed threads.
 
 `src/worker/ado-review.ts` reads fixed-commit source content, invokes the same
-validated review worker, and publishes the reconciliation plan. It does not yet
-provide independent fix verification, so a re-review currently reuses open
-threads and adds new findings rather than resolving previous ones from an
-omitted model result.
+validated review worker, and publishes the reconciliation plan. It does not
+infer a fix from an omitted finding.
 
-The remaining production work is the code-aware verification step, automatic
-event delivery, durable run/answer records and the PR tab. Missing output or
-filtered findings are never fix evidence.
+`src/worker/verification.ts` performs a separate, bounded recheck of active
+findings. It returns `fixed`, `withdrawn`, `still-present` or `unverified`, and
+only a non-empty evidence-based reason can authorize resolution. The current
+runner supplies changed-file content to the recheck; a finding whose evidence is
+not present remains open.
+
+The remaining production work is automatic event delivery, related unchanged
+file retrieval for every finding, durable run/answer records and the PR tab.
+Missing output or filtered findings are never fix evidence.

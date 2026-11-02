@@ -4,6 +4,7 @@ export * from "./review";
 export * from "./settings";
 export * from "./worker/review";
 export * from "./worker/ado-review";
+export * from "./worker/verification";
 export * from "./worker/events";
 export * from "./worker/conversation";
 export { normalizeEvent, parseEvent } from "../broker/lib.mjs";

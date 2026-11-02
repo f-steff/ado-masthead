@@ -120,7 +120,9 @@ export async function publishReviewPlan(
 
 /** Find the most recent bot-authored marker in a thread. */
 export function latestBotMetadata(thread: AdoThread, botId: string): FindingThreadMetadata | undefined {
-  const comments = thread.comments.filter((comment) => comment.author?.id === botId && typeof comment.content === "string");
+  const comments = thread.comments
+    .filter((comment) => comment.author?.id === botId && typeof comment.content === "string")
+    .sort((left, right) => left.id - right.id);
   for (let index = comments.length - 1; index >= 0; index -= 1) {
     const metadata = decodeFindingMetadata(comments[index].content ?? "");
     if (metadata && metadata.ownerId === botId) return metadata;

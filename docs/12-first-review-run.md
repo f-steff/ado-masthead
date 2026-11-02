@@ -101,8 +101,10 @@ not print the provider key, ADO token, prompt or raw repository content.
 - The runner reads full changed-file content rather than a minimal diff.
 - Related unchanged files, callers and tests are not retrieved yet.
 - A re-review does not resolve a finding merely because the model omitted it.
-  The resolution action and ADO thread lifecycle are implemented, but the
-  independent code-aware fix verifier is not.
+  A separate verification pass must return an evidence-backed `fixed` or
+  `withdrawn` result. The current verifier sees changed-file content only; a
+  finding whose evidence is not in that content stays open as `unverified`.
+- Related unchanged files are not retrieved for the verifier yet.
 - The PR tab, review guide publication, settings and deployment controls are not
   connected.
 - The pipeline step should not have source-branch write permission.

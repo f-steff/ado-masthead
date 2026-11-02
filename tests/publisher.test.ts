@@ -120,6 +120,9 @@ test("finding metadata round-trips and comment rendering starts with the marker"
   assert.ok(content.startsWith("<!-- masthead:1:"));
   assert.match(content, /Profile may be absent/);
   assert.deepEqual(decodeFindingMetadata(content), original);
+  const escaped = renderFindingComment({ ...original, finding: { ...finding, title: "<script>alert(1)</script>" } });
+  assert.match(escaped, /&lt;script&gt;/);
+  assert.doesNotMatch(escaped, /<script>/);
   assert.equal(decodeFindingMetadata("<!-- masthead:1:not-base64 -->"), undefined);
   assert.equal(decodeFindingMetadata("human comment"), undefined);
   const altered = encodeFindingMetadata({ ...original, finding: { ...finding, file: "../secret" } });
