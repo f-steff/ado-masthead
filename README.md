@@ -12,11 +12,13 @@ The current implementation includes the validated review core, provider
 adapters, SDK-initialized organization and project settings hubs, and a
 manual/pipeline review path that reads a pull request, posts findings as ADO
 threads and reuses existing Masthead threads on retry. The organization page
-has a master switch, delivery mode and central-pipeline validation. The project
-page discovers repositories and stores per-repository review gates.
+has a master switch, delivery mode, central-pipeline binding and review-profile
+defaults. The project page discovers repositories and stores project and
+per-repository review gates and profile overrides. The worker reads the
+persisted organization and project gates before it spends model tokens.
 
-Automatic PR-event delivery, central-pipeline creation, the worker's use of the
-persisted gates, and the PR tab are still being built. The features below
+Automatic PR-event delivery, central-pipeline creation, the PR tab and optional
+branch-policy completion gating are still being built. The features below
 describe the intended complete product.
 
 Local tests exercise review validation, repository gating, finding
@@ -47,9 +49,9 @@ Masthead supports two deployment paths:
   queues the same pipeline. This is the safer option when the public incoming
   webhook endpoint is not acceptable.
 
-The organization settings page provides the setup action for the chosen mode.
-Each project settings page lists its repositories and lets an administrator
-enable or disable PR reviews per repository.
+The organization settings page records the chosen delivery mode and validates
+the central pipeline. Each project settings page lists its repositories and lets
+an administrator enable or disable PR reviews per repository.
 
 ## Review types
 
@@ -64,7 +66,8 @@ enable or disable PR reviews per repository.
 | Data and migration safety | Off, path-suggested | Destructive or unsafe schema and data changes. |
 | Dependencies and infrastructure | Off, path-suggested | Packages, build steps and infrastructure changes. |
 
-A project can select which optional types apply to its repositories. Path
+A project or repository can select which optional types apply. The organization
+default is inherited unless a project or repository overrides it. Path
 suggestions only recommend a type; they do not silently enable it.
 
 ## License review

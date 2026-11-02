@@ -124,11 +124,19 @@
             <h2 id="pipeline-heading">Central review pipeline</h2>
             <p class="note">Create the trusted pipeline separately, then search for it here. Masthead validates the target and refreshes its status whenever Setup is opened; creating or deleting a pipeline is not available yet.</p>
             <p class="meta">Worker extension id: <code id="extension-id">loading...</code>. Set <code>MASTHEAD_EXTENSION_ID</code> on the review pipeline so it can read these settings.</p>
-            <label class="field pipeline-picker">
-              <span>Central review pipeline</span>
-              <input type="text" id="pipeline-search" list="pipeline-options" maxlength="300" autocomplete="off" placeholder="Search by project or pipeline name">
-              <datalist id="pipeline-options"></datalist>
-            </label>
+            <div class="field-grid">
+              <label class="field">
+                <span>Project filter</span>
+                <select id="pipeline-project">
+                  <option value="">All projects</option>
+                </select>
+              </label>
+              <label class="field pipeline-picker">
+                <span>Central review pipeline</span>
+                <input type="text" id="pipeline-search" list="pipeline-options" maxlength="300" autocomplete="off" placeholder="Search by project or pipeline name">
+                <datalist id="pipeline-options"></datalist>
+              </label>
+            </div>
             <p class="meta" id="pipeline-selected"></p>
             <div class="actions">
               <button type="button" class="secondary" id="validate-pipeline">Validate pipeline</button>

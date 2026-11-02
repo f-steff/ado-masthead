@@ -121,6 +121,7 @@ test("the organization and project pages initialize the ADO host and split setti
   assert.match(orgHtml, /Defaults for new projects and repositories/);
   assert.match(orgHtml, /images\/icon-128\.png/);
   assert.match(orgHtml, /id="pipeline-search"/);
+  assert.match(orgHtml, /id="pipeline-project"/);
   assert.match(orgHtml, /id="pipeline-options"/);
   assert.match(orgHtml, /id="extension-id"/);
   assert.match(orgHtml, /id="clear-pipeline"/);

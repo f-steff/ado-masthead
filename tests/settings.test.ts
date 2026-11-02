@@ -57,6 +57,23 @@ test("the organization master switch overrides project and repository choices", 
   assert.equal(isReviewEnabled(organization, { ...project, enabled: false }, "repo-a"), false);
 });
 
+test("a cross-project or fork PR is gated by the destination repository", () => {
+  const organization = defaultOrganizationSettings();
+  const destination = seedRepositories(
+    { ...defaultProjectSettings(), enabled: true },
+    ["destination-repo"],
+    true
+  );
+  const source = seedRepositories(
+    { ...defaultProjectSettings(), enabled: false },
+    ["source-fork"],
+    true
+  );
+  assert.equal(isReviewEnabled(organization, destination, "destination-repo"), true);
+  assert.equal(isReviewEnabled(organization, source, "source-fork"), false);
+  assert.equal(isReviewEnabled(organization, destination, "source-fork"), false);
+});
+
 test("new repositories follow the configured defaults when no switch exists", () => {
   const project = defaultProjectSettings();
   assert.equal(isReviewEnabled(defaultOrganizationSettings(), project, "new-repo"), false);
