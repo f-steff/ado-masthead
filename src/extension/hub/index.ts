@@ -16,6 +16,8 @@ const form = document.querySelector<HTMLFormElement>("#settings-form");
 const enabled = document.querySelector<HTMLInputElement>("#org-enabled");
 const nativeRadio = document.querySelector<HTMLInputElement>("#delivery-native");
 const brokerRadio = document.querySelector<HTMLInputElement>("#delivery-broker");
+const nativeChoice = document.querySelector<HTMLElement>("#native-choice");
+const brokerChoice = document.querySelector<HTMLElement>("#broker-choice");
 const nativeWebhook = document.querySelector<HTMLInputElement>("#native-webhook");
 const brokerUrl = document.querySelector<HTMLInputElement>("#broker-url");
 const pipelineProject = document.querySelector<HTMLInputElement>("#pipeline-project");
@@ -41,12 +43,19 @@ function setMessage(element: HTMLElement | null, message: string, kind: "info" |
   element.className = `status-message${kind === "info" ? "" : ` ${kind}`}`;
 }
 
+/** Make the selected delivery mode unmistakable, not just a native radio dot. */
+function syncDeliveryChoice(): void {
+  nativeChoice?.classList.toggle("selected", nativeRadio?.checked === true);
+  brokerChoice?.classList.toggle("selected", brokerRadio?.checked === true);
+}
+
 /** Render stored settings without trusting malformed extension data. */
 function render(value: OrganizationSettings): void {
   settings = value;
   if (enabled) enabled.checked = value.enabled;
   if (nativeRadio) nativeRadio.checked = value.deploymentMode === "native";
   if (brokerRadio) brokerRadio.checked = value.deploymentMode === "broker";
+  syncDeliveryChoice();
   if (nativeWebhook) nativeWebhook.value = value.nativeWebhookName ?? "MastheadPR";
   if (brokerUrl) brokerUrl.value = value.brokerUrl ?? "";
   if (pipelineProject) pipelineProject.value = value.pipelineProject ?? "";
@@ -156,6 +165,8 @@ async function main(): Promise<void> {
   validateButton?.addEventListener("click", () => {
     void validatePipeline();
   });
+  nativeRadio?.addEventListener("change", syncDeliveryChoice);
+  brokerRadio?.addEventListener("change", syncDeliveryChoice);
 }
 
 void main();

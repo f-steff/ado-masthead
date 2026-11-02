@@ -115,6 +115,7 @@ test("the organization and project pages initialize the ADO host and split setti
   const manifest = JSON.parse(fs.readFileSync(path.join(root, "ado-manifests/azure-devops-extension-base.json"), "utf8"));
   assert.match(orgHtml, /id="host-status"/);
   assert.match(orgHtml, /id="org-enabled"/);
+  assert.match(orgHtml, /class="choice-badge"/);
   assert.match(orgHtml, /Repository review gates are controlled in each project's settings page/);
   assert.match(projectHtml, /id="project-enabled"/);
   assert.match(projectHtml, /id="repository-list"/);
