@@ -42,11 +42,12 @@ is written to `dist/worker/review-pr.mjs`.
 
 The organization hub is bundled to `dist/extension/hub/`, and the project admin
 hub to `dist/extension/project/`; both initialize the Azure DevOps SDK before
-reporting loaded. The organization page stores the master switch, delivery mode
-and central-pipeline validation fields. The project page discovers repositories
-and stores per-repository gates. VSIX packages validate the release scaffold.
-They do not yet create an event service or central pipeline, and the worker does
-not yet read the persisted gates.
+reporting loaded. The organization page stores the master switch, delivery mode,
+central-pipeline binding and review profile. The project page discovers
+repositories and stores per-repository gates plus project and repository profile
+overrides. VSIX packages validate the release scaffold. The worker reads the
+persisted organization and project gates before configuring a provider. They do
+not yet create an event service or central pipeline.
 
 ## Icons
 

@@ -31,16 +31,21 @@ export interface ProviderHttpRequest {
   body: Record<string, unknown>;
 }
 
-/** Read only the selected provider key; never enumerate or log credentials. */
+/**
+ * Read only the selected provider key; never enumerate or log credentials.
+ * Settings may choose a provider/model, but the key still comes from a
+ * pipeline secret and only that provider's variable is read.
+ */
 export function providerFromEnvironment(
-  env: NodeJS.ProcessEnv = process.env
+  env: NodeJS.ProcessEnv = process.env,
+  overrides: { name?: string; model?: string } = {}
 ): ProviderConfig {
-  const name = (env.MASTHEAD_PROVIDER || "").trim().toLowerCase();
+  const name = (overrides.name || env.MASTHEAD_PROVIDER || "").trim().toLowerCase();
   if (name !== "anthropic" && name !== "openai" && name !== "deepseek") {
     throw new Error("Set MASTHEAD_PROVIDER to anthropic, openai or deepseek.");
   }
 
-  const model = (env.MASTHEAD_MODEL || "").trim();
+  const model = (overrides.model || env.MASTHEAD_MODEL || "").trim();
   if (!model) {
     throw new Error("Set MASTHEAD_MODEL to the provider model name.");
   }

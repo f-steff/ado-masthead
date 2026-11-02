@@ -97,13 +97,20 @@ A separate `src/worker/verification.ts` rechecks active findings against the
 current changed-file evidence. Missing or ambiguous evidence is reported as
 unverified and leaves the thread open.
 
-The organization hub now exposes a master review switch, delivery mode and
-central-pipeline validation. The project admin hub discovers repositories and
-stores per-repository gates; discovered repositories default to disabled.
+The organization hub exposes a master review switch, delivery mode,
+central-pipeline binding and the default review profile. The project admin hub
+discovers repositories and stores project and per-repository gates plus profile
+overrides. A repository with no stored switch follows the configured
+new-repository default; the default itself is disabled unless an administrator
+opts in.
 
-This slice is manual or pipeline-invoked. It does not yet receive service-hook
-events, create the central pipeline, apply the persisted settings inside the
-worker, retrieve unchanged related files for every finding, or render a PR tab.
+This slice is manual or pipeline-invoked. The worker reads the persisted
+organization and destination-project gates before it spends tokens, applies the
+effective review profile and provider/model override, and then publishes through
+the normal reconciliation path. A repository with no stored switch follows the
+configured new-repository default. The slice does not yet receive service-hook
+events, create the central pipeline, retrieve unchanged related files for every
+finding, or render a PR tab.
 
 ## Cross-project behavior
 
@@ -117,8 +124,9 @@ controls:
 - the default review profile;
 - optional branch-policy gating.
 
-Repositories are disabled until explicitly enabled, so adding a new repository
-does not silently start spending tokens. A project-level disable overrides all
+New repositories start disabled unless the project or organization default was
+explicitly enabled, so adding a repository does not silently start spending
+tokens. A project-level disable overrides all
 repository switches. Projects added later are reconciled during a settings
 refresh.
 

@@ -7,9 +7,12 @@ builder composes one trusted instruction block and one module per selected
 lens. Selecting a lens changes what the reviewer looks for; it does not create
 a separate review run by default.
 
-Correctness and impact is mandatory. Other lenses can be selected per project
-or repository. Data and dependency lenses are suggested by paths but are not
-automatically enabled.
+Correctness and impact is mandatory. Other lenses can be selected globally,
+per project or per repository. The organization profile is the default; a
+project can inherit or override it, and an enabled repository can override the
+project. Provider and model names follow the same order, while the provider key
+always comes from a pipeline secret. Data and dependency lenses are suggested by
+paths but are not automatically enabled.
 
 ## Prompt rules
 

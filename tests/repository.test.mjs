@@ -122,6 +122,11 @@ test("the organization and project pages initialize the ADO host and split setti
   assert.match(orgHtml, /images\/icon-128\.png/);
   assert.match(orgHtml, /id="pipeline-search"/);
   assert.match(orgHtml, /id="pipeline-options"/);
+  assert.match(orgHtml, /id="extension-id"/);
+  assert.match(orgHtml, /id="clear-pipeline"/);
+  assert.match(orgHtml, /data-tab="profile"/);
+  assert.match(orgHtml, /id="org-lens-list"/);
+  assert.match(orgHtml, /id="repo-profile-heading"/);
   assert.match(orgHtml, /class="tab active"/);
   assert.match(orgHtml, /class="choice-badge"/);
   assert.match(orgHtml, /Repository-level switches live under/);
@@ -130,6 +135,10 @@ test("the organization and project pages initialize the ADO host and split setti
   assert.match(projectHtml, /id="project-enabled"/);
   assert.match(projectHtml, /id="repository-list"/);
   assert.match(projectHtml, /data-tab="about"/);
+  assert.match(projectHtml, /data-tab="profile"/);
+  assert.match(projectHtml, /id="inherit-profile"/);
+  assert.match(projectHtml, /id="project-lens-list"/);
+  assert.match(projectHtml, /id="repo-profile-list"/);
   assert.match(projectHtml, /About Masthead in this project/);
   assert.match(projectHtml, /images\/icon-128\.png/);
   assert.match(projectScript, /function activateTab/);
@@ -141,10 +150,14 @@ test("the organization and project pages initialize the ADO host and split setti
   assert.match(orgScript, /function syncProjectUseState/);
   assert.match(orgScript, /Not used/);
   assert.match(projectScript, /saveSetting\(`project\.\$\{projectId\}`/);
+  assert.match(projectScript, /inheritProfile/);
+  assert.match(projectScript, /renderRepositoryProfiles/);
+  assert.match(orgHtml, /Use the organization review profile|Default review profile/);
   const styles = fs.readFileSync(path.join(root, "src/extension/hub/styles.css"), "utf8");
   assert.match(styles, /input\[type="checkbox"\]:checked/);
   assert.match(styles, /background-color: #0e7490/);
   assert.match(styles, /\.project-row\.inactive/);
+  assert.match(styles, /\.lens-option/);
   const org = manifest.contributions.find((entry) => entry.targets.includes("ms.vss-web.collection-admin-hub-group"));
   const project = manifest.contributions.find((entry) => entry.targets.includes("ms.vss-web.project-admin-hub-group"));
   assert.equal(org.properties.uri, "dist/extension/hub/index.html");

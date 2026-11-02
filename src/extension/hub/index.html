@@ -35,6 +35,7 @@
       <div class="tabs" role="tablist" aria-label="Masthead organization settings">
         <button type="button" class="tab active" role="tab" aria-selected="true" data-tab="general">General</button>
         <button type="button" class="tab" role="tab" aria-selected="false" data-tab="setup">Setup</button>
+        <button type="button" class="tab" role="tab" aria-selected="false" data-tab="profile">Review profile</button>
         <button type="button" class="tab" role="tab" aria-selected="false" data-tab="about">About</button>
       </div>
 
@@ -121,7 +122,8 @@
 
           <section class="panel" aria-labelledby="pipeline-heading">
             <h2 id="pipeline-heading">Central review pipeline</h2>
-            <p class="note">Create the pipeline separately, then search for it here. Masthead validates the target; it does not create the pipeline yet.</p>
+            <p class="note">Create the trusted pipeline separately, then search for it here. Masthead validates the target and refreshes its status whenever Setup is opened; creating or deleting a pipeline is not available yet.</p>
+            <p class="meta">Worker extension id: <code id="extension-id">loading...</code>. Set <code>MASTHEAD_EXTENSION_ID</code> on the review pipeline so it can read these settings.</p>
             <label class="field pipeline-picker">
               <span>Central review pipeline</span>
               <input type="text" id="pipeline-search" list="pipeline-options" maxlength="300" autocomplete="off" placeholder="Search by project or pipeline name">
@@ -130,8 +132,48 @@
             <p class="meta" id="pipeline-selected"></p>
             <div class="actions">
               <button type="button" class="secondary" id="validate-pipeline">Validate pipeline</button>
+              <button type="button" class="secondary" id="clear-pipeline">Clear binding</button>
               <p id="pipeline-status" class="status-message" role="status" aria-live="polite"></p>
             </div>
+          </section>
+        </section>
+
+        <section class="tab-panel" data-panel="profile" role="tabpanel" hidden>
+          <section class="panel" aria-labelledby="profile-heading">
+            <h2 id="profile-heading">Default review profile</h2>
+            <p class="note">Projects and repositories inherit this profile unless they define an override. Correctness is always enabled.</p>
+            <div class="field-grid">
+              <label class="field">
+                <span>Provider</span>
+                <select id="review-provider">
+                  <option value="">Use pipeline provider</option>
+                  <option value="anthropic">Anthropic</option>
+                  <option value="openai">OpenAI</option>
+                  <option value="deepseek">DeepSeek</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Model</span>
+                <input type="text" id="review-model" maxlength="200" autocomplete="off" placeholder="Use pipeline model">
+              </label>
+            </div>
+            <fieldset class="choice-group">
+              <legend>Enabled lenses</legend>
+              <div id="org-lens-list" class="lens-list"></div>
+            </fieldset>
+            <label class="switch-row">
+              <input type="checkbox" id="org-review-guide">
+              <span>
+                <strong>Publish a review guide</strong>
+                <small>Adds the structured reading order and verification notes to the review output.</small>
+              </span>
+            </label>
+            <p class="note">Provider keys are never selected or stored here. The worker reads only the secret variable for the chosen provider. A blank provider or model keeps the pipeline value.</p>
+          </section>
+
+          <section class="panel" aria-labelledby="repo-profile-heading">
+            <h2 id="repo-profile-heading">Repository overrides</h2>
+            <p class="note">Each project's <strong>Masthead &gt; Review profile</strong> page lists its repositories. A repository override applies only when that repository is enabled and takes precedence over the project profile.</p>
           </section>
         </section>
 
@@ -141,9 +183,11 @@
             <p><strong>Version</strong> <span id="about-version">loading...</span></p>
             <p>Use <strong>General</strong> to set the organization master switch and the defaults used when new projects and repositories are discovered. The project table lets an organization administrator disable reviews for one project without changing its repository settings.</p>
             <p>Use <strong>Setup</strong> to choose event delivery, identify the central review pipeline, and validate that the pipeline is readable by the current identity.</p>
+            <p>Use <strong>Review profile</strong> to choose the default provider, model, lenses and review guide. Projects and repositories can inherit or override those choices.</p>
             <p>Repository-level switches live under each project's <strong>Project settings &gt; Masthead</strong> page. A pull request is reviewed only when the organization, project and destination repository are all enabled. This also applies when the PR originates from a fork or another project: the destination repository supplies the gate.</p>
             <p>Provider keys are never entered in this browser page. Keep the provider key in an Azure DevOps secret variable group linked only to the central review pipeline.</p>
-            <p>Automatic event delivery, central-pipeline creation, PR-tab publication, review-profile enforcement and worker use of these settings are still being built.</p>
+            <p>By default, comments use the pipeline's build-service identity. To show a dedicated review identity, create a service account and supply its short-lived PAT as the secret <code>MASTHEAD_ADO_TOKEN</code>; do not use your personal daily PAT.</p>
+            <p>Automatic event delivery, central-pipeline creation, PR-tab publication and branch-policy completion gating are still being built. The worker now reads these settings before spending tokens.</p>
             <p><a href="https://github.com/f-steff/ado-masthead#readme" target="_blank" rel="noopener noreferrer">Project documentation</a></p>
           </section>
         </section>

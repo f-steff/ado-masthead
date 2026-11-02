@@ -153,6 +153,13 @@ test("provider parameters support modern token limits and omit optional temperat
   assert.equal(request.body.max_completion_tokens, 4096);
   assert.ok(!("temperature" in request.body));
   assert.equal(providerFromEnvironment({ MASTHEAD_PROVIDER: "openai", MASTHEAD_MODEL: "test", OPENAI_API_KEY: "test" }).temperature, undefined);
+  const overridden = providerFromEnvironment(
+    { MASTHEAD_PROVIDER: "openai", MASTHEAD_MODEL: "env-model", OPENAI_API_KEY: "test", ANTHROPIC_API_KEY: "test" },
+    { name: "anthropic", model: "settings-model" }
+  );
+  assert.equal(overridden.name, "anthropic");
+  assert.equal(overridden.model, "settings-model");
+  assert.equal(overridden.apiKey, "test");
   assert.throws(() => providerFromEnvironment({ MASTHEAD_PROVIDER: "openai", MASTHEAD_MODEL: "test", OPENAI_API_KEY: "test", MASTHEAD_MAX_TOKENS: "-1" }));
 });
 

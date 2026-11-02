@@ -1,6 +1,6 @@
 // Persisted configuration for the organization and its projects. Repository
 // IDs are kept as opaque strings because they are stable across renames.
-import { ReviewProfile, ReviewLensId, resolveReviewProfile } from "../review/lenses";
+import { defaultReviewProfile, ReviewProfile, ReviewLensId, resolveReviewProfile } from "../review/lenses";
 
 export type DeploymentMode = "native" | "broker";
 
@@ -24,18 +24,40 @@ export interface OrganizationSettings {
   pipelineProject?: string;
   /** Optional central pipeline validation target. */
   pipelineId?: number;
+  /** Human-readable name captured with the pipeline binding. */
+  pipelineName?: string;
+  /** Organization-wide review profile used when a project inherits. */
+  profile?: Partial<ReviewProfile>;
+  /** Optional provider override; the key still comes from a pipeline secret. */
+  provider?: string;
+  /** Optional model override for the selected provider. */
+  model?: string;
 }
 
 export type RepositorySettings = {
   enabled: boolean;
   profile?: Partial<ReviewProfile>;
+  provider?: string;
+  model?: string;
 };
 
 export interface ProjectSettings {
   enabled: boolean;
   /** Default for repositories first discovered in this project. */
   defaultRepositoryEnabled: RepositoryDefault;
+  /** False means this project uses the organization review profile. */
+  inheritProfile: boolean;
+  profile?: Partial<ReviewProfile>;
+  provider?: string;
+  model?: string;
   repositories: Record<string, RepositorySettings>;
+}
+
+/** A resolved profile and optional provider/model override for one review. */
+export interface ReviewSelection {
+  profile: ReviewProfile;
+  provider?: string;
+  model?: string;
 }
 
 /** Do not assume a broker or service connection was verified during installation. */
@@ -46,13 +68,19 @@ export function defaultOrganizationSettings(): OrganizationSettings {
     defaultRepositoryEnabled: false,
     deploymentMode: "native",
     nativeWebhookName: "MastheadPR",
-    brokerVerified: false
+    brokerVerified: false,
+    profile: defaultReviewProfile()
   };
 }
 
 /** A project is eligible, but no repository spends tokens until explicitly enabled. */
 export function defaultProjectSettings(): ProjectSettings {
-  return { enabled: true, defaultRepositoryEnabled: "inherit", repositories: {} };
+  return {
+    enabled: true,
+    defaultRepositoryEnabled: "inherit",
+    inheritProfile: true,
+    repositories: {}
+  };
 }
 
 /**
@@ -69,13 +97,21 @@ export function isRepositoryEnabled(
   return project.repositories[repositoryId]?.enabled === true;
 }
 
-/** The organization master switch overrides every project and repository. */
+/**
+ * The organization master switch overrides everything. A repository with no
+ * stored switch follows the project/organization default instead of being
+ * silently enabled; explicit repository choices always win.
+ */
 export function isReviewEnabled(
   organization: OrganizationSettings,
   project: ProjectSettings,
   repositoryId: string
 ): boolean {
-  return organization.enabled && isRepositoryEnabled(project, repositoryId);
+  if (!organization.enabled || !project.enabled) return false;
+  const repository = project.repositories[repositoryId];
+  return repository
+    ? repository.enabled === true
+    : newRepositoryEnabled(organization, project);
 }
 
 /** Resolve a project's new-repository policy against the organization default. */
@@ -131,6 +167,35 @@ export function profileForRepository(
   return repository.profile ?? fallback;
 }
 
+/**
+ * Resolve the effective profile and optional provider/model override. A
+ * repository override wins over a project override, which wins over the
+ * organization default. The provider key never appears in this object.
+ */
+export function reviewSelection(
+  organization: OrganizationSettings,
+  project: ProjectSettings,
+  repositoryId: string
+): ReviewSelection {
+  const organizationProfile = resolveReviewProfile(organization.profile);
+  const projectProfile = project.inheritProfile
+    ? organizationProfile
+    : resolveReviewProfile(project.profile ?? organizationProfile);
+  const repository = project.repositories[repositoryId];
+  const profile = repository?.profile
+    ? resolveReviewProfile(repository.profile)
+    : projectProfile;
+  return {
+    profile,
+    ...(repository?.provider ?? project.provider ?? organization.provider
+      ? { provider: repository?.provider ?? project.provider ?? organization.provider }
+      : {}),
+    ...(repository?.model ?? project.model ?? organization.model
+      ? { model: repository?.model ?? project.model ?? organization.model }
+      : {})
+  };
+}
+
 /** Editing a profile changes review behavior, never the repository's eligibility. */
 export function setRepositoryProfile(
   project: ProjectSettings,
@@ -165,7 +230,11 @@ export function normalizeOrganizationSettings(value: unknown): OrganizationSetti
     nativeWebhookName: optionalString(value.nativeWebhookName) ?? defaults.nativeWebhookName,
     brokerVerified: value.brokerVerified === true,
     ...(optionalString(value.pipelineProject) ? { pipelineProject: optionalString(value.pipelineProject) } : {}),
-    ...(pipelineId === undefined ? {} : { pipelineId })
+    ...(pipelineId === undefined ? {} : { pipelineId }),
+    ...(optionalString(value.pipelineName) ? { pipelineName: optionalString(value.pipelineName) } : {}),
+    ...(validProfile(value.profile) ? { profile: value.profile } : {}),
+    ...(optionalString(value.provider) ? { provider: optionalString(value.provider) } : {}),
+    ...(optionalString(value.model) ? { model: optionalString(value.model) } : {})
   };
 }
 
@@ -180,14 +249,31 @@ export function normalizeProjectSettings(value: unknown): ProjectSettings {
     if (!repositoryId || !isRecord(raw)) continue;
     repositories[repositoryId] = {
       enabled: raw.enabled === true,
-      ...(isRecord(raw.profile) ? { profile: raw.profile as Partial<ReviewProfile> } : {})
+      ...(validProfile(raw.profile) ? { profile: raw.profile } : {}),
+      ...(optionalString(raw.provider) ? { provider: optionalString(raw.provider) } : {}),
+      ...(optionalString(raw.model) ? { model: optionalString(raw.model) } : {})
     };
   }
   return {
     enabled: value.enabled !== false,
     defaultRepositoryEnabled: repositoryDefault(value.defaultRepositoryEnabled),
+    inheritProfile: value.inheritProfile !== false,
+    ...(validProfile(value.profile) ? { profile: value.profile } : {}),
+    ...(optionalString(value.provider) ? { provider: optionalString(value.provider) } : {}),
+    ...(optionalString(value.model) ? { model: optionalString(value.model) } : {}),
     repositories
   };
+}
+
+/** Only a profile that resolves cleanly may enter the effective policy. */
+function validProfile(value: unknown): value is Partial<ReviewProfile> {
+  if (!isRecord(value)) return false;
+  try {
+    resolveReviewProfile(value as Partial<ReviewProfile>);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function repositoryDefault(value: unknown): RepositoryDefault {
