@@ -10,7 +10,7 @@ import {
   ProjectSettings,
   seedRepositories
 } from "../../settings";
-import { initializeHost, notifyHostFailed, notifyHostLoaded } from "../shared/host";
+import { initializeHost, notifyHostFailed, notifyHostLoaded, organizationUrl } from "../shared/host";
 import { loadSetting, saveSetting } from "../shared/storage";
 
 interface Repository {
@@ -52,7 +52,7 @@ function setMessage(element: HTMLElement | null, message: string, kind: "info" |
 /** Fetch repository names with the extension's read-only code token. */
 async function fetchRepositories(): Promise<Repository[]> {
   const token = await SDK.getAccessToken();
-  const url = `${window.location.origin}/${encodeURIComponent(hostName)}/${encodeURIComponent(projectName)}/_apis/git/repositories?api-version=7.1`;
+  const url = `${organizationUrl(hostName)}/${encodeURIComponent(projectName)}/_apis/git/repositories?api-version=7.1`;
   const response = await fetch(url, {
     headers: { authorization: `Bearer ${token}`, accept: "application/json" },
     redirect: "error"

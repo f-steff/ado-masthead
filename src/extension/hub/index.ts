@@ -6,7 +6,7 @@ import {
   normalizeOrganizationSettings,
   OrganizationSettings
 } from "../../settings";
-import { initializeHost, notifyHostFailed, notifyHostLoaded } from "../shared/host";
+import { initializeHost, notifyHostFailed, notifyHostLoaded, organizationUrl } from "../shared/host";
 import { loadSetting, saveSetting } from "../shared/storage";
 
 const statusText = document.querySelector<HTMLElement>("#host-status");
@@ -114,7 +114,7 @@ async function validatePipeline(): Promise<void> {
   try {
     const token = await SDK.getAccessToken();
     const response = await fetch(
-      `${window.location.origin}/${encodeURIComponent(hostName)}/${encodeURIComponent(project)}/_apis/pipelines/${id}?api-version=7.1`,
+      `${organizationUrl(hostName)}/${encodeURIComponent(project)}/_apis/pipelines/${id}?api-version=7.1`,
       { headers: { authorization: `Bearer ${token}`, accept: "application/json" }, redirect: "error" }
     );
     if (response.ok) {

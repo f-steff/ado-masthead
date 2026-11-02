@@ -26,9 +26,10 @@ and the first stable release is `0.1.0`. A release tag is created only after
 the first Marketplace upload and validation succeed. A stable publish tags that
 upload before updating the private dev edition at the same version.
 
-The publish command does not use `--no-wait-validation`. Waiting is required:
-otherwise the workflow can create a tag and record success while the new
-version is still unavailable to Azure DevOps installations.
+The upload uses `--no-wait-validation` only to avoid TFX's short built-in wait.
+The release script then polls `tfx extension isvalid` until Marketplace reports
+success or a validation error. Tagging and the success status happen only after
+that explicit poll completes.
 
 ## Workflows
 
