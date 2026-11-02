@@ -68,6 +68,10 @@ async function main(): Promise<void> {
   console.log(JSON.stringify({
     provider: provider.name,
     model: provider.model,
+    reasoningEffort: provider.reasoningEffort,
+    thinkingBudget: provider.thinkingBudget,
+    enabledLenses: selection.profile.enabledLenses,
+    reviewGuide: selection.profile.reviewGuide,
     settingsSource: settings.source,
     pullRequestId,
     summary: run.review.result.summary,
