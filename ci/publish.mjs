@@ -2,6 +2,7 @@
 // inputs and the short-lived runner token; no credential is persisted in git.
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
+import { buildStatusArgs } from "./status.mjs";
 import { validateVersion } from "./version.mjs";
 
 /** Keep the helper usable on Windows without npm.cmd or shell quoting rules. */
@@ -61,6 +62,9 @@ if (process.env.GITHUB_STEP_SUMMARY) {
     (edition === "stable" ? "The dev edition carries the same version.\n" : "Tester access is managed separately through Share dev.\n"));
 }
 // The repository/SHA are supplied by GitHub, never from a PR title or command input.
-const status = JSON.stringify({ state: "success", context: `Marketplace: ${extension}`,
-  description: `Published Masthead ${version}`, target_url: `https://marketplace.visualstudio.com/items?itemName=f-steff.${extension}` });
-run("gh", ["api", "--method", "POST", `repos/${process.env.GITHUB_REPOSITORY}/statuses/${process.env.GITHUB_SHA}`, "--input", "-"], { input: status });
+run("gh", buildStatusArgs(
+  process.env.GITHUB_REPOSITORY ?? "",
+  process.env.GITHUB_SHA ?? "",
+  extension,
+  version
+));
