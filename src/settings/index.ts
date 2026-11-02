@@ -4,9 +4,15 @@ import { ReviewProfile, ReviewLensId, resolveReviewProfile } from "../review/len
 
 export type DeploymentMode = "native" | "broker";
 
+export type RepositoryDefault = "inherit" | "enabled" | "disabled";
+
 export interface OrganizationSettings {
   /** Organization master switch; no project can spend tokens while this is off. */
   enabled: boolean;
+  /** Default eligibility for projects first discovered after installation. */
+  defaultProjectEnabled: boolean;
+  /** Default eligibility for repositories when a project inherits. */
+  defaultRepositoryEnabled: boolean;
   deploymentMode: DeploymentMode;
   /** Public URL of the optional Dockerised broker. Never contains a secret. */
   brokerUrl?: string;
@@ -27,6 +33,8 @@ export type RepositorySettings = {
 
 export interface ProjectSettings {
   enabled: boolean;
+  /** Default for repositories first discovered in this project. */
+  defaultRepositoryEnabled: RepositoryDefault;
   repositories: Record<string, RepositorySettings>;
 }
 
@@ -34,6 +42,8 @@ export interface ProjectSettings {
 export function defaultOrganizationSettings(): OrganizationSettings {
   return {
     enabled: true,
+    defaultProjectEnabled: true,
+    defaultRepositoryEnabled: false,
     deploymentMode: "native",
     nativeWebhookName: "MastheadPR",
     brokerVerified: false
@@ -42,7 +52,7 @@ export function defaultOrganizationSettings(): OrganizationSettings {
 
 /** A project is eligible, but no repository spends tokens until explicitly enabled. */
 export function defaultProjectSettings(): ProjectSettings {
-  return { enabled: true, repositories: {} };
+  return { enabled: true, defaultRepositoryEnabled: "inherit", repositories: {} };
 }
 
 /**
@@ -66,6 +76,25 @@ export function isReviewEnabled(
   repositoryId: string
 ): boolean {
   return organization.enabled && isRepositoryEnabled(project, repositoryId);
+}
+
+/** Resolve a project's new-repository policy against the organization default. */
+export function newRepositoryEnabled(
+  organization: OrganizationSettings,
+  project: ProjectSettings
+): boolean {
+  if (project.defaultRepositoryEnabled === "enabled") return true;
+  if (project.defaultRepositoryEnabled === "disabled") return false;
+  return organization.defaultRepositoryEnabled;
+}
+
+/** Seed new repositories from the project policy without re-enabling old ones. */
+export function seedProjectRepositories(
+  organization: OrganizationSettings,
+  project: ProjectSettings,
+  repositoryIds: readonly string[]
+): ProjectSettings {
+  return seedRepositories(project, repositoryIds, newRepositoryEnabled(organization, project));
 }
 
 /**
@@ -129,6 +158,8 @@ export function normalizeOrganizationSettings(value: unknown): OrganizationSetti
   const pipelineId = positiveInteger(value.pipelineId);
   return {
     enabled: value.enabled !== false,
+    defaultProjectEnabled: value.defaultProjectEnabled !== false,
+    defaultRepositoryEnabled: value.defaultRepositoryEnabled === true,
     deploymentMode: mode,
     brokerUrl: optionalString(value.brokerUrl),
     nativeWebhookName: optionalString(value.nativeWebhookName) ?? defaults.nativeWebhookName,
@@ -152,7 +183,15 @@ export function normalizeProjectSettings(value: unknown): ProjectSettings {
       ...(isRecord(raw.profile) ? { profile: raw.profile as Partial<ReviewProfile> } : {})
     };
   }
-  return { enabled: value.enabled !== false, repositories };
+  return {
+    enabled: value.enabled !== false,
+    defaultRepositoryEnabled: repositoryDefault(value.defaultRepositoryEnabled),
+    repositories
+  };
+}
+
+function repositoryDefault(value: unknown): RepositoryDefault {
+  return value === "enabled" || value === "disabled" ? value : "inherit";
 }
 
 /** Avoid arrays, null and non-integer configuration values. */

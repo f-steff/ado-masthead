@@ -1,5 +1,5 @@
 // Project settings control repository eligibility only. The organization page
-// owns the master switch, delivery mode and central pipeline validation.
+// owns the master switch, defaults, delivery mode and pipeline validation.
 import * as SDK from "azure-devops-extension-sdk";
 import {
   defaultOrganizationSettings,
@@ -8,7 +8,8 @@ import {
   normalizeProjectSettings,
   OrganizationSettings,
   ProjectSettings,
-  seedRepositories
+  RepositoryDefault,
+  seedProjectRepositories
 } from "../../settings";
 import { initializeHost, notifyHostFailed, notifyHostLoaded, organizationUrl } from "../shared/host";
 import { loadSetting, saveSetting } from "../shared/storage";
@@ -22,6 +23,7 @@ const statusText = document.querySelector<HTMLElement>("#host-status");
 const statusDot = document.querySelector<HTMLElement>("#status-dot");
 const hostMeta = document.querySelector<HTMLElement>("#host-meta");
 const projectEnabled = document.querySelector<HTMLInputElement>("#project-enabled");
+const newRepositoryDefault = document.querySelector<HTMLSelectElement>("#new-repository-default");
 const orgState = document.querySelector<HTMLElement>("#org-state");
 const repositoryList = document.querySelector<HTMLElement>("#repository-list");
 const repositoryStatus = document.querySelector<HTMLElement>("#repository-status");
@@ -52,11 +54,10 @@ function setMessage(element: HTMLElement | null, message: string, kind: "info" |
 /** Fetch repository names with the extension's read-only code token. */
 async function fetchRepositories(): Promise<Repository[]> {
   const token = await SDK.getAccessToken();
-  const url = `${organizationUrl(hostName)}/${encodeURIComponent(projectName)}/_apis/git/repositories?api-version=7.1`;
-  const response = await fetch(url, {
-    headers: { authorization: `Bearer ${token}`, accept: "application/json" },
-    redirect: "error"
-  });
+  const response = await fetch(
+    `${organizationUrl(hostName)}/${encodeURIComponent(projectName)}/_apis/git/repositories?api-version=7.1`,
+    { headers: { authorization: `Bearer ${token}`, accept: "application/json" }, redirect: "error" }
+  );
   if (!response.ok) throw new Error(`Repository request failed with HTTP ${response.status}.`);
   const value = await response.json() as { value?: unknown };
   if (!Array.isArray(value.value)) throw new Error("Repository response has an invalid shape.");
@@ -110,6 +111,7 @@ async function save(): Promise<void> {
   const next: ProjectSettings = {
     ...settings,
     enabled: projectEnabled.checked,
+    defaultRepositoryEnabled: (newRepositoryDefault?.value as RepositoryDefault | undefined) ?? "inherit",
     repositories: { ...settings.repositories }
   };
   for (const input of repositoryList.querySelectorAll<HTMLInputElement>("input[data-repository-id]")) {
@@ -125,9 +127,9 @@ async function save(): Promise<void> {
   try {
     await saveSetting(`project.${projectId}`, next);
     settings = next;
-    setMessage(saveStatus, "Project settings saved.", "success");
+    setMessage(saveStatus, "Settings saved.", "success");
   } catch {
-    setMessage(saveStatus, "Project settings could not be saved. Reload and try again.", "error");
+    setMessage(saveStatus, "Settings could not be saved. Reload and try again.", "error");
   } finally {
     if (saveButton) saveButton.disabled = false;
   }
@@ -154,13 +156,21 @@ async function main(): Promise<void> {
   try {
     organization = normalizeOrganizationSettings(await loadSetting<OrganizationSettings>("organization", defaultOrganizationSettings()));
     if (orgState) orgState.textContent = organization.enabled ? "enabled" : "disabled";
-    settings = normalizeProjectSettings(await loadSetting<ProjectSettings>(`project.${projectId}`, defaultProjectSettings()));
+    const fallback: ProjectSettings = {
+      ...defaultProjectSettings(),
+      enabled: organization.defaultProjectEnabled
+    };
+    settings = normalizeProjectSettings(await loadSetting<ProjectSettings>(`project.${projectId}`, fallback));
     repositories = await fetchRepositories();
-    settings = seedRepositories(settings, repositories.map((repository) => repository.id), false);
+    settings = seedProjectRepositories(organization, settings, repositories.map((repository) => repository.id));
     await saveSetting(`project.${projectId}`, settings);
     if (projectEnabled) projectEnabled.checked = settings.enabled;
+    if (newRepositoryDefault) newRepositoryDefault.value = settings.defaultRepositoryEnabled;
     renderRepositories();
-    setMessage(repositoryStatus, `${repositories.length} repositories discovered. New repositories are disabled.`);
+    const inherited = settings.defaultRepositoryEnabled === "inherit"
+      ? ` (organization default: ${organization.defaultRepositoryEnabled ? "enabled" : "disabled"})`
+      : "";
+    setMessage(repositoryStatus, `${repositories.length} repositories discovered. New repositories use the project default${inherited}.`);
   } catch (error) {
     setMessage(repositoryStatus, error instanceof Error ? error.message : "Project settings could not be loaded.", "error");
   }

@@ -5,8 +5,10 @@ import {
   defaultProjectSettings,
   isRepositoryEnabled,
   isReviewEnabled,
+  newRepositoryEnabled,
   normalizeOrganizationSettings,
   normalizeProjectSettings,
+  seedProjectRepositories,
   seedRepositories,
   setRepositoryProfile
 } from "../src";
@@ -14,9 +16,22 @@ import {
 test("native deployment is the default and broker is opt-in", () => {
   const settings = defaultOrganizationSettings();
   assert.equal(settings.enabled, true);
+  assert.equal(settings.defaultProjectEnabled, true);
+  assert.equal(settings.defaultRepositoryEnabled, false);
   assert.equal(settings.deploymentMode, "native");
   assert.equal(settings.brokerVerified, false);
   assert.equal(settings.nativeWebhookName, "MastheadPR");
+});
+
+test("new repositories follow the project default or inherit the organization default", () => {
+  const organization = defaultOrganizationSettings();
+  const inherited = defaultProjectSettings();
+  assert.equal(newRepositoryEnabled(organization, inherited), false);
+  assert.equal(newRepositoryEnabled({ ...organization, defaultRepositoryEnabled: true }, inherited), true);
+  assert.equal(newRepositoryEnabled(organization, { ...inherited, defaultRepositoryEnabled: "enabled" }), true);
+  assert.equal(newRepositoryEnabled({ ...organization, defaultRepositoryEnabled: true }, { ...inherited, defaultRepositoryEnabled: "disabled" }), false);
+  const seeded = seedProjectRepositories(organization, { ...inherited, defaultRepositoryEnabled: "enabled" }, ["repo-a"]);
+  assert.equal(seeded.repositories["repo-a"].enabled, true);
 });
 
 test("the organization master switch overrides project and repository choices", () => {
@@ -41,16 +56,19 @@ test("persisted malformed settings cannot silently enable a repository", () => {
 
   const project = normalizeProjectSettings({
     enabled: true,
+    defaultRepositoryEnabled: "enabled",
     repositories: {
       "repo-a": { enabled: "yes" },
       "repo-b": { enabled: false },
       "repo-c": null
     }
   });
+  assert.equal(project.defaultRepositoryEnabled, "enabled");
   assert.deepEqual(project.repositories, {
     "repo-a": { enabled: false },
     "repo-b": { enabled: false }
   });
+  assert.equal(normalizeProjectSettings({ repositories: {} }).defaultRepositoryEnabled, "inherit");
 });
 
 test("repositories are disabled until explicitly enabled", () => {

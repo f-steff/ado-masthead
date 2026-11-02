@@ -34,87 +34,124 @@
         </div>
       </section>
 
+      <div class="tabs" role="tablist" aria-label="Masthead organization settings">
+        <button type="button" class="tab active" role="tab" aria-selected="true" data-tab="general">General</button>
+        <button type="button" class="tab" role="tab" aria-selected="false" data-tab="setup">Setup</button>
+        <button type="button" class="tab" role="tab" aria-selected="false" data-tab="about">About</button>
+      </div>
+
       <form id="settings-form">
-        <section class="panel" aria-labelledby="controls-heading">
-          <h2 id="controls-heading">Review controls</h2>
-          <label class="switch-row">
-            <input type="checkbox" id="org-enabled">
-            <span>
-              <strong>Enable Masthead pull request reviews</strong>
-              <small>Organization master switch. It overrides every project and repository setting.</small>
-            </span>
-          </label>
-
-          <fieldset class="choice-group">
-            <legend>Event delivery</legend>
-            <label class="choice" id="native-choice">
-              <input type="radio" name="delivery" value="native" id="delivery-native">
-              <span class="choice-mark" aria-hidden="true"></span>
-              <span class="choice-copy">
-                <strong>Native incoming webhook</strong>
-                <small>Azure DevOps service hooks deliver events directly to the central pipeline.</small>
+        <section class="tab-panel" data-panel="general" role="tabpanel">
+          <section class="panel" aria-labelledby="controls-heading">
+            <h2 id="controls-heading">Review controls</h2>
+            <label class="switch-row">
+              <input type="checkbox" id="org-enabled">
+              <span>
+                <strong>Enable Masthead pull request reviews</strong>
+                <small>Organization master switch. It overrides every project and repository setting.</small>
               </span>
-              <span class="choice-badge" aria-hidden="true">Selected</span>
             </label>
-            <label class="choice" id="broker-choice">
-              <input type="radio" name="delivery" value="broker" id="delivery-broker">
-              <span class="choice-mark" aria-hidden="true"></span>
-              <span class="choice-copy">
-                <strong>Docker broker</strong>
-                <small>A customer-hosted broker authenticates events before queueing the pipeline.</small>
-              </span>
-              <span class="choice-badge" aria-hidden="true">Selected</span>
-            </label>
-          </fieldset>
 
-          <div class="field-grid">
-            <label class="field">
-              <span>Native webhook name</span>
-              <input type="text" id="native-webhook" maxlength="160" autocomplete="off">
-            </label>
-            <label class="field">
-              <span>Broker URL</span>
-              <input type="url" id="broker-url" maxlength="500" autocomplete="off" placeholder="https://masthead.example.com">
-            </label>
-          </div>
+            <div class="field-grid defaults-grid">
+              <label class="field">
+                <span>Default for new projects</span>
+                <select id="default-project">
+                  <option value="enabled">Enabled</option>
+                  <option value="disabled">Disabled</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Default for new repositories</span>
+                <select id="default-repository">
+                  <option value="enabled">Enabled</option>
+                  <option value="disabled">Disabled</option>
+                </select>
+              </label>
+            </div>
+          </section>
 
-          <p class="note">Provider keys are never entered here. They belong in the Azure DevOps secret variable group linked only to the central review pipeline.</p>
+          <section class="panel" aria-labelledby="projects-heading">
+            <h2 id="projects-heading">Projects</h2>
+            <p class="note">Each project can be disabled independently. Newly discovered projects use the organization default; projects already stored keep their own choice.</p>
+            <div id="project-list" class="project-list" aria-live="polite">Loading projects...</div>
+            <p id="project-status" class="status-message" role="status" aria-live="polite"></p>
+          </section>
         </section>
 
-        <section class="panel" aria-labelledby="pipeline-heading">
-          <h2 id="pipeline-heading">Central review pipeline</h2>
-          <p class="note">Create the pipeline separately, then record its project and ID here. Masthead validates the target; it does not create the pipeline yet.</p>
-          <div class="field-grid">
-            <label class="field">
-              <span>Pipeline project</span>
-              <input type="text" id="pipeline-project" maxlength="200" autocomplete="off" placeholder="SampleProject">
-            </label>
-            <label class="field">
-              <span>Pipeline ID</span>
-              <input type="number" id="pipeline-id" min="1" step="1" inputmode="numeric">
-            </label>
-          </div>
-          <div class="actions">
-            <button type="button" class="secondary" id="validate-pipeline">Validate pipeline</button>
-            <p id="pipeline-status" class="status-message" role="status" aria-live="polite"></p>
-          </div>
+        <section class="tab-panel" data-panel="setup" role="tabpanel" hidden>
+          <section class="panel" aria-labelledby="delivery-heading">
+            <h2 id="delivery-heading">Event delivery</h2>
+            <fieldset class="choice-group">
+              <legend>Delivery mode</legend>
+              <label class="choice" id="native-choice">
+                <input type="radio" name="delivery" value="native" id="delivery-native">
+                <span class="choice-mark" aria-hidden="true"></span>
+                <span class="choice-copy">
+                  <strong>Native incoming webhook</strong>
+                  <small>Azure DevOps service hooks deliver events directly to the central pipeline.</small>
+                </span>
+                <span class="choice-badge" aria-hidden="true">Selected</span>
+              </label>
+              <label class="choice" id="broker-choice">
+                <input type="radio" name="delivery" value="broker" id="delivery-broker">
+                <span class="choice-mark" aria-hidden="true"></span>
+                <span class="choice-copy">
+                  <strong>Docker broker</strong>
+                  <small>A customer-hosted broker authenticates events before queueing the pipeline.</small>
+                </span>
+                <span class="choice-badge" aria-hidden="true">Selected</span>
+              </label>
+            </fieldset>
+
+            <div class="field-grid">
+              <label class="field">
+                <span>Native webhook name</span>
+                <input type="text" id="native-webhook" maxlength="160" autocomplete="off">
+              </label>
+              <label class="field">
+                <span>Broker URL</span>
+                <input type="url" id="broker-url" maxlength="500" autocomplete="off" placeholder="https://masthead.example.com">
+              </label>
+            </div>
+            <p class="note">Provider keys are never entered here. They belong in the Azure DevOps secret variable group linked only to the central review pipeline.</p>
+          </section>
+
+          <section class="panel" aria-labelledby="pipeline-heading">
+            <h2 id="pipeline-heading">Central review pipeline</h2>
+            <p class="note">Create the pipeline separately, then record its project and ID here. Masthead validates the target; it does not create the pipeline yet.</p>
+            <div class="field-grid">
+              <label class="field">
+                <span>Pipeline project</span>
+                <input type="text" id="pipeline-project" maxlength="200" autocomplete="off" placeholder="SampleProject">
+              </label>
+              <label class="field">
+                <span>Pipeline ID</span>
+                <input type="number" id="pipeline-id" min="1" step="1" inputmode="numeric">
+              </label>
+            </div>
+            <div class="actions">
+              <button type="button" class="secondary" id="validate-pipeline">Validate pipeline</button>
+              <p id="pipeline-status" class="status-message" role="status" aria-live="polite"></p>
+            </div>
+          </section>
         </section>
 
-        <section class="panel" aria-labelledby="storage-heading">
-          <h2 id="storage-heading">Project repository gates</h2>
-          <p class="note">This page does not accept credentials or repository data. Repository review gates are controlled in each project's settings page under <strong>Masthead</strong>.</p>
-          <p class="note">New projects and newly discovered repositories start disabled. The organization master switch above overrides all of them.</p>
+        <section class="tab-panel" data-panel="about" role="tabpanel" hidden>
+          <section class="panel help-panel">
+            <h2>About Masthead</h2>
+            <p><strong>Version</strong> <span id="about-version">loading...</span></p>
+            <p>The organization hub, project repository gates, review core, ADO publisher and verifier are implemented.</p>
+            <p>Automatic event delivery, central-pipeline creation, PR-tab publication and worker enforcement of these settings are still being built.</p>
+            <p>This page does not accept credentials or repository data. Repository review gates are controlled in each project's settings page under <strong>Masthead</strong>.</p>
+            <p><a href="https://github.com/f-steff/ado-masthead#readme" target="_blank" rel="noopener noreferrer">Project documentation</a></p>
+          </section>
         </section>
 
-        <div class="actions">
-          <button type="submit" class="primary" id="save-settings">Save organization settings</button>
+        <div class="actions save-bar">
+          <button type="submit" class="primary" id="save-settings">Save settings</button>
           <p id="save-status" class="status-message" role="status" aria-live="polite"></p>
         </div>
       </form>
-
-      <footer>
-        <a href="https://github.com/f-steff/ado-masthead#readme" target="_blank" rel="noopener noreferrer">Project documentation</a>
-      </footer>
     </main>
     <script src="index.js"></script>
   </body>
