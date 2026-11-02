@@ -23,6 +23,12 @@ The central pipeline needs:
 - access to the linked secret variable group;
 - no source-branch write permission for review mode.
 
+The pipeline entry point authenticates to ADO with `SYSTEM_ACCESSTOKEN` and
+never writes that token to output. System access tokens use bearer
+authentication; a local manual run may use `AZURE_DEVOPS_TOKEN` as a short-lived
+PAT with basic authentication. Neither token may be committed or placed in the
+extension UI. The provider key and ADO token are separate secrets.
+
 ## Prompt injection
 
 PR titles, descriptions, comments, code, work items and repository files are

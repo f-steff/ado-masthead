@@ -22,6 +22,21 @@ esbuild.buildSync({
   minify: production
 });
 
+// The central pipeline runs this entry point with SYSTEM_ACCESSTOKEN and the
+// linked provider secret variables. It is intentionally not part of the browser
+// extension bundle.
+fs.mkdirSync(path.join(distDir, "worker"), { recursive: true });
+esbuild.buildSync({
+  entryPoints: [path.join(rootDir, "src", "worker", "review-pr.ts")],
+  outfile: path.join(distDir, "worker", "review-pr.mjs"),
+  bundle: true,
+  platform: "node",
+  format: "esm",
+  target: "es2022",
+  sourcemap: !production,
+  minify: production
+});
+
 // The hub is a browser bundle because it must complete the Azure DevOps host
 // handshake before the host stops showing its loading indicator.
 const hubSource = path.join(rootDir, "src", "extension", "hub");

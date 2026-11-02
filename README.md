@@ -5,16 +5,19 @@ application pipeline. It reads the change in the context of the surrounding
 code, posts findings on the PR, maintains its previous findings across new
 commits, and answers questions in its review threads.
 
-Masthead is in active development. It is not yet published on the Marketplace.
+Masthead is in active development. The dev package is available to shared
+organizations; the public stable release is still being prepared.
 
-The current implementation is a local review core, test fixtures, provider
-adapters and an informational organization-settings page. Automatic PR reviews,
-deployment controls and the PR tab are still being built. The features below
+The current implementation includes the validated review core, provider
+adapters, an SDK-initialized organization hub, and a manual/pipeline review path
+that reads a pull request, posts findings as ADO threads and reuses existing
+Masthead threads on retry. Automatic PR-event delivery, deployment controls,
+repository settings and the PR tab are still being built. The features below
 describe the intended complete product.
 
-Local tests now exercise review validation, repository gating, finding
-reconciliation policy and the broker's HTTP delivery/retry handling. These do
-not replace installation or end-to-end testing against Azure DevOps.
+Local tests exercise review validation, repository gating, finding
+reconciliation, ADO publication and the broker's HTTP delivery/retry handling.
+These do not replace installation or end-to-end testing against Azure DevOps.
 
 ## What it does
 

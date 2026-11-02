@@ -12,6 +12,7 @@
     "test": "node scripts/test.js",
     "test:broker": "node --test broker/lib.test.mjs broker/app.test.mjs",
     "eval:live": "node scripts/live-eval.js",
+    "review:pr": "node dist/worker/review-pr.mjs",
     "package:dev": "node scripts/tfx.js create dev",
     "package:stable": "node scripts/tfx.js create stable",
     "publish:dev": "node scripts/tfx.js publish dev",

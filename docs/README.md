@@ -16,6 +16,7 @@ This folder is the engineering reference for Masthead. Start with the
 | [09-license-review.md](09-license-review.md) | Target-code license and provenance review. |
 | [10-publishing.md](10-publishing.md) | Editions, versioning and the OIDC release path. |
 | [11-decisions.md](11-decisions.md) | Agreed decisions and open items. |
+| [12-first-review-run.md](12-first-review-run.md) | Manual/pipeline invocation of one ADO review. |
 
 ## Terms
 
