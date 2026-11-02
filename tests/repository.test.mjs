@@ -103,11 +103,21 @@ test("the extension manifest ships the approved icon set", () => {
   assert.match(svg, /Masthead crow's nest lookout/);
 });
 
-test("the early organization page describes its limits instead of offering fake deployment actions", () => {
-  const html = fs.readFileSync(path.join(root, "src/extension/about/index.html"), "utf8");
-  assert.match(html, /Masthead/);
-  assert.match(html, /does not install service hooks/);
-  assert.doesNotMatch(html, /<script|<input|<button/i);
+test("the organization hub initializes the Azure DevOps host before showing status", () => {
+  const html = fs.readFileSync(path.join(root, "src/extension/hub/index.html"), "utf8");
+  const script = fs.readFileSync(path.join(root, "src/extension/hub/index.ts"), "utf8");
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, "ado-manifests/azure-devops-extension-base.json"), "utf8"));
+  assert.match(html, /id="host-status"/);
+  assert.match(html, /index\.js/);
+  assert.match(html, /does not accept credentials/);
+  assert.doesNotMatch(html, /<input|<button/i);
+  assert.match(script, /from "azure-devops-extension-sdk"/);
+  assert.match(script, /SDK\.init\(\{ loaded: false/);
+  assert.match(script, /SDK\.ready\(\)/);
+  assert.match(script, /SDK\.notifyLoadSucceeded\(\)/);
+  assert.match(script, /SDK\.notifyLoadFailed/);
+  const hub = manifest.contributions.find((entry) => entry.targets.includes("ms.vss-web.collection-admin-hub-group"));
+  assert.equal(hub.properties.uri, "dist/extension/hub/index.html");
 });
 
 test("local packaging has no credentials while publishing requires an ephemeral token", () => {

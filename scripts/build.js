@@ -22,12 +22,23 @@ esbuild.buildSync({
   minify: production
 });
 
-// Keep the first package honest: show implementation status, not nonfunctional setup controls.
-const aboutDirectory = path.join(distDir, "extension", "about");
-fs.mkdirSync(aboutDirectory, { recursive: true });
-fs.copyFileSync(
-  path.join(rootDir, "src", "extension", "about", "index.html"),
-  path.join(aboutDirectory, "index.html")
-);
+// The hub is a browser bundle because it must complete the Azure DevOps host
+// handshake before the host stops showing its loading indicator.
+const hubSource = path.join(rootDir, "src", "extension", "hub");
+const hubDirectory = path.join(distDir, "extension", "hub");
+fs.mkdirSync(hubDirectory, { recursive: true });
+esbuild.buildSync({
+  entryPoints: [path.join(hubSource, "index.ts")],
+  outfile: path.join(hubDirectory, "index.js"),
+  bundle: true,
+  platform: "browser",
+  format: "iife",
+  target: "es2020",
+  sourcemap: !production,
+  minify: production
+});
+for (const file of ["index.html", "styles.css"]) {
+  fs.copyFileSync(path.join(hubSource, file), path.join(hubDirectory, file));
+}
 
 console.log(`Built review core${production ? " (production)" : ""}.`);

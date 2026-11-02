@@ -36,7 +36,7 @@
       "targets": ["ms.vss-web.collection-admin-hub-group"],
       "properties": {
         "name": "Masthead",
-        "uri": "dist/extension/about/index.html",
+        "uri": "dist/extension/hub/index.html",
         "icon": "images/icon-32.png"
       }
     }
