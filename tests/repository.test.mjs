@@ -75,7 +75,7 @@ test("edition manifests retain one code package and distinct public/private iden
     assert.ok(effective.files.some((entry) => entry.path === "dist/core/index.mjs" && entry.contentType === "application/javascript"));
     assert.ok(effective.contributions.some((entry) => entry.targets.includes("ms.vss-web.collection-admin-hub-group")));
     assert.ok(effective.contributions.some((entry) => entry.targets.includes("ms.vss-web.project-admin-hub-group")));
-    assert.deepEqual(effective.scopes, ["vso.extension.data_write", "vso.code", "vso.build"]);
+    assert.deepEqual(effective.scopes, ["vso.extension.data_write", "vso.code", "vso.build", "vso.project"]);
     assert.ok(!JSON.stringify(effective).includes("static-dev"));
   }
 });
@@ -115,8 +115,13 @@ test("the organization and project pages initialize the ADO host and split setti
   const manifest = JSON.parse(fs.readFileSync(path.join(root, "ado-manifests/azure-devops-extension-base.json"), "utf8"));
   assert.match(orgHtml, /id="host-status"/);
   assert.match(orgHtml, /id="org-enabled"/);
+  assert.match(orgHtml, /id="default-project"/);
+  assert.match(orgHtml, /id="default-repository"/);
+  assert.match(orgHtml, /class="tab active"/);
   assert.match(orgHtml, /class="choice-badge"/);
   assert.match(orgHtml, /Repository review gates are controlled in each project's settings page/);
+  assert.match(projectHtml, /id="new-repository-default"/);
+  assert.match(projectHtml, />Save settings</);
   assert.match(projectHtml, /id="project-enabled"/);
   assert.match(projectHtml, /id="repository-list"/);
   assert.doesNotMatch(orgHtml + projectHtml, /type="password"/i);

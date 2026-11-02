@@ -44,7 +44,15 @@
               <small>Organization master switch: <span id="org-state">loading...</span>. The organization switch overrides this project.</small>
             </span>
           </label>
-          <p class="note">New repositories are disabled by default. Enabling a repository allows Masthead to review future pull requests targeting its branches.</p>
+          <label class="field default-field">
+            <span>Default for new repositories</span>
+            <select id="new-repository-default">
+              <option value="inherit">Inherit organization setting</option>
+              <option value="enabled">Enabled</option>
+              <option value="disabled">Disabled</option>
+            </select>
+          </label>
+          <p class="note">New repositories use this default until an administrator changes the individual repository switch. Existing repositories keep their individual choice.</p>
         </section>
 
         <section class="panel" aria-labelledby="repositories-heading">
@@ -54,7 +62,7 @@
         </section>
 
         <div class="actions">
-          <button type="submit" class="primary" id="save-project">Save project settings</button>
+          <button type="submit" class="primary" id="save-project">Save settings</button>
           <p id="save-status" class="status-message" role="status" aria-live="polite"></p>
         </div>
       </form>
