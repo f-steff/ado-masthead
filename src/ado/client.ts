@@ -82,7 +82,8 @@ export class AdoClient implements AdoReviewClient {
 
   /** Used to attribute markers to the authenticated Masthead identity. */
   async getAuthenticatedIdentity(): Promise<AdoIdentityResponse> {
-    const value = await this.requestAbsolute("/_apis/connectionData");
+    // connectionData is still preview-only; a plain 7.1 version returns HTTP 400.
+    const value = await this.requestAbsolute("/_apis/connectionData", "7.1-preview");
     if (!isRecord(value) || !isRecord(value.authenticatedUser) ||
         typeof value.authenticatedUser.id !== "string" || !value.authenticatedUser.id) {
       throw new Error("Azure DevOps returned an invalid authenticated identity.");
@@ -195,8 +196,8 @@ export class AdoClient implements AdoReviewClient {
   }
 
   /** Use only the configured organization endpoint; never event-supplied URLs. */
-  private async requestAbsolute(pathname: string): Promise<unknown> {
-    return this.send(`${this.organizationUrl}${pathname}?api-version=${encodeURIComponent(this.apiVersion)}`);
+  private async requestAbsolute(pathname: string, apiVersion = this.apiVersion): Promise<unknown> {
+    return this.send(`${this.organizationUrl}${pathname}?api-version=${encodeURIComponent(apiVersion)}`);
   }
 
   private async request(pathname: string, options: { method?: string; body?: unknown } = {}): Promise<unknown> {

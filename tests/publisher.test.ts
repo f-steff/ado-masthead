@@ -244,6 +244,27 @@ test("the REST client keeps the token out of URLs and sends an inline thread con
   }), /HTTPS/);
 });
 
+test("the REST client requests the preview connectionData API", async () => {
+  const calls: string[] = [];
+  const fetchImpl: typeof fetch = async (input) => {
+    calls.push(String(input));
+    return new Response(JSON.stringify({
+      authenticatedUser: { id: botId, providerDisplayName: "Masthead" }
+    }), { status: 200 });
+  };
+  const client = new AdoClient({
+    organizationUrl: "https://dev.azure.com/contoso",
+    project: "SampleProject",
+    repositoryId: "repo-id",
+    token: "pipeline-token",
+    tokenScheme: "bearer",
+    fetchImpl
+  });
+  const identity = await client.getAuthenticatedIdentity();
+  assert.equal(identity.id, botId);
+  assert.match(calls[0], /connectionData\?api-version=7\.1-preview$/);
+});
+
 test("the REST client uses bearer authentication for a pipeline access token", async () => {
   let authorization = "";
   const fetchImpl: typeof fetch = async (_input, options) => {
