@@ -118,6 +118,10 @@ test("settings auto-detect one configured edition and reject ambiguous editions"
     if (String(url).includes("/masthead-dev/") && String(url).includes("/Documents/organization")) {
       return new Response(JSON.stringify({ value: { ...defaultOrganizationSettings(), defaultRepositoryEnabled: true } }), { status: 200 });
     }
+    if (String(url).includes("/masthead/") && String(url).includes("/Documents/organization")) {
+      // The management service returns 500 rather than 404 when an edition is absent.
+      return new Response("", { status: 500 });
+    }
     return new Response("", { status: 404 });
   });
   const auto = { ...base, extensionId: undefined };
@@ -133,6 +137,23 @@ test("settings auto-detect one configured edition and reject ambiguous editions"
       : new Response("", { status: 404 })
   }).catch((error: unknown) => error);
   assert.ok(both instanceof Error && /Both Masthead editions/.test(both.message));
+
+  const none = await loadReviewSettings({
+    ...auto,
+    fetchImpl: async () => new Response("", { status: 500 })
+  });
+  assert.equal(none.source, "defaults");
+  assert.equal(reviewGate(none), false);
+
+  await assert.rejects(
+    () => loadReviewSettings({
+      ...auto,
+      fetchImpl: async (url) => String(url).includes("/masthead-dev/")
+        ? new Response("", { status: 403 })
+        : new Response("", { status: 500 })
+    }),
+    /not readable/
+  );
 });
 
 test("snapshot parsing rejects malformed data instead of opening the gate", async () => {

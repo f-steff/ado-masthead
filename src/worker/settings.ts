@@ -32,7 +32,7 @@ export interface ReviewSettingsSnapshot {
 }
 
 export class SettingsAccessError extends Error {
-  constructor(message: string) {
+  constructor(message: string, readonly status?: number) {
     super(message);
     this.name = "SettingsAccessError";
   }
@@ -75,11 +75,12 @@ export async function readExtensionSetting(
   if (response.status === 401 || response.status === 403) {
     throw new SettingsAccessError(
       "Masthead settings are not readable by this pipeline identity. " +
-      "Check that MASTHEAD_EXTENSION_ID names the installed extension and that the pipeline identity can read extension data."
+      "Check that MASTHEAD_EXTENSION_ID names the installed extension and that the pipeline identity can read extension data.",
+      response.status
     );
   }
   if (!response.ok) {
-    throw new SettingsAccessError(`Masthead settings request failed with HTTP ${response.status}.`);
+    throw new SettingsAccessError(`Masthead settings request failed with HTTP ${response.status}.`, response.status);
   }
   let payload: unknown;
   try {
@@ -124,18 +125,29 @@ export async function loadReviewSettings(
   // If the pipeline did not pin an edition, accept the one configured Masthead
   // edition. If both editions have data, require an explicit choice rather than
   // applying the wrong organization's policy.
-  const candidates = ["masthead", "masthead-dev"];
-  const found = await Promise.all(candidates.map(async (extensionId) => ({
+  const candidates = ["masthead-dev", "masthead"];
+  const results = await Promise.allSettled(candidates.map(async (extensionId) => ({
     extensionId,
     value: await readExtensionSetting({ ...options, extensionId }, "organization")
   })));
-  const configured = found.filter((candidate) => candidate.value !== undefined);
+  const configured = results
+    .filter((result): result is PromiseFulfilledResult<{ extensionId: string; value: unknown }> =>
+      result.status === "fulfilled" && result.value.value !== undefined)
+    .map((result) => result.value);
   if (configured.length > 1) {
     throw new SettingsAccessError(
       "Both Masthead editions have settings. Set MASTHEAD_EXTENSION_ID to choose the edition used by this pipeline."
     );
   }
   if (configured.length === 0) {
+    const accessFailure = results.find((result) =>
+      result.status === "rejected" &&
+      result.reason instanceof SettingsAccessError &&
+      (result.reason.status === 401 || result.reason.status === 403));
+    if (accessFailure?.status === "rejected") {
+      throw accessFailure.reason;
+    }
+    // A missing extension currently returns HTTP 500 from the management host.
     return resolveSnapshot({}, projectId, repositoryId, "defaults");
   }
   const selected = configured[0];
