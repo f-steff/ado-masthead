@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import { buildStatusArgs } from "./status.mjs";
 import { parseValidationStatus } from "./validation.mjs";
-import { validateVersion } from "./version.mjs";
+import { isVersionAlreadyPublished, validateVersion } from "./version.mjs";
 
 /** Keep the helper usable on Windows without npm.cmd or shell quoting rules. */
 function run(file, args, options = {}) {
@@ -13,6 +13,24 @@ function run(file, args, options = {}) {
     throw new Error(`Release step failed: ${file}`);
   }
   return result;
+}
+
+/**
+ * A validation-status outage can leave an uploaded version without a tag.
+ * Re-running the workflow must not fail on the duplicate upload forever: if
+ * the only error is the version-exists guard, continue to explicit validation.
+ */
+function publish(edition) {
+  const result = spawnSync(process.execPath, ["scripts/tfx.js", "publish", edition], {
+    encoding: "utf8",
+    shell: false
+  });
+  if (result.stdout) process.stdout.write(result.stdout);
+  if (result.stderr) process.stderr.write(result.stderr);
+  if (result.error) throw new Error("Unable to run the Marketplace publish command.");
+  if (result.status === 0) return;
+  if (isVersionAlreadyPublished(`${result.stdout ?? ""}\n${result.stderr ?? ""}`)) return;
+  throw new Error("Marketplace publish failed before validation.");
 }
 
 /** Poll the Marketplace until the uploaded version is valid or rejects it. */
@@ -74,7 +92,7 @@ const head = spawnSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" });
 if (existing.status === 0 && existing.stdout.trim() !== head.stdout.trim()) {
   throw new Error("Requested version is already tagged at another commit.");
 }
-run(process.execPath, ["scripts/tfx.js", "publish", edition]);
+publish(edition);
 await waitForValidation(edition);
 tagRelease(tag);
 if (edition === "stable") {

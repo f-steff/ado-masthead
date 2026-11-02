@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
 import { buildStatusArgs } from "../ci/status.mjs";
 import { parseValidationStatus } from "../ci/validation.mjs";
-import { nextVersion, parseTags, validateVersion } from "../ci/version.mjs";
+import { isVersionAlreadyPublished, nextVersion, parseTags, validateVersion } from "../ci/version.mjs";
 
 const require = createRequire(import.meta.url);
 const { buildArgs, mergeManifest, validateArguments } = require("../scripts/tfx.js");
@@ -30,6 +30,14 @@ test("dev and stable editions follow the shared 0.x tag sequence", () => {
   assert.equal(nextVersion("stable", tags), "0.3.0");
   assert.throws(() => nextVersion("other", tags));
   assert.equal(nextVersion("stable", parseTags("v0.8.4")), "0.9.0");
+});
+
+test("an already-uploaded version can continue to validation after a status outage", () => {
+  assert.equal(isVersionAlreadyPublished(
+    "error: Version number must increase each time an extension is published. Current version: 0.0.14 Updated version: 0.0.14"
+  ), true);
+  assert.equal(isVersionAlreadyPublished("error: invalid manifest"), false);
+  assert.equal(isVersionAlreadyPublished(""), false);
 });
 
 test("release status calls use explicit fields instead of ignored stdin", () => {
