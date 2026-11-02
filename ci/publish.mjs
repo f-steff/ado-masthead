@@ -3,6 +3,7 @@
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import { buildStatusArgs } from "./status.mjs";
+import { parseValidationStatus } from "./validation.mjs";
 import { validateVersion } from "./version.mjs";
 
 /** Keep the helper usable on Windows without npm.cmd or shell quoting rules. */
@@ -14,7 +15,32 @@ function run(file, args, options = {}) {
   return result;
 }
 
-/** Tag only after tfx has completed Marketplace validation. */
+/** Poll the Marketplace until the uploaded version is valid or rejects it. */
+async function waitForValidation(edition) {
+  const attempts = 90;
+  const intervalMs = 10_000;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const result = spawnSync(process.execPath, ["scripts/tfx.js", "validate", edition], {
+      encoding: "utf8",
+      shell: false,
+      env: process.env
+    });
+    if (result.error || result.status !== 0) {
+      throw new Error("Marketplace validation status request failed.");
+    }
+    const status = parseValidationStatus(result.stdout ?? "");
+    if (status.status === "success") return;
+    if (status.status === "error") {
+      throw new Error(status.message);
+    }
+    if (attempt < attempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+  }
+  throw new Error("Marketplace validation did not complete before the release timeout.");
+}
+
+/** Tag only after explicit Marketplace validation polling succeeds. */
 function tagRelease(tag) {
   const existing = spawnSync("git", ["rev-parse", "--verify", `refs/tags/${tag}^{commit}`], { encoding: "utf8" });
   if (existing.status === 0) {
@@ -49,10 +75,12 @@ if (existing.status === 0 && existing.stdout.trim() !== head.stdout.trim()) {
   throw new Error("Requested version is already tagged at another commit.");
 }
 run(process.execPath, ["scripts/tfx.js", "publish", edition]);
+await waitForValidation(edition);
 tagRelease(tag);
 if (edition === "stable") {
   // Preserve the sequence even if the second upload fails: stable was published and tagged.
   run(process.execPath, ["scripts/tfx.js", "publish", "dev"]);
+  await waitForValidation("dev");
 }
 
 const extension = edition === "dev" ? "masthead-dev" : "masthead";

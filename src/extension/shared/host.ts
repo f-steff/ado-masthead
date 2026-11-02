@@ -17,6 +17,15 @@ export function notifyHostLoaded(): Promise<void> {
   return SDK.notifyLoadSucceeded();
 }
 
+/**
+ * The extension iframe is served from gallerycdn.vsassets.io, so its
+ * window.location.origin is not the Azure DevOps REST origin. Build the cloud
+ * organization URL explicitly; the manifest targets Azure DevOps Services.
+ */
+export function organizationUrl(hostName: string): string {
+  return `https://dev.azure.com/${encodeURIComponent(hostName)}`;
+}
+
 export function notifyHostFailed(message: string): Promise<void> {
   return SDK.notifyLoadFailed(message).catch(() => undefined);
 }

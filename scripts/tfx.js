@@ -23,14 +23,17 @@ function mergeManifest(base, override) {
 function buildArgs(command, manifest, generatedPath, env = process.env) {
   const args = ["extension"];
   if (command === "create" || command === "publish") {
-    // Publishing must wait for Marketplace validation. Tagging and recording a
-    // success before validation finishes makes an unavailable version look live.
     args.push(command, "--manifest-globs", generatedPath);
+    if (command === "publish") {
+      // TFX's built-in wait times out after four minutes. Upload asynchronously,
+      // then let the release script poll the validation result before tagging.
+      args.push("--no-wait-validation");
+    }
   } else {
     args.push(command === "validate" ? "isvalid" : command);
     args.push("--publisher", manifest.publisher, "--extension-id", manifest.id);
     if (command === "validate") {
-      args.push("--version", manifest.version);
+      args.push("--version", manifest.version, "--json", "--no-color");
     } else {
       const organizations = (env.ADO_SHARE_ORGS ?? "").split(/[\s,]+/).filter(Boolean);
       if (!organizations.length) {
@@ -83,14 +86,19 @@ function main() {
   const packagePath = require.resolve("tfx-cli/package.json");
   const tfx = JSON.parse(fs.readFileSync(packagePath, "utf8"));
   const binary = typeof tfx.bin === "string" ? tfx.bin : tfx.bin.tfx;
+  const validation = command === "validate";
   const result = spawnSync(process.execPath, [path.resolve(path.dirname(packagePath), binary), ...args], {
     cwd: root,
-    stdio: "inherit",
+    stdio: validation ? ["ignore", "pipe", "pipe"] : "inherit",
     shell: false,
     env
   });
   if (result.error) {
     throw new Error("Unable to execute the local tfx CLI.");
+  }
+  if (validation) {
+    if (result.stdout) process.stdout.write(result.stdout);
+    if (result.stderr) process.stderr.write(result.stderr);
   }
   process.exitCode = result.status ?? 1;
 }

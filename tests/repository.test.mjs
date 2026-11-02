@@ -9,6 +9,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
 import { buildStatusArgs } from "../ci/status.mjs";
+import { parseValidationStatus } from "../ci/validation.mjs";
 import { nextVersion, parseTags, validateVersion } from "../ci/version.mjs";
 
 const require = createRequire(import.meta.url);
@@ -135,11 +136,23 @@ test("local packaging has no credentials while publishing requires an ephemeral 
   assert.deepEqual(create, ["extension", "create", "--manifest-globs", "manifest.json"]);
   assert.throws(() => buildArgs("publish", manifest, "manifest.json", {}), /token/);
   const publish = buildArgs("publish", manifest, "manifest.json", { TFS_PAT: "test-only-token" });
-  assert.ok(!publish.includes("--no-wait-validation"));
-  assert.ok(!publish.includes("--wait-validation"));
+  assert.ok(publish.includes("--no-wait-validation"));
   assert.equal(publish.at(-1), "test-only-token");
+  const validate = buildArgs("validate", manifest, "manifest.json", { TFS_PAT: "test-only-token" });
+  assert.ok(validate.includes("--json"));
+  assert.ok(validate.includes("--no-color"));
   assert.throws(() => validateArguments("delete", "dev"));
   assert.throws(() => validateArguments("create", "../stable"));
+});
+
+test("Marketplace validation polling distinguishes pending, success and failure", () => {
+  assert.deepEqual(parseValidationStatus('banner\n{"status":"pending"}\n'), { status: "pending" });
+  assert.deepEqual(parseValidationStatus('{"status":"success"}'), { status: "success" });
+  assert.deepEqual(
+    parseValidationStatus('{"status":"error","message":"Invalid manifest"}'),
+    { status: "error", message: "Invalid manifest" }
+  );
+  assert.throws(() => parseValidationStatus("not json"), /valid JSON/);
 });
 
 test("sharing uses repeated arguments and refuses an empty access list", () => {
