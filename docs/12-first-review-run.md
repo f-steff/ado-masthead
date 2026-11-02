@@ -37,7 +37,7 @@ argument.
 | Variable | Purpose |
 | --- | --- |
 | `AZURE_DEVOPS_ORG_URL` | Organization URL without a project path. |
-| `MASTHEAD_PROJECT` | Project containing the reviewed repository. |
+| `MASTHEAD_PROJECT` | Destination project containing the reviewed repository. For a fork or cross-project PR this is the project receiving the merge, not the source project. |
 | `MASTHEAD_PROJECT_ID` | Optional project id fallback when the PR response omits it. |
 | `MASTHEAD_REPOSITORY` | Repository ID or name. |
 | `MASTHEAD_PULL_REQUEST_ID` | Pull request number. |
