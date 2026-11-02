@@ -212,6 +212,19 @@ test("review profiles inherit from organization to project to repository", () =>
   assert.deepEqual(overridden.profile.enabledLenses, ["correctness", "security"]);
   assert.equal(overridden.provider, "anthropic");
   assert.equal(overridden.model, "repo-model");
+
+  const repositoryOnly = reviewSelection(organization, {
+    ...project,
+    inheritProfile: true,
+    repositories: {
+      "repo-a": {
+        enabled: true,
+        profile: { enabledLenses: ["correctness", "tests"], reviewGuide: false }
+      }
+    }
+  }, "repo-a");
+  assert.deepEqual(repositoryOnly.profile.enabledLenses, ["correctness", "tests"]);
+  assert.equal(repositoryOnly.profile.reviewGuide, false);
 });
 
 test("malformed profile data is dropped rather than trusted", () => {

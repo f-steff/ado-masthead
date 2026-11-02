@@ -119,7 +119,7 @@ test("the organization and project pages initialize the ADO host and split setti
   assert.match(orgHtml, /id="default-repository"/);
   assert.match(orgHtml, /id="defaults-heading"/);
   assert.match(orgHtml, /Defaults for new projects and repositories/);
-  assert.match(orgHtml, /images\/icon-128\.png/);
+  assert.match(orgHtml, /\.\.\/\.\.\/\.\.\/images\/icon-128\.png/);
   assert.match(orgHtml, /id="pipeline-search"/);
   assert.match(orgHtml, /id="pipeline-project"/);
   assert.match(orgHtml, /id="pipeline-options"/);
@@ -141,7 +141,7 @@ test("the organization and project pages initialize the ADO host and split setti
   assert.match(projectHtml, /id="project-lens-list"/);
   assert.match(projectHtml, /id="repo-profile-list"/);
   assert.match(projectHtml, /About Masthead in this project/);
-  assert.match(projectHtml, /images\/icon-128\.png/);
+  assert.match(projectHtml, /\.\.\/\.\.\/\.\.\/images\/icon-128\.png/);
   assert.match(projectScript, /function activateTab/);
   assert.doesNotMatch(orgHtml + projectHtml, /type="password"/i);
   assert.match(host, /SDK\.init\(\{ loaded: false/);
