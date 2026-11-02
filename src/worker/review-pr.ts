@@ -33,17 +33,12 @@ async function main(): Promise<void> {
   }
   const snapshot = (env.MASTHEAD_SETTINGS_JSON || "").trim();
   const extensionId = (env.MASTHEAD_EXTENSION_ID || "").trim();
-  if (!snapshot && !extensionId) {
-    throw new Error(
-      "Set MASTHEAD_EXTENSION_ID to the installed Masthead extension id, or set MASTHEAD_SETTINGS_JSON for a controlled snapshot."
-    );
-  }
   const settings = await loadReviewSettings({
     organizationUrl,
     token: auth.token,
     tokenScheme: auth.scheme,
     publisher: (env.MASTHEAD_EXTENSION_PUBLISHER || "f-steff").trim(),
-    extensionId,
+    ...(extensionId ? { extensionId } : {}),
     projectId: destinationProjectId,
     repositoryId: pr.repository.id,
     ...(snapshot ? { snapshot } : {})
@@ -54,6 +49,7 @@ async function main(): Promise<void> {
       organizationEnabled: settings.organization.enabled,
       projectEnabled: settings.project.enabled,
       repositoryEnabled: settings.project.repositories[settings.repositoryId]?.enabled === true,
+      settingsSource: settings.source,
       pullRequestId
     }, null, 2));
     return;

@@ -113,6 +113,28 @@ test("a missing repository is disabled, while an absent project follows the orga
   assert.equal(reviewGate(defaultOn), true);
 });
 
+test("settings auto-detect one configured edition and reject ambiguous editions", async () => {
+  const base = options(async (url) => {
+    if (String(url).includes("/masthead-dev/") && String(url).includes("/Documents/organization")) {
+      return new Response(JSON.stringify({ value: { ...defaultOrganizationSettings(), defaultRepositoryEnabled: true } }), { status: 200 });
+    }
+    return new Response("", { status: 404 });
+  });
+  const auto = { ...base, extensionId: undefined };
+  const selected = await loadReviewSettings(auto);
+  assert.equal(selected.source, "extension-data");
+  assert.equal(selected.extensionId, "masthead-dev");
+  assert.equal(reviewGate(selected), true);
+
+  const both = await loadReviewSettings({
+    ...auto,
+    fetchImpl: async (url) => String(url).includes("/Documents/organization")
+      ? new Response(JSON.stringify({ value: defaultOrganizationSettings() }), { status: 200 })
+      : new Response("", { status: 404 })
+  }).catch((error: unknown) => error);
+  assert.ok(both instanceof Error && /Both Masthead editions/.test(both.message));
+});
+
 test("snapshot parsing rejects malformed data instead of opening the gate", async () => {
   for (const value of ["not json", "[]", "null", '"text"']) {
     await assert.rejects(

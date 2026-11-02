@@ -27,7 +27,8 @@ export interface ReviewSettingsSnapshot {
   project: ProjectSettings;
   projectId: string;
   repositoryId: string;
-  source: "extension-data" | "snapshot";
+  source: "extension-data" | "snapshot" | "defaults";
+  extensionId?: string;
 }
 
 export class SettingsAccessError extends Error {
@@ -98,7 +99,8 @@ export async function readExtensionSetting(
  * document is disabled rather than silently enabled by a stale default.
  */
 export async function loadReviewSettings(
-  options: SettingsSourceOptions & {
+  options: Omit<SettingsSourceOptions, "extensionId"> & {
+    extensionId?: string;
     projectId: string;
     repositoryId: string;
     snapshot?: string;
@@ -106,12 +108,51 @@ export async function loadReviewSettings(
 ): Promise<ReviewSettingsSnapshot> {
   const projectId = requiredSegment(options.projectId, "project id");
   const repositoryId = requiredSegment(options.repositoryId, "repository id");
-  const raw = options.snapshot?.trim()
-    ? parseSnapshot(options.snapshot)
-    : {
-        organization: await readExtensionSetting(options, "organization"),
-        project: await readExtensionSetting(options, `project.${projectId}`)
-      };
+  if (options.snapshot?.trim()) {
+    return resolveSnapshot(parseSnapshot(options.snapshot), projectId, repositoryId, "snapshot");
+  }
+
+  const explicitId = (options.extensionId || "").trim();
+  if (explicitId) {
+    const raw = {
+      organization: await readExtensionSetting({ ...options, extensionId: explicitId }, "organization"),
+      project: await readExtensionSetting({ ...options, extensionId: explicitId }, `project.${projectId}`)
+    };
+    return resolveSnapshot(raw, projectId, repositoryId, "extension-data", explicitId);
+  }
+
+  // If the pipeline did not pin an edition, accept the one configured Masthead
+  // edition. If both editions have data, require an explicit choice rather than
+  // applying the wrong organization's policy.
+  const candidates = ["masthead", "masthead-dev"];
+  const found = await Promise.all(candidates.map(async (extensionId) => ({
+    extensionId,
+    value: await readExtensionSetting({ ...options, extensionId }, "organization")
+  })));
+  const configured = found.filter((candidate) => candidate.value !== undefined);
+  if (configured.length > 1) {
+    throw new SettingsAccessError(
+      "Both Masthead editions have settings. Set MASTHEAD_EXTENSION_ID to choose the edition used by this pipeline."
+    );
+  }
+  if (configured.length === 0) {
+    return resolveSnapshot({}, projectId, repositoryId, "defaults");
+  }
+  const selected = configured[0];
+  const raw = {
+    organization: selected.value,
+    project: await readExtensionSetting({ ...options, extensionId: selected.extensionId }, `project.${projectId}`)
+  };
+  return resolveSnapshot(raw, projectId, repositoryId, "extension-data", selected.extensionId);
+}
+
+function resolveSnapshot(
+  raw: { organization?: unknown; project?: unknown },
+  projectId: string,
+  repositoryId: string,
+  source: ReviewSettingsSnapshot["source"],
+  extensionId?: string
+): ReviewSettingsSnapshot {
   const organization = normalizeOrganizationSettings(raw.organization ?? defaultOrganizationSettings());
   const project = normalizeProjectSettings(raw.project ?? {
     ...defaultProjectSettings(),
@@ -122,7 +163,8 @@ export async function loadReviewSettings(
     project,
     projectId,
     repositoryId,
-    source: options.snapshot?.trim() ? "snapshot" : "extension-data"
+    source,
+    ...(extensionId ? { extensionId } : {})
   };
 }
 

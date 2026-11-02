@@ -37,6 +37,7 @@ const brokerChoice = document.querySelector<HTMLElement>("#broker-choice");
 const nativeWebhook = document.querySelector<HTMLInputElement>("#native-webhook");
 const brokerUrl = document.querySelector<HTMLInputElement>("#broker-url");
 const pipelineSearch = document.querySelector<HTMLInputElement>("#pipeline-search");
+const pipelineProject = document.querySelector<HTMLSelectElement>("#pipeline-project");
 const pipelineOptions = document.querySelector<HTMLDataListElement>("#pipeline-options");
 const pipelineSelected = document.querySelector<HTMLElement>("#pipeline-selected");
 const saveStatus = document.querySelector<HTMLElement>("#save-status");
@@ -114,13 +115,33 @@ async function fetchProjects(): Promise<Array<{ id: string; name: string }>> {
 function renderPipelineOptions(query = ""): void {
   if (!pipelineOptions) return;
   pipelineOptions.replaceChildren();
-  const matches = filterPipelines(pipelines, query);
+  const project = pipelineProject?.value ?? "";
+  const matches = filterPipelines(pipelines, query)
+    .filter((pipeline) => !project || pipeline.project === project);
   for (const pipeline of matches) {
     const option = document.createElement("option");
     option.value = pipelineLabel(pipeline);
     option.label = `${pipeline.project} pipeline`;
     pipelineOptions.append(option);
   }
+}
+
+/** Keep the project filter aligned with the discovered project list. */
+function renderPipelineProjectOptions(discovered: Array<{ name: string }>): void {
+  if (!pipelineProject) return;
+  const current = pipelineProject.value;
+  pipelineProject.replaceChildren();
+  const all = document.createElement("option");
+  all.value = "";
+  all.textContent = "All projects";
+  pipelineProject.append(all);
+  for (const name of discovered.map((project) => project.name).sort((left, right) => left.localeCompare(right))) {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name;
+    pipelineProject.append(option);
+  }
+  pipelineProject.value = [...pipelineProject.options].some((option) => option.value === current) ? current : "";
 }
 
 /** Resolve the current input to an exact listed pipeline, if possible. */
@@ -154,6 +175,10 @@ function restorePipelineSelection(): void {
     name: settings.pipelineName ?? "Saved pipeline"
   };
   if (pipelineSearch) pipelineSearch.value = pipelineLabel(selectedPipeline);
+  if (pipelineProject) {
+    pipelineProject.value = selectedPipeline.project;
+    renderPipelineOptions(pipelineSearch?.value ?? "");
+  }
   if (pipelineSelected) pipelineSelected.textContent = `Selected ${pipelineLabel(selectedPipeline)}.`;
 }
 
@@ -372,6 +397,7 @@ async function loadProjects(): Promise<void> {
     }));
     projects = rows;
     renderProjectList();
+    renderPipelineProjectOptions(discovered);
     pipelines = await fetchPipelines(discovered);
     renderPipelineOptions();
     restorePipelineSelection();
@@ -436,6 +462,10 @@ async function main(): Promise<void> {
     selectPipelineFromSearch();
   });
   pipelineSearch?.addEventListener("change", selectPipelineFromSearch);
+  pipelineProject?.addEventListener("change", () => {
+    renderPipelineOptions(pipelineSearch?.value ?? "");
+    selectPipelineFromSearch();
+  });
   for (const tab of tabs) {
     tab.addEventListener("click", () => activateTab(tab.dataset.tab ?? "general"));
   }

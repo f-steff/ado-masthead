@@ -45,7 +45,7 @@ argument.
 | `MASTHEAD_MODEL` | Provider model name; a settings override takes precedence. |
 | `MASTHEAD_MAX_TOKENS` | Optional output budget. |
 | `MASTHEAD_TIMEOUT_MS` | Optional provider timeout. |
-| `MASTHEAD_EXTENSION_ID` | Installed extension id, for example `masthead-dev`. Required unless a settings snapshot is supplied. |
+| `MASTHEAD_EXTENSION_ID` | Installed extension id, for example `masthead-dev`. Recommended; when omitted, one configured Masthead edition is auto-detected. |
 | `MASTHEAD_EXTENSION_PUBLISHER` | Optional publisher id; defaults to `f-steff`. |
 | `MASTHEAD_SETTINGS_JSON` | Optional controlled settings snapshot for local or isolated tests. |
 | `MASTHEAD_ADO_TOKEN` | Optional dedicated service-identity PAT. It takes precedence over the build-service token. |
@@ -60,6 +60,10 @@ destination project before it configures a provider. The organization, project
 and repository switches are therefore effective before any model tokens are
 spent. The project id comes from the PR's destination repository; a fork or
 cross-project PR is gated by the repository that receives the merge.
+
+When `MASTHEAD_EXTENSION_ID` is omitted, the worker checks the stable and dev
+extension documents. If both editions have settings, the worker refuses to
+guess and asks for `MASTHEAD_EXTENSION_ID`. Pin the edition in production.
 
 The pipeline identity must be able to read the extension's data documents. If
 that is not available in the hosting organization, supply the same shape through
