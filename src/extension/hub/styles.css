@@ -164,6 +164,136 @@ a {
   color: var(--communication-foreground, #0969da);
 }
 
+form {
+  display: block;
+}
+
+fieldset {
+  margin: 18px 0;
+  padding: 0;
+  border: 0;
+}
+
+legend {
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.switch-row,
+.radio-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 10px 0;
+  cursor: pointer;
+}
+
+.switch-row input,
+.radio-row input {
+  margin-top: 4px;
+}
+
+.switch-row small {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-secondary-color, #57606a);
+  font-size: 13px;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+input[type="text"],
+input[type="url"],
+input[type="number"] {
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 9px;
+  border: 1px solid var(--callout-border-color, #d0d7de);
+  border-radius: 6px;
+  color: inherit;
+  background: var(--background-color, #fff);
+  font: inherit;
+  font-weight: 400;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-top: 16px;
+}
+
+button {
+  min-height: 34px;
+  padding: 6px 14px;
+  border: 1px solid var(--callout-border-color, #d0d7de);
+  border-radius: 6px;
+  color: inherit;
+  background: var(--background-color, #fff);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button.primary {
+  border-color: #0e7490;
+  background: #0e7490;
+  color: #fff;
+}
+
+button.secondary {
+  color: var(--communication-foreground, #0969da);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.repository-list {
+  display: grid;
+  gap: 2px;
+  margin-top: 8px;
+}
+
+.repository-list .switch-row {
+  padding: 9px 0;
+  border-top: 1px solid var(--callout-border-color, #eaeef2);
+}
+
+.repository-list .switch-row:first-child {
+  border-top: 0;
+}
+
+.status-message {
+  min-height: 20px;
+  margin: 0;
+  color: var(--text-secondary-color, #57606a);
+  font-size: 13px;
+}
+
+.status-message.error {
+  color: #cf222e;
+}
+
+.status-message.success {
+  color: #1a7f37;
+}
+
 @media (max-width: 560px) {
   .hero {
     align-items: flex-start;
@@ -181,5 +311,9 @@ a {
   .status-list span {
     display: block;
     margin-bottom: 2px;
+  }
+
+  .field-grid {
+    grid-template-columns: 1fr;
   }
 }

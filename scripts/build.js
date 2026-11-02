@@ -56,4 +56,21 @@ for (const file of ["index.html", "styles.css"]) {
   fs.copyFileSync(path.join(hubSource, file), path.join(hubDirectory, file));
 }
 
+// Project settings is a separate contribution so repository gating stays in
+// the project administration surface rather than the organization page.
+const projectSource = path.join(rootDir, "src", "extension", "project");
+const projectDirectory = path.join(distDir, "extension", "project");
+fs.mkdirSync(projectDirectory, { recursive: true });
+esbuild.buildSync({
+  entryPoints: [path.join(projectSource, "index.ts")],
+  outfile: path.join(projectDirectory, "index.js"),
+  bundle: true,
+  platform: "browser",
+  format: "iife",
+  target: "es2020",
+  sourcemap: !production,
+  minify: production
+});
+fs.copyFileSync(path.join(projectSource, "index.html"), path.join(projectDirectory, "index.html"));
+
 console.log(`Built review core${production ? " (production)" : ""}.`);

@@ -9,10 +9,14 @@ Masthead is in active development. The dev package is available to shared
 organizations; the public stable release is still being prepared.
 
 The current implementation includes the validated review core, provider
-adapters, an SDK-initialized organization hub, and a manual/pipeline review path
-that reads a pull request, posts findings as ADO threads and reuses existing
-Masthead threads on retry. Automatic PR-event delivery, deployment controls,
-repository settings and the PR tab are still being built. The features below
+adapters, SDK-initialized organization and project settings hubs, and a
+manual/pipeline review path that reads a pull request, posts findings as ADO
+threads and reuses existing Masthead threads on retry. The organization page
+has a master switch, delivery mode and central-pipeline validation. The project
+page discovers repositories and stores per-repository review gates.
+
+Automatic PR-event delivery, central-pipeline creation, the worker's use of the
+persisted gates, and the PR tab are still being built. The features below
 describe the intended complete product.
 
 Local tests exercise review validation, repository gating, finding

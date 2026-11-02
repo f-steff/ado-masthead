@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Masthead project settings</title>
+    <link rel="stylesheet" href="../hub/styles.css">
+  </head>
+  <body>
+    <!-- This page lists repository names only. It does not read file content,
+         provider keys or pull request discussion. -->
+    <main class="page">
+      <header class="hero">
+        <div class="mark" aria-hidden="true">
+          <svg viewBox="0 0 64 64" role="img">
+            <path d="M12 49h40M18 49V27l14-9 14 9v22M25 49V36h14v13M32 18V9l10 5-10 4" />
+          </svg>
+        </div>
+        <div>
+          <p class="eyebrow">Azure DevOps project settings</p>
+          <h1>Masthead</h1>
+          <p class="lede">Choose which repositories may receive pull request reviews in this project.</p>
+        </div>
+      </header>
+
+      <section class="panel" aria-labelledby="connection-heading">
+        <div class="connection">
+          <span class="status-dot" id="status-dot" aria-hidden="true"></span>
+          <div>
+            <h2 id="connection-heading">Extension host</h2>
+            <p id="host-status">Connecting to Azure DevOps...</p>
+            <p class="meta" id="host-meta"></p>
+          </div>
+        </div>
+      </section>
+
+      <form id="project-form">
+        <section class="panel" aria-labelledby="project-heading">
+          <h2 id="project-heading">Project access</h2>
+          <label class="switch-row">
+            <input type="checkbox" id="project-enabled">
+            <span>
+              <strong>Enable Masthead reviews for this project</strong>
+              <small>Organization master switch: <span id="org-state">loading...</span>. The organization switch overrides this project.</small>
+            </span>
+          </label>
+          <p class="note">New repositories are disabled by default. Enabling a repository allows Masthead to review future pull requests targeting its branches.</p>
+        </section>
+
+        <section class="panel" aria-labelledby="repositories-heading">
+          <h2 id="repositories-heading">Repositories</h2>
+          <div id="repository-list" class="repository-list" aria-live="polite">Loading repositories...</div>
+          <p id="repository-status" class="status-message" role="status" aria-live="polite"></p>
+        </section>
+
+        <div class="actions">
+          <button type="submit" class="primary" id="save-project">Save project settings</button>
+          <p id="save-status" class="status-message" role="status" aria-live="polite"></p>
+        </div>
+      </form>
+
+      <footer>
+        <a href="https://github.com/f-steff/ado-masthead#readme" target="_blank" rel="noopener noreferrer">Project documentation</a>
+      </footer>
+    </main>
+    <script src="index.js"></script>
+  </body>
+</html>

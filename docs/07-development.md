@@ -9,7 +9,7 @@
 | `src/settings/` | Organization, project and repository gating model. |
 | `src/ado/` | Azure DevOps REST client, thread metadata and publication adapter. |
 | `broker/` | Optional Docker event receiver and its tests. |
-| `src/extension/` | SDK-initialized organization hub; future settings and PR-tab surfaces. |
+| `src/extension/` | SDK-initialized organization and project settings hubs; future PR-tab surface. |
 | `src/worker/` | Review execution, ADO review orchestration and PR-event decision policy. |
 | `images/` | Editable SVG icon source and rendered PNG sizes. |
 | `tests/` | Deterministic unit tests and review fixtures. |
@@ -40,9 +40,13 @@ The test runner bundles TypeScript with esbuild and runs Node's test runner.
 The generated review core is written to `dist/core/`. The pipeline entry point
 is written to `dist/worker/review-pr.mjs`.
 
-The organization hub is bundled to `dist/extension/hub/` and initializes the
-Azure DevOps SDK before reporting loaded. VSIX packages validate the release
-scaffold; they do not yet deploy an event service, settings controls or a PR tab.
+The organization hub is bundled to `dist/extension/hub/`, and the project admin
+hub to `dist/extension/project/`; both initialize the Azure DevOps SDK before
+reporting loaded. The organization page stores the master switch, delivery mode
+and central-pipeline validation fields. The project page discovers repositories
+and stores per-repository gates. VSIX packages validate the release scaffold.
+They do not yet create an event service or central pipeline, and the worker does
+not yet read the persisted gates.
 
 ## Icons
 

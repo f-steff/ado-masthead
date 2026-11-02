@@ -73,6 +73,8 @@ test("edition manifests retain one code package and distinct public/private iden
     assert.deepEqual(effective.files, base.files);
     assert.ok(effective.files.some((entry) => entry.path === "dist/core/index.mjs" && entry.contentType === "application/javascript"));
     assert.ok(effective.contributions.some((entry) => entry.targets.includes("ms.vss-web.collection-admin-hub-group")));
+    assert.ok(effective.contributions.some((entry) => entry.targets.includes("ms.vss-web.project-admin-hub-group")));
+    assert.deepEqual(effective.scopes, ["vso.extension.data_write", "vso.code", "vso.build"]);
     assert.ok(!JSON.stringify(effective).includes("static-dev"));
   }
 });
@@ -103,21 +105,28 @@ test("the extension manifest ships the approved icon set", () => {
   assert.match(svg, /Masthead crow's nest lookout/);
 });
 
-test("the organization hub initializes the Azure DevOps host before showing status", () => {
-  const html = fs.readFileSync(path.join(root, "src/extension/hub/index.html"), "utf8");
-  const script = fs.readFileSync(path.join(root, "src/extension/hub/index.ts"), "utf8");
+test("the organization and project pages initialize the ADO host and split settings", () => {
+  const orgHtml = fs.readFileSync(path.join(root, "src/extension/hub/index.html"), "utf8");
+  const orgScript = fs.readFileSync(path.join(root, "src/extension/hub/index.ts"), "utf8");
+  const projectHtml = fs.readFileSync(path.join(root, "src/extension/project/index.html"), "utf8");
+  const projectScript = fs.readFileSync(path.join(root, "src/extension/project/index.ts"), "utf8");
+  const host = fs.readFileSync(path.join(root, "src/extension/shared/host.ts"), "utf8");
   const manifest = JSON.parse(fs.readFileSync(path.join(root, "ado-manifests/azure-devops-extension-base.json"), "utf8"));
-  assert.match(html, /id="host-status"/);
-  assert.match(html, /index\.js/);
-  assert.match(html, /does not accept credentials/);
-  assert.doesNotMatch(html, /<input|<button/i);
-  assert.match(script, /from "azure-devops-extension-sdk"/);
-  assert.match(script, /SDK\.init\(\{ loaded: false/);
-  assert.match(script, /SDK\.ready\(\)/);
-  assert.match(script, /SDK\.notifyLoadSucceeded\(\)/);
-  assert.match(script, /SDK\.notifyLoadFailed/);
-  const hub = manifest.contributions.find((entry) => entry.targets.includes("ms.vss-web.collection-admin-hub-group"));
-  assert.equal(hub.properties.uri, "dist/extension/hub/index.html");
+  assert.match(orgHtml, /id="host-status"/);
+  assert.match(orgHtml, /id="org-enabled"/);
+  assert.match(orgHtml, /Repository review gates are controlled in each project's settings page/);
+  assert.match(projectHtml, /id="project-enabled"/);
+  assert.match(projectHtml, /id="repository-list"/);
+  assert.doesNotMatch(orgHtml + projectHtml, /type="password"/i);
+  assert.match(host, /SDK\.init\(\{ loaded: false/);
+  assert.match(host, /SDK\.notifyLoadSucceeded\(\)/);
+  assert.match(host, /SDK\.notifyLoadFailed/);
+  assert.match(orgScript, /saveSetting\("organization"/);
+  assert.match(projectScript, /saveSetting\(`project\.\$\{projectId\}`/);
+  const org = manifest.contributions.find((entry) => entry.targets.includes("ms.vss-web.collection-admin-hub-group"));
+  const project = manifest.contributions.find((entry) => entry.targets.includes("ms.vss-web.project-admin-hub-group"));
+  assert.equal(org.properties.uri, "dist/extension/hub/index.html");
+  assert.equal(project.properties.uri, "dist/extension/project/index.html");
 });
 
 test("local packaging has no credentials while publishing requires an ephemeral token", () => {
