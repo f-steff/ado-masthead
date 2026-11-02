@@ -35,21 +35,16 @@ body {
   flex: 0 0 auto;
   width: 72px;
   height: 72px;
-  padding: 10px;
+  overflow: hidden;
   border-radius: 14px;
-  background: #0e7490;
-  color: #fff;
+  background: transparent;
 }
 
-.mark svg {
+.mark img {
   display: block;
   width: 100%;
   height: 100%;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  object-fit: cover;
 }
 
 .eyebrow {
@@ -223,8 +218,37 @@ legend {
   cursor: pointer;
 }
 
-.switch-row input {
-  margin-top: 4px;
+/* Native checks pick up the host's dark/light palette inconsistently. Draw a
+   transparent unchecked box and a white tick on the Masthead colour instead. */
+input[type="checkbox"] {
+  appearance: none;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin: 3px 0 0;
+  border: 1px solid var(--control-border, #8c959f);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type="checkbox"]:checked {
+  border-color: #0e7490;
+  background-color: #0e7490;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.2 8.4l3 3 6.6-7' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 14px 14px;
+}
+
+input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--focus-border-color, #0969da);
+  outline-offset: 2px;
+}
+
+input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
 }
 
 .choice-group {
@@ -375,6 +399,11 @@ select {
   border-top: 1px solid var(--callout-border-color, #eaeef2);
 }
 
+.project-row.inactive {
+  color: var(--text-secondary-color, #8c959f);
+  background: rgba(140, 149, 159, 0.06);
+}
+
 .project-row:first-child {
   border-top: 0;
 }
@@ -465,6 +494,11 @@ button:disabled {
 
 .repository-list .switch-row:first-child {
   border-top: 0;
+}
+
+.repository-list .switch-row.inactive {
+  color: var(--text-secondary-color, #8c959f);
+  opacity: 0.7;
 }
 
 .status-message {
