@@ -14,7 +14,7 @@ function run(file, args, options = {}) {
   return result;
 }
 
-/** Tag publication success, not asynchronous Marketplace validation results. */
+/** Tag only after tfx has completed Marketplace validation. */
 function tagRelease(tag) {
   const existing = spawnSync("git", ["rev-parse", "--verify", `refs/tags/${tag}^{commit}`], { encoding: "utf8" });
   if (existing.status === 0) {

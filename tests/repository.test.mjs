@@ -126,7 +126,8 @@ test("local packaging has no credentials while publishing requires an ephemeral 
   assert.deepEqual(create, ["extension", "create", "--manifest-globs", "manifest.json"]);
   assert.throws(() => buildArgs("publish", manifest, "manifest.json", {}), /token/);
   const publish = buildArgs("publish", manifest, "manifest.json", { TFS_PAT: "test-only-token" });
-  assert.ok(publish.includes("--no-wait-validation"));
+  assert.ok(!publish.includes("--no-wait-validation"));
+  assert.ok(!publish.includes("--wait-validation"));
   assert.equal(publish.at(-1), "test-only-token");
   assert.throws(() => validateArguments("delete", "dev"));
   assert.throws(() => validateArguments("create", "../stable"));
