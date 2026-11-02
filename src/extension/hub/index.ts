@@ -46,6 +46,13 @@ const saveStatus = document.querySelector<HTMLElement>("#save-status");
 const pipelineStatus = document.querySelector<HTMLElement>("#pipeline-status");
 const validateButton = document.querySelector<HTMLButtonElement>("#validate-pipeline");
 const clearPipelineButton = document.querySelector<HTMLButtonElement>("#clear-pipeline");
+const createProject = document.querySelector<HTMLSelectElement>("#pipeline-create-project");
+const createRepository = document.querySelector<HTMLSelectElement>("#pipeline-create-repository");
+const createName = document.querySelector<HTMLInputElement>("#pipeline-create-name");
+const createPath = document.querySelector<HTMLInputElement>("#pipeline-create-path");
+const installPipelineButton = document.querySelector<HTMLButtonElement>("#install-pipeline");
+const deletePipelineButton = document.querySelector<HTMLButtonElement>("#delete-pipeline");
+const createStatus = document.querySelector<HTMLElement>("#create-status");
 const saveButton = document.querySelector<HTMLButtonElement>("#save-settings");
 const aboutVersion = document.querySelector<HTMLElement>("#about-version");
 const extensionId = document.querySelector<HTMLElement>("#extension-id");
@@ -70,6 +77,7 @@ let settings = defaultOrganizationSettings();
 let projects: ProjectRow[] = [];
 let pipelines: PipelineOption[] = [];
 let selectedPipeline: PipelineOption | undefined;
+let pipelineRepositories: Array<{ id: string; name: string }> = [];
 
 /** Report host failure without exposing organization details. */
 function showHostFailure(): void {
@@ -133,6 +141,155 @@ function renderPipelineOptions(query = ""): void {
     option.value = pipelineLabel(pipeline);
     option.label = `${pipeline.project} pipeline`;
     pipelineOptions.append(option);
+  }
+}
+
+/** Populate the project selector used by the pipeline installer. */
+function renderCreateProjectOptions(): void {
+  if (!createProject) return;
+  const current = createProject.value || settings.pipelineProject || "";
+  createProject.replaceChildren();
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select a project";
+  createProject.append(placeholder);
+  for (const project of projects.map((item) => item.name).sort((left, right) => left.localeCompare(right))) {
+    const option = document.createElement("option");
+    option.value = project;
+    option.textContent = project;
+    createProject.append(option);
+  }
+  createProject.value = [...createProject.options].some((option) => option.value === current) ? current : "";
+  if (createProject.value) {
+    void loadPipelineRepositories(createProject.value);
+  }
+}
+
+/** Fetch repositories for the installer's selected project. */
+async function loadPipelineRepositories(project: string): Promise<void> {
+  if (!createRepository) return;
+  pipelineRepositories = [];
+  createRepository.replaceChildren();
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = project ? "Loading repositories..." : "Select a repository";
+  createRepository.append(placeholder);
+  if (!project) return;
+  try {
+    const token = await SDK.getAccessToken();
+    const response = await fetch(
+      `${organizationUrl(hostName)}/${encodeURIComponent(project)}/_apis/git/repositories?api-version=7.1`,
+      { headers: { authorization: `Bearer ${token}`, accept: "application/json" }, redirect: "error" }
+    );
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const value = await response.json() as { value?: unknown };
+    const entries = Array.isArray(value.value) ? value.value : [];
+    pipelineRepositories = entries
+      .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null && !Array.isArray(item))
+      .filter((item) => typeof item.id === "string" && typeof item.name === "string")
+      .map((item) => ({ id: item.id as string, name: item.name as string }))
+      .sort((left, right) => left.name.localeCompare(right.name));
+    createRepository.replaceChildren();
+    const empty = document.createElement("option");
+    empty.value = "";
+    empty.textContent = pipelineRepositories.length ? "Select a repository" : "No repositories found";
+    createRepository.append(empty);
+    for (const repository of pipelineRepositories) {
+      const option = document.createElement("option");
+      option.value = repository.id;
+      option.textContent = repository.name;
+      createRepository.append(option);
+    }
+  } catch {
+    createRepository.replaceChildren();
+    const failed = document.createElement("option");
+    failed.value = "";
+    failed.textContent = "Repositories could not be loaded";
+    createRepository.append(failed);
+    setMessage(createStatus, "Repositories could not be loaded for this project.", "error");
+  }
+}
+
+/** Create a YAML pipeline definition from a trusted repository. */
+async function installPipeline(): Promise<void> {
+  const project = createProject?.value ?? "";
+  const repositoryId = createRepository?.value ?? "";
+  const name = createName?.value.trim() ?? "";
+  const path = createPath?.value.trim() ?? "";
+  if (!project || !repositoryId || !name || !path.startsWith("/")) {
+    setMessage(createStatus, "Select a project/repository and provide a pipeline name and absolute YAML path.", "error");
+    return;
+  }
+  if (installPipelineButton) installPipelineButton.disabled = true;
+  setMessage(createStatus, "Checking the YAML file...");
+  try {
+    const token = await SDK.getAccessToken();
+    const item = await fetch(
+      `${organizationUrl(hostName)}/${encodeURIComponent(project)}/_apis/git/repositories/${encodeURIComponent(repositoryId)}/items?path=${encodeURIComponent(path)}&api-version=7.1`,
+      { headers: { authorization: `Bearer ${token}`, accept: "application/json" }, redirect: "error" }
+    );
+    if (!item.ok) throw new Error(`YAML file was not found (HTTP ${item.status}).`);
+    setMessage(createStatus, "Creating the pipeline definition...");
+    const response = await fetch(
+      `${organizationUrl(hostName)}/${encodeURIComponent(project)}/_apis/pipelines?api-version=7.1`,
+      {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json", accept: "application/json" },
+        body: JSON.stringify({
+          name,
+          folder: "Masthead",
+          configuration: { type: "yaml", path, repository: { id: repositoryId, type: "azureReposGit" } }
+        }),
+        redirect: "error"
+      }
+    );
+    if (!response.ok) throw new Error(`Pipeline creation failed with HTTP ${response.status}.`);
+    const created = await response.json() as { id?: unknown; name?: unknown };
+    if (typeof created.id !== "number") throw new Error("Azure DevOps did not return the pipeline id.");
+    selectedPipeline = { project, id: created.id, name: typeof created.name === "string" ? created.name : name };
+    if (pipelineSearch) pipelineSearch.value = pipelineLabel(selectedPipeline);
+    if (pipelineProject) pipelineProject.value = project;
+    if (pipelineSelected) pipelineSelected.textContent = `Selected ${pipelineLabel(selectedPipeline)}.`;
+    await save();
+    setMessage(createStatus, `Pipeline ${selectedPipeline.name} installed and bound.`, "success");
+  } catch (error) {
+    setMessage(createStatus, error instanceof Error ? error.message : "Pipeline installation failed.", "error");
+  } finally {
+    if (installPipelineButton) installPipelineButton.disabled = false;
+  }
+}
+
+/** Delete the pipeline definition currently bound above, not its repository. */
+async function deletePipeline(): Promise<void> {
+  const project = selectedPipeline?.project ?? settings.pipelineProject ?? "";
+  const id = selectedPipeline?.id ?? settings.pipelineId;
+  if (!project || !id) {
+    setMessage(createStatus, "Select or install a pipeline before deleting it.", "error");
+    return;
+  }
+  if (!window.confirm(`Delete the Azure Pipelines definition "${selectedPipeline?.name ?? id}"? This does not delete repositories or pull request threads.`)) {
+    return;
+  }
+  if (deletePipelineButton) deletePipelineButton.disabled = true;
+  setMessage(createStatus, "Deleting the pipeline definition...");
+  try {
+    const token = await SDK.getAccessToken();
+    const response = await fetch(
+      `${organizationUrl(hostName)}/${encodeURIComponent(project)}/_apis/build/definitions/${id}?api-version=7.1`,
+      { method: "DELETE", headers: { authorization: `Bearer ${token}`, accept: "application/json" }, redirect: "error" }
+    );
+    if (!response.ok && response.status !== 404) {
+      throw new Error(`Pipeline deletion failed with HTTP ${response.status}.`);
+    }
+    selectedPipeline = undefined;
+    if (pipelineSearch) pipelineSearch.value = "";
+    if (pipelineSelected) pipelineSelected.textContent = "No central pipeline selected.";
+    await save();
+    setMessage(createStatus, "Pipeline definition deleted and binding cleared.", "success");
+  } catch (error) {
+    setMessage(createStatus, error instanceof Error ? error.message : "Pipeline deletion failed.", "error");
+  } finally {
+    if (deletePipelineButton) deletePipelineButton.disabled = false;
   }
 }
 
@@ -438,6 +595,7 @@ async function loadProjects(): Promise<void> {
     }));
     projects = rows;
     renderProjectList();
+    renderCreateProjectOptions();
     renderPipelineProjectOptions(discovered);
     pipelines = await fetchPipelines(discovered);
     renderPipelineOptions();
@@ -500,6 +658,15 @@ async function main(): Promise<void> {
     if (pipelineSearch) pipelineSearch.value = "";
     if (pipelineSelected) pipelineSelected.textContent = "No central pipeline selected.";
     setMessage(pipelineStatus, "Pipeline binding cleared. Save settings to persist it.");
+  });
+  createProject?.addEventListener("change", () => {
+    void loadPipelineRepositories(createProject.value);
+  });
+  installPipelineButton?.addEventListener("click", () => {
+    void installPipeline();
+  });
+  deletePipelineButton?.addEventListener("click", () => {
+    void deletePipeline();
   });
   nativeRadio?.addEventListener("change", syncDeliveryChoice);
   brokerRadio?.addEventListener("change", syncDeliveryChoice);

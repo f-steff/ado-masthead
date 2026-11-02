@@ -15,6 +15,11 @@ schedules:
 pool:
   vmImage: ubuntu-24.04
 
+parameters:
+  - name: forceRefresh
+    type: boolean
+    default: false
+
 variables:
   - group: masthead-secrets
   - name: MASTHEAD_EXTENSION_ID
@@ -43,5 +48,6 @@ steps:
       MASTHEAD_EXTENSION_PUBLISHER: $(MASTHEAD_EXTENSION_PUBLISHER)
       MASTHEAD_PROVIDER: $(MASTHEAD_PROVIDER)
       MASTHEAD_MODEL: $(MASTHEAD_MODEL)
+      MASTHEAD_FORCE_MODEL_REFRESH: ${{ parameters.forceRefresh }}
       DEEPSEEK_API_KEY: $(DEEPSEEK_API_KEY)
       SYSTEM_ACCESSTOKEN: $(System.AccessToken)

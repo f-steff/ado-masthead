@@ -122,7 +122,7 @@
 
           <section class="panel" aria-labelledby="pipeline-heading">
             <h2 id="pipeline-heading">Central review pipeline</h2>
-            <p class="note">Create the trusted pipeline separately, then search for it here. Masthead validates the target and refreshes its status whenever Setup is opened; creating or deleting a pipeline is not available yet.</p>
+            <p class="note">Search for an existing trusted pipeline here. Masthead validates the target and refreshes its status whenever Setup is opened.</p>
             <p class="meta">Worker extension id: <code id="extension-id">loading...</code> (publisher <code id="extension-publisher">loading...</code>). Set <code>MASTHEAD_EXTENSION_ID</code> and <code>MASTHEAD_EXTENSION_PUBLISHER</code> on the review pipeline so it can read these settings.</p>
             <div class="field-grid">
               <label class="field">
@@ -143,6 +143,41 @@
               <button type="button" class="secondary" id="clear-pipeline">Clear binding</button>
               <p id="pipeline-status" class="status-message" role="status" aria-live="polite"></p>
             </div>
+          </section>
+
+          <section class="panel" aria-labelledby="install-heading">
+            <h2 id="install-heading">Install or delete review pipeline</h2>
+            <p class="note">Create a pipeline definition from a trusted repository and YAML file. The YAML must contain the Masthead review step; this action does not edit application repositories or write pipeline YAML.</p>
+            <div class="field-grid">
+              <label class="field">
+                <span>Project</span>
+                <select id="pipeline-create-project">
+                  <option value="">Select a project</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Pipeline repository</span>
+                <select id="pipeline-create-repository">
+                  <option value="">Select a repository</option>
+                </select>
+              </label>
+            </div>
+            <div class="field-grid">
+              <label class="field">
+                <span>Pipeline name</span>
+                <input type="text" id="pipeline-create-name" maxlength="160" autocomplete="off" value="Masthead review">
+              </label>
+              <label class="field">
+                <span>YAML path</span>
+                <input type="text" id="pipeline-create-path" maxlength="300" autocomplete="off" value="/azure-pipelines.yml">
+              </label>
+            </div>
+            <div class="actions">
+              <button type="button" class="primary" id="install-pipeline">Install review pipeline</button>
+              <button type="button" class="secondary" id="delete-pipeline">Delete review pipeline</button>
+              <p id="create-status" class="status-message" role="status" aria-live="polite"></p>
+            </div>
+            <p class="note">Deleting removes the Azure Pipelines definition bound above. It does not delete repositories, YAML files or pull request threads.</p>
           </section>
         </section>
 
@@ -219,7 +254,7 @@
             <p>Repository-level switches live under each project's <strong>Project settings &gt; Masthead</strong> page. A pull request is reviewed only when the organization, project and destination repository are all enabled. This also applies when the PR originates from a fork or another project: the destination repository supplies the gate.</p>
             <p>Provider keys are never entered in this browser page. Keep the provider key in an Azure DevOps secret variable group linked only to the central review pipeline.</p>
             <p>By default, comments use the pipeline's build-service identity. To show a dedicated review identity, create a service account and supply its short-lived PAT as the secret <code>MASTHEAD_ADO_TOKEN</code>; do not use your personal daily PAT.</p>
-            <p>Automatic event delivery, central-pipeline creation, PR-tab publication and branch-policy completion gating are still being built. The worker now reads these settings before spending tokens.</p>
+            <p>Automatic event delivery, deployment of a trusted pipeline repository/YAML, PR-tab publication and branch-policy completion gating are still being built. The worker now reads these settings before spending tokens.</p>
             <p><a href="https://github.com/f-steff/ado-masthead#readme" target="_blank" rel="noopener noreferrer">Project documentation</a></p>
           </section>
         </section>

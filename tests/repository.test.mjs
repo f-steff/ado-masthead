@@ -83,7 +83,7 @@ test("edition manifests retain one code package and distinct public/private iden
     assert.ok(effective.files.some((entry) => entry.path === "dist/core/index.mjs" && entry.contentType === "application/javascript"));
     assert.ok(effective.contributions.some((entry) => entry.targets.includes("ms.vss-web.collection-admin-hub-group")));
     assert.ok(effective.contributions.some((entry) => entry.targets.includes("ms.vss-web.project-admin-hub-group")));
-    assert.deepEqual(effective.scopes, ["vso.extension.data_write", "vso.code", "vso.build", "vso.project"]);
+    assert.deepEqual(effective.scopes, ["vso.extension.data_write", "vso.code", "vso.build", "vso.build_execute", "vso.project"]);
     assert.ok(!JSON.stringify(effective).includes("static-dev"));
   }
 });
@@ -134,6 +134,11 @@ test("the organization and project pages initialize the ADO host and split setti
   assert.match(orgHtml, /id="extension-id"/);
   assert.match(orgHtml, /id="extension-publisher"/);
   assert.match(orgHtml, /id="clear-pipeline"/);
+  assert.match(orgHtml, /id="install-pipeline"/);
+  assert.match(orgHtml, /id="delete-pipeline"/);
+  assert.match(orgHtml, /id="pipeline-create-project"/);
+  assert.match(orgScript, /async function installPipeline/);
+  assert.match(orgScript, /async function deletePipeline/);
   assert.match(orgHtml, /data-tab="profile"/);
   assert.match(orgHtml, /id="org-lens-list"/);
   assert.match(orgHtml, /id="review-model-options"/);
