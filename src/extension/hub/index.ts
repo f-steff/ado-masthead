@@ -47,6 +47,7 @@ const clearPipelineButton = document.querySelector<HTMLButtonElement>("#clear-pi
 const saveButton = document.querySelector<HTMLButtonElement>("#save-settings");
 const aboutVersion = document.querySelector<HTMLElement>("#about-version");
 const extensionId = document.querySelector<HTMLElement>("#extension-id");
+const extensionPublisher = document.querySelector<HTMLElement>("#extension-publisher");
 const reviewProvider = document.querySelector<HTMLSelectElement>("#review-provider");
 const reviewModel = document.querySelector<HTMLInputElement>("#review-model");
 const orgLensList = document.querySelector<HTMLElement>("#org-lens-list");
@@ -423,7 +424,8 @@ async function main(): Promise<void> {
     if (statusText) statusText.textContent = "Connected to Azure DevOps.";
     if (hostMeta) hostMeta.textContent = `${hostName} - Masthead ${context.extension.version}`;
     if (aboutVersion) aboutVersion.textContent = context.extension.version;
-    if (extensionId) extensionId.textContent = context.extension.id;
+    if (extensionId) extensionId.textContent = context.extension.extensionId;
+    if (extensionPublisher) extensionPublisher.textContent = context.extension.publisherId;
     await notifyHostLoaded();
   } catch {
     showHostFailure();
