@@ -86,6 +86,12 @@ A publish runs only after:
 The license-review lens is a product feature; the repository itself still
 keeps a valid LICENSE and third-party notices for its own dependencies.
 
+If the Marketplace validation-status endpoint fails after an upload, the
+version may already be published without a tag. Re-running the release reaches
+the duplicate-version guard and then polls validation explicitly. Only a
+successful validation creates the tag; any other publish error still stops the
+release.
+
 ## Remaining activation
 
 Configuration alone does not publish anything. The publish workflows must be
