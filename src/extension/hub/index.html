@@ -3,12 +3,12 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Masthead</title>
+    <title>Masthead settings</title>
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
-    <!-- The hub receives no provider keys or repository content. It only reports
-         host connectivity and the current implementation boundary. -->
+    <!-- The organization page stores configuration only. It never accepts
+         provider credentials or repository content. -->
     <main class="page">
       <header class="hero">
         <div class="mark" aria-hidden="true">
@@ -34,16 +34,67 @@
         </div>
       </section>
 
-      <section class="panel" aria-labelledby="status-heading">
-        <h2 id="status-heading">Development preview</h2>
-        <ul class="status-list">
-          <li><span class="ready">Available</span> The review engine and provider validation.</li>
-          <li><span class="pending">Not connected</span> PR reviews, inline threads and re-review.</li>
-          <li><span class="pending">Not connected</span> Deployment actions and repository controls.</li>
-          <li><span class="pending">Not installed</span> Service hooks and review pipelines.</li>
-        </ul>
-        <p class="note">This page does not accept credentials or repository data.</p>
-      </section>
+      <form id="settings-form">
+        <section class="panel" aria-labelledby="controls-heading">
+          <h2 id="controls-heading">Review controls</h2>
+          <label class="switch-row">
+            <input type="checkbox" id="org-enabled">
+            <span>
+              <strong>Enable Masthead pull request reviews</strong>
+              <small>Organization master switch. It overrides every project and repository setting.</small>
+            </span>
+          </label>
+
+          <fieldset>
+            <legend>Event delivery</legend>
+            <label class="radio-row"><input type="radio" name="delivery" value="native" id="delivery-native"> Native incoming webhook</label>
+            <label class="radio-row"><input type="radio" name="delivery" value="broker" id="delivery-broker"> Docker broker</label>
+          </fieldset>
+
+          <div class="field-grid">
+            <label class="field">
+              <span>Native webhook name</span>
+              <input type="text" id="native-webhook" maxlength="160" autocomplete="off">
+            </label>
+            <label class="field">
+              <span>Broker URL</span>
+              <input type="url" id="broker-url" maxlength="500" autocomplete="off" placeholder="https://masthead.example.com">
+            </label>
+          </div>
+
+          <p class="note">Provider keys are never entered here. They belong in the Azure DevOps secret variable group linked only to the central review pipeline.</p>
+        </section>
+
+        <section class="panel" aria-labelledby="pipeline-heading">
+          <h2 id="pipeline-heading">Central review pipeline</h2>
+          <p class="note">Create the pipeline separately, then record its project and ID here. Masthead validates the target; it does not create the pipeline yet.</p>
+          <div class="field-grid">
+            <label class="field">
+              <span>Pipeline project</span>
+              <input type="text" id="pipeline-project" maxlength="200" autocomplete="off" placeholder="SampleProject">
+            </label>
+            <label class="field">
+              <span>Pipeline ID</span>
+              <input type="number" id="pipeline-id" min="1" step="1" inputmode="numeric">
+            </label>
+          </div>
+          <div class="actions">
+            <button type="button" class="secondary" id="validate-pipeline">Validate pipeline</button>
+            <p id="pipeline-status" class="status-message" role="status" aria-live="polite"></p>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="storage-heading">
+          <h2 id="storage-heading">Project repository gates</h2>
+          <p class="note">This page does not accept credentials or repository data. Repository review gates are controlled in each project's settings page under <strong>Masthead</strong>.</p>
+          <p class="note">New projects and newly discovered repositories start disabled. The organization master switch above overrides all of them.</p>
+        </section>
+
+        <div class="actions">
+          <button type="submit" class="primary" id="save-settings">Save organization settings</button>
+          <p id="save-status" class="status-message" role="status" aria-live="polite"></p>
+        </div>
+      </form>
 
       <footer>
         <a href="https://github.com/f-steff/ado-masthead#readme" target="_blank" rel="noopener noreferrer">Project documentation</a>

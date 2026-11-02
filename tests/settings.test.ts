@@ -4,15 +4,53 @@ import {
   defaultOrganizationSettings,
   defaultProjectSettings,
   isRepositoryEnabled,
+  isReviewEnabled,
+  normalizeOrganizationSettings,
+  normalizeProjectSettings,
   seedRepositories,
   setRepositoryProfile
 } from "../src";
 
 test("native deployment is the default and broker is opt-in", () => {
   const settings = defaultOrganizationSettings();
+  assert.equal(settings.enabled, true);
   assert.equal(settings.deploymentMode, "native");
   assert.equal(settings.brokerVerified, false);
   assert.equal(settings.nativeWebhookName, "MastheadPR");
+});
+
+test("the organization master switch overrides project and repository choices", () => {
+  const organization = defaultOrganizationSettings();
+  const project = seedRepositories(defaultProjectSettings(), ["repo-a"], true);
+  assert.equal(isReviewEnabled(organization, project, "repo-a"), true);
+  assert.equal(isReviewEnabled({ ...organization, enabled: false }, project, "repo-a"), false);
+  assert.equal(isReviewEnabled(organization, { ...project, enabled: false }, "repo-a"), false);
+});
+
+test("persisted malformed settings cannot silently enable a repository", () => {
+  const organization = normalizeOrganizationSettings({
+    enabled: false,
+    deploymentMode: "broker",
+    pipelineId: -1,
+    pipelineProject: " SampleProject "
+  });
+  assert.equal(organization.enabled, false);
+  assert.equal(organization.deploymentMode, "broker");
+  assert.equal(organization.pipelineId, undefined);
+  assert.equal(organization.pipelineProject, "SampleProject");
+
+  const project = normalizeProjectSettings({
+    enabled: true,
+    repositories: {
+      "repo-a": { enabled: "yes" },
+      "repo-b": { enabled: false },
+      "repo-c": null
+    }
+  });
+  assert.deepEqual(project.repositories, {
+    "repo-a": { enabled: false },
+    "repo-b": { enabled: false }
+  });
 });
 
 test("repositories are disabled until explicitly enabled", () => {

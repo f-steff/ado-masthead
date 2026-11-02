@@ -12,6 +12,7 @@
   },
   "categories": ["Azure Repos", "Azure Pipelines"],
   "tags": ["pull-request", "code-review", "ai"],
+  "scopes": ["vso.extension.data_write", "vso.code", "vso.build"],
   "targets": [{ "id": "Microsoft.VisualStudio.Services.Cloud" }],
   "content": {
     "details": { "path": "marketplace-advertisement.md" },
@@ -37,6 +38,16 @@
       "properties": {
         "name": "Masthead",
         "uri": "dist/extension/hub/index.html",
+        "icon": "images/icon-32.png"
+      }
+    },
+    {
+      "id": "masthead-project",
+      "type": "ms.vss-web.hub",
+      "targets": ["ms.vss-web.project-admin-hub-group"],
+      "properties": {
+        "name": "Masthead",
+        "uri": "dist/extension/project/index.html",
         "icon": "images/icon-32.png"
       }
     }

@@ -8,16 +8,16 @@
   </defs>
   <rect x="0" y="0" width="256" height="256" rx="52" fill="url(#bg)"/>
 
-  <!-- Mast and pennant above the lookout. -->
-  <polygon points="120,44 136,44 136,102 120,102" fill="#eaf9ff"/>
-  <polygon points="136,44 141,44 141,102 136,102" fill="#5fb0d4"/>
-  <polygon points="136,44 214,62 136,80" fill="#bfe9ff"/>
+  <!-- A wide, high-contrast mast and pennant stay readable at 32 px. -->
+  <polygon points="116,28 142,28 142,102 116,102" fill="#eaf9ff"/>
+  <polygon points="142,28 150,28 150,102 142,102" fill="#5fb0d4"/>
+  <polygon points="142,28 228,50 142,72" fill="#bfe9ff"/>
 
   <!-- The wider lookout basket is the primary silhouette. -->
   <g stroke="#eaf9ff" stroke-width="6" stroke-linecap="round">
     <line x1="80" y1="102" x2="80" y2="82"/>
     <line x1="176" y1="102" x2="176" y2="82"/>
-    <line x1="76" y1="84" x2="180" y2="84"/>
+    <line x1="68" y1="84" x2="184" y2="84"/>
   </g>
   <polygon points="77,102 179,102 170,117 86,117" fill="#e9f7ff"/>
   <polygon points="86,117 170,117 160,160 96,160" fill="#9fdcf2"/>
@@ -28,7 +28,7 @@
     <line x1="148" y1="125" x2="150" y2="150"/>
   </g>
 
-  <!-- A shorter lower mast keeps the basket dominant. -->
-  <polygon points="120,160 128,160 128,220 120,220" fill="#e9f7ff"/>
-  <polygon points="128,160 136,160 136,220 128,220" fill="#5fb0d4"/>
+  <!-- Keep the lower mast clearly connected to the basket. -->
+  <polygon points="116,160 142,160 142,228 116,228" fill="#e9f7ff"/>
+  <polygon points="142,160 150,160 150,228 142,228" fill="#5fb0d4"/>
 </svg>

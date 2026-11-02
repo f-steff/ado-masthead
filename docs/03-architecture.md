@@ -97,9 +97,13 @@ A separate `src/worker/verification.ts` rechecks active findings against the
 current changed-file evidence. Missing or ambiguous evidence is reported as
 unverified and leaves the thread open.
 
+The organization hub now exposes a master review switch, delivery mode and
+central-pipeline validation. The project admin hub discovers repositories and
+stores per-repository gates; discovered repositories default to disabled.
+
 This slice is manual or pipeline-invoked. It does not yet receive service-hook
-events, retrieve unchanged related files for every finding, render a PR tab or
-expose deployment and repository settings.
+events, create the central pipeline, apply the persisted settings inside the
+worker, retrieve unchanged related files for every finding, or render a PR tab.
 
 ## Cross-project behavior
 

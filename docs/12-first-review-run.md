@@ -105,8 +105,11 @@ not print the provider key, ADO token, prompt or raw repository content.
   `withdrawn` result. The current verifier sees changed-file content only; a
   finding whose evidence is not in that content stays open as `unverified`.
 - Related unchanged files are not retrieved for the verifier yet.
-- The PR tab, review guide publication, settings and deployment controls are not
-  connected.
+- The organization and project settings pages persist their switches, but this
+  runner does not yet read them. Repository gating is not enforced by the
+  pipeline yet.
+- The PR tab, review guide publication, event-service deployment and automated
+  central-pipeline creation are not connected.
 - The pipeline step should not have source-branch write permission.
 
 ## Expected first-run result
