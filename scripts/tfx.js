@@ -23,10 +23,9 @@ function mergeManifest(base, override) {
 function buildArgs(command, manifest, generatedPath, env = process.env) {
   const args = ["extension"];
   if (command === "create" || command === "publish") {
+    // Publishing must wait for Marketplace validation. Tagging and recording a
+    // success before validation finishes makes an unavailable version look live.
     args.push(command, "--manifest-globs", generatedPath);
-    if (command === "publish") {
-      args.push("--no-wait-validation");
-    }
   } else {
     args.push(command === "validate" ? "isvalid" : command);
     args.push("--publisher", manifest.publisher, "--extension-id", manifest.id);

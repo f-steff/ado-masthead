@@ -23,8 +23,12 @@ edited by hand.
 
 `ci/version.mjs` implements these rules. With no tags, dev starts at `0.0.1`
 and the first stable release is `0.1.0`. A release tag is created only after
-the first Marketplace upload succeeds. A stable publish tags that upload
-before updating the private dev edition at the same version.
+the first Marketplace upload and validation succeed. A stable publish tags that
+upload before updating the private dev edition at the same version.
+
+The publish command does not use `--no-wait-validation`. Waiting is required:
+otherwise the workflow can create a tag and record success while the new
+version is still unavailable to Azure DevOps installations.
 
 ## Workflows
 
@@ -41,9 +45,10 @@ Runners use `ubuntu-24.04` and Node 22. Publishing is serialized across both
 editions. Documentation-only changes do not mint versions. README is for
 users; the packaged listing text is `marketplace-advertisement.md`.
 
-Current VSIX packages contain an informational settings page and the review
-core, not working PR integration. Successful local packaging is not a claim
-that production deployment or Marketplace validation has been tested.
+Current VSIX packages contain the SDK-initialized organization hub and the
+review core. The ADO review publisher runs from the central pipeline, not the
+browser extension. Successful local packaging is not a claim that production
+deployment has been tested.
 
 ## Authentication
 
