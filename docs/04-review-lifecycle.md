@@ -76,10 +76,23 @@ revisions and unrelated human conversations are ignored.
 `src/worker/conversation.ts` can run a bounded, targeted answer using supplied
 thread history and current code. It returns an answer for one human comment
 and whether a code recheck is needed. It never returns a resolution command.
-Automatic thread retrieval, publication and durable answer tracking still
-require the ADO adapter.
+Automatic thread retrieval and durable answer tracking are still pending.
 
-These are tested policies, not a connected PR publisher. A production adapter
-still needs to retrieve ADO state, verify fix evidence against code, maintain
-durable run/answer records, and recheck revisions and ownership before applying
-any action. Missing output or filtered findings are never fix evidence.
+`src/ado/publisher.ts` now applies add, resolve and withdraw actions. It
+re-fetches the PR revision, refuses stale plans, verifies bot ownership from the
+thread author, and uses a versioned hidden marker for finding identity and
+state. It preserves human statuses and does not reopen closed threads.
+
+`src/worker/ado-review.ts` reads fixed-commit source content, invokes the same
+validated review worker, and publishes the reconciliation plan. It does not
+infer a fix from an omitted finding.
+
+`src/worker/verification.ts` performs a separate, bounded recheck of active
+findings. It returns `fixed`, `withdrawn`, `still-present` or `unverified`, and
+only a non-empty evidence-based reason can authorize resolution. The current
+runner supplies changed-file content to the recheck; a finding whose evidence is
+not present remains open.
+
+The remaining production work is automatic event delivery, related unchanged
+file retrieval for every finding, durable run/answer records and the PR tab.
+Missing output or filtered findings are never fix evidence.

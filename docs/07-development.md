@@ -7,9 +7,10 @@
 | `src/review/` | Lens catalogue, prompt builder, license rule and result parser. |
 | `src/providers/` | Anthropic, OpenAI and DeepSeek HTTP adapters. |
 | `src/settings/` | Organization, project and repository gating model. |
+| `src/ado/` | Azure DevOps REST client, thread metadata and publication adapter. |
 | `broker/` | Optional Docker event receiver and its tests. |
-| `src/extension/` | Extension settings and PR-tab surfaces (next slice). |
-| `src/worker/` | Validated local review execution and PR-event decision policy. |
+| `src/extension/` | SDK-initialized organization hub; future settings and PR-tab surfaces. |
+| `src/worker/` | Review execution, ADO review orchestration and PR-event decision policy. |
 | `images/` | Editable SVG icon source and rendered PNG sizes. |
 | `tests/` | Deterministic unit tests and review fixtures. |
 | `scripts/` | Build and test entry points. |
@@ -32,14 +33,16 @@ npm run build:prod
 npm run verify:clean
 npm run package:dev
 npm run package:stable
+npm run review:pr
 ```
 
 The test runner bundles TypeScript with esbuild and runs Node's test runner.
-The generated review core is written to `dist/core/`.
+The generated review core is written to `dist/core/`. The pipeline entry point
+is written to `dist/worker/review-pr.mjs`.
 
-The informational organization-settings page is copied to `dist/extension/`.
-VSIX packages currently validate the release scaffold; they do not deploy a
-review service or add working PR-review controls.
+The organization hub is bundled to `dist/extension/hub/` and initializes the
+Azure DevOps SDK before reporting loaded. VSIX packages validate the release
+scaffold; they do not yet deploy an event service, settings controls or a PR tab.
 
 ## Icons
 

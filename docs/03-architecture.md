@@ -76,6 +76,31 @@ The review store keeps PR identity, reviewed commits, finding identities,
 thread IDs, coverage, status and tab content. It is application data, never a
 secret store.
 
+The first implementation stores finding metadata in the Masthead-authored
+thread comment itself. A versioned marker records the finding and the source and
+target revisions. It is accepted only when the comment author matches the
+authenticated pipeline identity. The visible comment remains readable; the
+marker lets a later run reconcile without a separate database.
+
+### Implemented first slice
+
+`src/extension/hub` is now an SDK-initialized organization page. It completes
+the ADO host handshake before revealing its status.
+
+`src/ado/client.ts` reads the pull request, changed files, fixed commit content,
+threads and the authenticated identity. `src/ado/publisher.ts` applies the
+reconciliation plan with revision, ownership and stale-plan checks.
+`src/worker/ado-review.ts` connects the review engine to that boundary, and
+`src/worker/review-pr.ts` is the pipeline entry point.
+
+A separate `src/worker/verification.ts` rechecks active findings against the
+current changed-file evidence. Missing or ambiguous evidence is reported as
+unverified and leaves the thread open.
+
+This slice is manual or pipeline-invoked. It does not yet receive service-hook
+events, retrieve unchanged related files for every finding, render a PR tab or
+expose deployment and repository settings.
+
 ## Cross-project behavior
 
 Service hook subscriptions are project-scoped. Onboarding therefore creates

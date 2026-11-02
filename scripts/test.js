@@ -8,7 +8,7 @@ const path = require("path");
 
 const rootDir = path.join(__dirname, "..");
 const outDir = path.join(rootDir, "dist-test");
-const testFiles = ["logic.test.ts", "settings.test.ts", "worker.test.ts", "events.test.ts"].map((name) =>
+const testFiles = ["logic.test.ts", "settings.test.ts", "worker.test.ts", "events.test.ts", "publisher.test.ts", "ado-review.test.ts"].map((name) =>
   path.join(rootDir, "tests", name)
 );
 
