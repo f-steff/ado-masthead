@@ -1,0 +1,14 @@
+node_modules/
+dist/
+dist-test/
+.generated-*.json
+*.vsix
+
+# Project-local agent configuration contains machine-specific browser paths.
+.opencode/
+
+# Credentials and local evaluation output must never be published.
+.env
+.env.*
+!.env.example
+coverage/

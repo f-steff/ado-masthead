@@ -1,0 +1,82 @@
+name: Marketplace release
+
+# Shared release steps prevent dev/stable authentication and gates from drifting apart.
+on:
+  workflow_call:
+    inputs:
+      edition:
+        type: string
+        required: true
+      version:
+        type: string
+        default: ""
+
+permissions:
+  contents: write
+  statuses: write
+  id-token: write
+
+# Only one release may compute and tag a version at a time across both editions.
+concurrency:
+  group: marketplace-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: >-
+      vars.MARKETPLACE_PUBLISH_ENABLED == 'true' &&
+      ((inputs.edition == 'dev' && github.ref == 'refs/heads/develop') ||
+      (inputs.edition == 'stable' && github.ref == 'refs/heads/main'))
+    runs-on: ubuntu-24.04
+    environment: marketplace
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: node node_modules/esbuild/install.js
+      - name: Local quality gate
+        run: |
+          npm run typecheck
+          npm run lint
+          npm test
+          npm run verify:clean
+      - name: Compute release version
+        id: version
+        env:
+          EDITION: ${{ inputs.edition }}
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: |
+          WRITE_FLAG=--write
+          if [ "$EDITION" = "stable" ]; then WRITE_FLAG=--write-all; fi
+          if [ -n "$REQUESTED_VERSION" ]; then
+            node ci/version.mjs "$EDITION" "$WRITE_FLAG" --version "$REQUESTED_VERSION" >> "$GITHUB_OUTPUT"
+          else
+            node ci/version.mjs "$EDITION" "$WRITE_FLAG" >> "$GITHUB_OUTPUT"
+          fi
+      - run: npm run build:prod
+      - run: npm run package:stable
+      - run: npm run package:dev
+      # Client/tenant IDs are environment variables. The identity authenticates with GitHub OIDC.
+      - uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+      - name: Acquire short-lived publishing token
+        run: |
+          TOKEN="$(az account get-access-token --resource 499b84ac-1321-427f-aa17-267ca6975798 --query accessToken -o tsv)"
+          test -n "$TOKEN"
+          echo "::add-mask::$TOKEN"
+          echo "TFS_PAT=$TOKEN" >> "$GITHUB_ENV"
+      - name: Publish, tag and record the release
+        env:
+          EDITION: ${{ inputs.edition }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node ci/publish.mjs

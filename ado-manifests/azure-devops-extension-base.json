@@ -1,0 +1,44 @@
+{
+  "manifestVersion": 1,
+  "name": "Masthead",
+  "description": "Context-aware AI pull request reviews for Azure DevOps. Early development package.",
+  "icons": {
+    "default": "images/icon-128.png",
+    "large": "images/icon-256.png"
+  },
+  "branding": {
+    "color": "#0e7490",
+    "theme": "dark"
+  },
+  "categories": ["Azure Repos", "Azure Pipelines"],
+  "tags": ["pull-request", "code-review", "ai"],
+  "targets": [{ "id": "Microsoft.VisualStudio.Services.Cloud" }],
+  "content": {
+    "details": { "path": "marketplace-advertisement.md" },
+    "license": { "path": "LICENSE" }
+  },
+  "links": {
+    "getstarted": { "uri": "https://github.com/f-steff/ado-masthead#readme" },
+    "support": { "uri": "https://github.com/f-steff/ado-masthead/issues" }
+  },
+  "repository": { "type": "git", "uri": "https://github.com/f-steff/ado-masthead" },
+  "files": [
+    { "path": "dist/extension", "addressable": true },
+    { "path": "dist/core/index.mjs", "addressable": false, "contentType": "application/javascript" },
+    { "path": "images/icon-32.png", "addressable": true },
+    { "path": "images/icon-128.png", "addressable": true },
+    { "path": "images/icon-256.png", "addressable": true }
+  ],
+  "contributions": [
+    {
+      "id": "masthead-about",
+      "type": "ms.vss-web.hub",
+      "targets": ["ms.vss-web.collection-admin-hub-group"],
+      "properties": {
+        "name": "Masthead",
+        "uri": "dist/extension/about/index.html",
+        "icon": "images/icon-32.png"
+      }
+    }
+  ]
+}

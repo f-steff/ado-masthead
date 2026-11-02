@@ -1,0 +1,35 @@
+name: Publish dev
+
+on:
+  push:
+    branches: [develop]
+    # These files do not change the VSIX. The Marketplace description and LICENSE do.
+    paths-ignore:
+      - "docs/**"
+      - "tests/**"
+      - "ci/**"
+      - ".github/**"
+      - "README.md"
+      - "AGENTS.md"
+      - ".gitignore"
+      - ".gitattributes"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish as masthead-dev; empty computes the next version"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  statuses: write
+  id-token: write
+
+jobs:
+  publish:
+    # Nothing publishes until the owner configures OIDC and explicitly opts in.
+    if: vars.MARKETPLACE_PUBLISH_ENABLED == 'true' && github.ref == 'refs/heads/develop'
+    uses: ./.github/workflows/marketplace.yml
+    with:
+      edition: dev
+      version: ${{ inputs.version || '' }}

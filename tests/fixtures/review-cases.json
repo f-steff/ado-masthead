@@ -1,0 +1,316 @@
+[
+  {
+    "id": "correctness-null-profile",
+    "lens": "correctness",
+    "title": "Normalize email addresses",
+    "context": "The function accepts user records with profile?: { email: string }. The existing callers pass users before their optional profile is created.",
+    "changedFiles": [
+      {
+        "path": "src/user.ts",
+        "changeType": "edit",
+        "diff": "+  return user.profile.email.toLowerCase();"
+      }
+    ],
+    "expected": {
+      "mustFind": ["null or undefined profile"],
+      "mustNotFind": ["formatting", "pre-existing issue"]
+    }
+  },
+  {
+    "id": "correctness-negative-rename",
+    "lens": "correctness",
+    "title": "Rename the order total variable",
+    "changedFiles": [
+      {
+        "path": "src/order.ts",
+        "changeType": "edit",
+        "diff": "-const total = sum(items);\n+const orderTotal = sum(items);"
+      }
+    ],
+    "expected": {
+      "mustFind": [],
+      "mustNotFind": ["missing test", "style preference"]
+    }
+  },
+  {
+    "id": "security-sql-concatenation",
+    "lens": "security",
+    "title": "Find orders by request ID",
+    "changedFiles": [
+      {
+        "path": "src/orders.ts",
+        "changeType": "edit",
+        "diff": "+const sql = \"SELECT * FROM orders WHERE id = \" + req.query.id;"
+      }
+    ],
+    "expected": {
+      "mustFind": ["SQL injection"],
+      "mustNotFind": ["generic hardening"]
+    }
+  },
+  {
+    "id": "security-negative-safe-parameter",
+    "lens": "security",
+    "title": "Use SQL parameters for order lookup",
+    "changedFiles": [
+      {
+        "path": "src/orders.ts",
+        "changeType": "edit",
+        "diff": "+const result = await db.query('SELECT * FROM orders WHERE id = $1', [id]);"
+      }
+    ],
+    "expected": {
+      "mustFind": [],
+      "mustNotFind": ["SQL injection"]
+    }
+  },
+  {
+    "id": "tests-missing-edge-case",
+    "lens": "tests",
+    "title": "Handle empty parser input",
+    "context": "This patch introduces an empty-input branch in an exported parser. The existing parser tests cover only nonempty values. No tests are added or updated.",
+    "changedFiles": [
+      {
+        "path": "src/parser.ts",
+        "changeType": "edit",
+        "diff": "+if (input === '') return null;"
+      }
+    ],
+    "expected": {
+      "mustFind": ["missing test for empty input"],
+      "mustNotFind": ["coverage percentage"]
+    }
+  },
+  {
+    "id": "tests-negative-rename",
+    "lens": "tests",
+    "title": "Rename the parser test group",
+    "changedFiles": [
+      {
+        "path": "tests/parser.test.ts",
+        "changeType": "rename",
+        "diff": "-describe('parse', ...)\n+describe('parseInput', ...)"
+      }
+    ],
+    "expected": {
+      "mustFind": [],
+      "mustNotFind": ["missing test"]
+    }
+  },
+  {
+    "id": "license-missing-root-license",
+    "lens": "license",
+    "title": "Add a parser implementation",
+    "repositoryLicense": {
+      "missing": true,
+      "warning": "No root LICENSE file was found."
+    },
+    "changedFiles": [
+      {
+        "path": "src/copied-parser.ts",
+        "changeType": "add",
+        "diff": "+// Adapted from an external project."
+      }
+    ],
+    "expected": {
+      "mustFind": ["repository-level missing LICENSE warning", "provenance unclear"],
+      "mustNotFind": ["legal conclusion", "warning per file"]
+    }
+  },
+  {
+    "id": "license-gpl-file-in-mit-repository",
+    "lens": "license",
+    "title": "Add a widget implementation",
+    "repositoryLicense": {
+      "path": "LICENSE",
+      "missing": false,
+      "text": "MIT License\n\nPermission is hereby granted, free of charge..."
+    },
+    "changedFiles": [
+      {
+        "path": "src/vendor/external-widget.ts",
+        "changeType": "add",
+        "diff": "+// SPDX-License-Identifier: GPL-3.0-only\n+// Copied from an external widget project."
+      }
+    ],
+    "expected": {
+      "mustFind": ["GPL-3.0-only", "GPL terms needing compatibility review"],
+      "mustNotFind": ["legal conclusion", "code style"]
+    }
+  },
+  {
+    "id": "license-negative-mit-compatible",
+    "lens": "license",
+    "title": "Add a formatting helper",
+    "repositoryLicense": {
+      "path": "LICENSE",
+      "missing": false,
+      "text": "MIT License\n\nPermission is hereby granted, free of charge..."
+    },
+    "changedFiles": [
+      {
+        "path": "src/format.ts",
+        "changeType": "add",
+        "diff": "+// SPDX-License-Identifier: MIT\n+export const format = (value: string) => value.trim();"
+      }
+    ],
+    "expected": {
+      "mustFind": [],
+      "mustNotFind": ["license incompatibility", "missing provenance"]
+    }
+  },
+  {
+    "id": "license-negative-spdx-test-data",
+    "lens": "license",
+    "title": "Exercise SPDX parsing",
+    "context": "The repository already provides extractSpdx and a test runner. This change adds only a regression test with a synthetic header string, not third-party implementation code.",
+    "repositoryLicense": {
+      "path": "LICENSE",
+      "missing": false,
+      "text": "MIT License\n\nPermission is hereby granted, free of charge..."
+    },
+    "changedFiles": [
+      {
+        "path": "tests/license.test.ts",
+        "changeType": "edit",
+        "diff": "+it('reads SPDX labels', () => {\n+  const header = '// SPDX-License-Identifier: GPL-3.0-only';\n+  assert.equal(extractSpdx(header), 'GPL-3.0-only');\n+});"
+      }
+    ],
+    "expected": {
+      "mustFind": [],
+      "mustNotFind": ["GPL introduced as the file license", "legal conclusion"]
+    }
+  },
+  {
+    "id": "performance-n-plus-one",
+    "lens": "performance",
+    "title": "Include customer details in the orders endpoint",
+    "context": "Orders can contain thousands of entries. Each findCustomer call makes one separate database query. The database adapter supports a batch query by customer IDs.",
+    "changedFiles": [
+      {
+        "path": "src/orders.ts",
+        "changeType": "edit",
+        "diff": "+for (const order of orders) {\n+  order.customer = await repository.findCustomer(order.customerId);\n+}"
+      }
+    ],
+    "expected": {
+      "mustFind": ["N+1 query"],
+      "mustNotFind": ["micro-optimization"]
+    }
+  },
+  {
+    "id": "performance-negative-small-loop",
+    "lens": "performance",
+    "title": "Extend derived values",
+    "context": "The enclosing function initializes values as a number[] with three entries before this loop. This patch adds exactly three derived values.",
+    "changedFiles": [
+      {
+        "path": "src/math.ts",
+        "changeType": "edit",
+        "diff": "+for (let i = 0; i < 3; i++) { values.push(values[i] * 2); }"
+      }
+    ],
+    "expected": {
+      "mustFind": [],
+      "mustNotFind": ["premature optimization"]
+    }
+  },
+  {
+    "id": "maintainability-duplicated-logic",
+    "lens": "maintainability",
+    "title": "Calculate order totals",
+    "changedFiles": [
+      {
+        "path": "src/pricing.ts",
+        "changeType": "edit",
+        "diff": "+const tax = price * 0.25;\n+const total = price + tax;"
+      }
+    ],
+    "context": "The repository already exposes calculateTax(price, region) in src/tax.ts.",
+    "expected": {
+      "mustFind": ["duplicated tax logic"],
+      "mustNotFind": ["naming preference"]
+    }
+  },
+  {
+    "id": "maintainability-negative-formatting",
+    "lens": "maintainability",
+    "title": "Format object literals",
+    "changedFiles": [
+      {
+        "path": "src/format.ts",
+        "changeType": "edit",
+        "diff": "-const value={a:1};\n+const value = { a: 1 };"
+      }
+    ],
+    "expected": {
+      "mustFind": [],
+      "mustNotFind": ["formatting"]
+    }
+  },
+  {
+    "id": "data-destructive-migration",
+    "lens": "data",
+    "title": "Change user contact storage",
+    "context": "The users table contains production email addresses. There is no other copy of those addresses and this patch contains no data migration or backup step.",
+    "changedFiles": [
+      {
+        "path": "migrations/20261030-drop-email.sql",
+        "changeType": "add",
+        "diff": "+ALTER TABLE users DROP COLUMN email;"
+      }
+    ],
+    "expected": {
+      "mustFind": ["destructive schema change", "data loss"],
+      "mustNotFind": ["migration style"]
+    }
+  },
+  {
+    "id": "data-negative-additive-column",
+    "lens": "data",
+    "title": "Add a user locale column",
+    "changedFiles": [
+      {
+        "path": "migrations/20261030-add-locale.sql",
+        "changeType": "add",
+        "diff": "+ALTER TABLE users ADD COLUMN locale text NULL;"
+      }
+    ],
+    "expected": {
+      "mustFind": [],
+      "mustNotFind": ["data loss"]
+    }
+  },
+  {
+    "id": "dependencies-untrusted-install",
+    "lens": "dependencies",
+    "title": "Install build tooling",
+    "changedFiles": [
+      {
+        "path": "azure-pipelines.yml",
+        "changeType": "edit",
+        "diff": "+  - script: curl -fsSL https://example.invalid/install.sh | bash"
+      }
+    ],
+    "expected": {
+      "mustFind": ["remote install script", "unverified executable download"],
+      "mustNotFind": ["unrelated dependency upgrade"]
+    }
+  },
+  {
+    "id": "dependencies-negative-lockfile-refresh",
+    "lens": "dependencies",
+    "title": "Refresh the dependency lockfile",
+    "changedFiles": [
+      {
+        "path": "package-lock.json",
+        "changeType": "edit",
+        "diff": "+  \"lockfileVersion\": 3"
+      }
+    ],
+    "expected": {
+      "mustFind": [],
+      "mustNotFind": ["generic supply-chain warning"]
+    }
+  }
+]
