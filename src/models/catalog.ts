@@ -11,7 +11,7 @@ export interface ProviderModelCatalog {
 export type ModelCatalog = Partial<Record<ProviderName, ProviderModelCatalog>>;
 
 export const FALLBACK_MODELS: Record<ProviderName, readonly string[]> = {
-  deepseek: ["deepseek-chat", "deepseek-reasoner"],
+  deepseek: ["deepseek-flash", "deepseek-v4-pro", "deepseek-chat", "deepseek-reasoner"],
   openai: ["gpt-4.1", "gpt-4.1-mini", "gpt-4o", "o3", "o4-mini"],
   anthropic: [
     "claude-sonnet-4-20250514",
