@@ -9,9 +9,10 @@ Masthead is in active development. The dev package is available to shared
 organizations; the public stable release is still being prepared.
 
 The current implementation includes the validated review core, provider
-adapters, SDK-initialized organization and project settings hubs, and a
-manual/pipeline review path that reads a pull request, posts findings as ADO
-threads and reuses existing Masthead threads on retry. The organization page
+adapters, SDK-initialized organization and project settings hubs, a cached
+provider model catalogue, and a manual/pipeline review path that reads a pull
+request, posts findings as ADO threads and reuses existing Masthead threads on
+retry. The organization page
 has a master switch, delivery mode, central-pipeline binding and review-profile
 defaults. The project page discovers repositories and stores project and
 per-repository review gates and profile overrides. The worker reads the

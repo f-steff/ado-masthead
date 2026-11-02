@@ -3,7 +3,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { buildProviderRequest, listProviderModels, providerFromEnvironment } from "../src/providers";
-import { modelsForProvider, normalizeModelCatalog } from "../src/models/catalog";
+import {
+  isModelCatalogFresh,
+  mergeProviderModels,
+  MODEL_CATALOG_TTL_MS,
+  modelsForProvider,
+  normalizeModelCatalog
+} from "../src/models/catalog";
 
 test("model catalogue normalization bounds provider names and model strings", () => {
   const catalog = normalizeModelCatalog({
@@ -18,6 +24,18 @@ test("model catalogue normalization bounds provider names and model strings", ()
   assert.equal(catalog.anthropic, undefined);
   assert.ok(modelsForProvider(catalog, "deepseek").includes("deepseek-chat"));
   assert.ok(modelsForProvider(catalog, "openai").includes("gpt-4.1-mini"));
+});
+
+test("cached provider models are fresh for one hour and can be replaced independently", () => {
+  const now = Date.parse("2026-11-02T12:00:00.000Z");
+  const catalog = mergeProviderModels(normalizeModelCatalog({
+    openai: { models: ["gpt-test"], refreshedAt: new Date(now - 1_000).toISOString() }
+  }), "deepseek", ["deepseek-flash", "deepseek-flash", "deepseek-v4-pro"], new Date(now).toISOString());
+  assert.equal(isModelCatalogFresh(catalog, "deepseek", now + MODEL_CATALOG_TTL_MS - 1), true);
+  assert.equal(isModelCatalogFresh(catalog, "deepseek", now + MODEL_CATALOG_TTL_MS), false);
+  assert.deepEqual(catalog.deepseek?.models, ["deepseek-flash", "deepseek-v4-pro"]);
+  assert.deepEqual(catalog.openai?.models, ["gpt-test"]);
+  assert.equal(isModelCatalogFresh(catalog, "anthropic", now), false);
 });
 
 test("provider model discovery uses the provider endpoint and auth header", async () => {

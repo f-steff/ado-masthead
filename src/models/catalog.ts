@@ -10,6 +10,9 @@ export interface ProviderModelCatalog {
 
 export type ModelCatalog = Partial<Record<ProviderName, ProviderModelCatalog>>;
 
+/** Provider discovery is deliberately throttled: one provider at most hourly. */
+export const MODEL_CATALOG_TTL_MS = 60 * 60 * 1000;
+
 export const FALLBACK_MODELS: Record<ProviderName, readonly string[]> = {
   deepseek: ["deepseek-flash", "deepseek-v4-pro", "deepseek-chat", "deepseek-reasoner"],
   openai: ["gpt-4.1", "gpt-4.1-mini", "gpt-4o", "o3", "o4-mini"],
@@ -55,6 +58,32 @@ export function allKnownModels(catalog: ModelCatalog): string[] {
     (["anthropic", "openai", "deepseek"] as const)
       .flatMap((provider) => modelsForProvider(catalog, provider))
   )];
+}
+
+/** A missing or malformed timestamp is stale so a successful run can repair it. */
+export function isModelCatalogFresh(
+  catalog: ModelCatalog,
+  provider: ProviderName,
+  now = Date.now()
+): boolean {
+  const refreshed = Date.parse(catalog[provider]?.refreshedAt ?? "");
+  return Number.isFinite(refreshed) && now >= refreshed && now - refreshed < MODEL_CATALOG_TTL_MS;
+}
+
+/** Preserve other provider entries while replacing one provider atomically. */
+export function mergeProviderModels(
+  catalog: ModelCatalog,
+  provider: ProviderName,
+  models: readonly string[],
+  refreshedAt = new Date().toISOString()
+): ModelCatalog {
+  return {
+    ...catalog,
+    [provider]: {
+      models: [...new Set(models.map((model) => model.trim()).filter(Boolean))].slice(0, 200),
+      refreshedAt
+    }
+  };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

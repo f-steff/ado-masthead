@@ -37,6 +37,18 @@ esbuild.buildSync({
   minify: production
 });
 
+// The separate catalogue pipeline runs this lightweight worker on a schedule.
+esbuild.buildSync({
+  entryPoints: [path.join(rootDir, "src", "worker", "discover-models.ts")],
+  outfile: path.join(distDir, "worker", "discover-models.mjs"),
+  bundle: true,
+  platform: "node",
+  format: "esm",
+  target: "es2022",
+  sourcemap: !production,
+  minify: production
+});
+
 // The hub is a browser bundle because it must complete the Azure DevOps host
 // handshake before the host stops showing its loading indicator.
 const hubSource = path.join(rootDir, "src", "extension", "hub");

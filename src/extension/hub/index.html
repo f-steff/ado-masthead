@@ -187,7 +187,8 @@
                 </select>
               </label>
             </div>
-            <p class="note">Model suggestions refresh after a review and are filtered by provider. You can still type a custom model. Reasoning effort applies to compatible OpenAI models; thinking budget applies to Anthropic models. DeepSeek uses its selected model's reasoning behavior.</p>
+            <p class="note" id="catalog-status">Using built-in model suggestions. Run the separate model catalogue pipeline to refresh the cache.</p>
+            <p class="note">Model suggestions are cached from the selected provider and filtered by provider. You can still type a custom model. Reasoning effort applies to compatible OpenAI models; thinking budget applies to Anthropic models. DeepSeek uses its selected model's reasoning behavior.</p>
             <fieldset class="choice-group">
               <legend>Enabled lenses</legend>
               <div id="org-lens-list" class="lens-list"></div>
