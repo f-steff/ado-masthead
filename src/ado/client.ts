@@ -1,7 +1,15 @@
 // Minimal Azure DevOps REST adapter for the publisher. It intentionally exposes
 // only the calls needed to read PR state and create, reply to or close threads.
 // Repository content retrieval belongs to the review orchestrator, not here.
-import { AdoChangedFile, AdoComment, AdoPullRequest, AdoThread, AdoThreadStatus, CreateThreadInput } from "./types";
+import {
+  AdoChangedFile,
+  AdoComment,
+  AdoPullRequest,
+  AdoPullRequestStatusInput,
+  AdoThread,
+  AdoThreadStatus,
+  CreateThreadInput
+} from "./types";
 import { repositoryPath } from "../review/result";
 
 export interface AdoClientOptions {
@@ -38,6 +46,7 @@ export interface AdoClientLike {
 export interface AdoReviewClient extends AdoClientLike {
   listPullRequestChanges(pullRequestId: number): Promise<AdoChangedFile[]>;
   getItemContent(commitId: string, path: string): Promise<string | null>;
+  createPullRequestStatus(pullRequestId: number, input: AdoPullRequestStatusInput): Promise<void>;
 }
 
 export class AdoClient implements AdoReviewClient {
@@ -140,6 +149,34 @@ export class AdoClient implements AdoReviewClient {
       throw new Error("Azure DevOps returned an invalid item.");
     }
     return value.content;
+  }
+
+  /**
+   * Post the review status that an optional branch policy can require. The
+   * publisher identity owns this status; it is not a vote or approval.
+   */
+  async createPullRequestStatus(pullRequestId: number, input: AdoPullRequestStatusInput): Promise<void> {
+    const description = input.description.trim();
+    if (!description || description.length > 1_000 || /[\u0000-\u001f]/.test(description)) {
+      throw new Error("A valid pull request status description is required.");
+    }
+    if (!["pending", "succeeded", "failed", "error", "notApplicable"].includes(input.state)) {
+      throw new Error("Invalid pull request status state.");
+    }
+    const context = input.context ?? { name: "review", genre: "masthead" };
+    if (!context.name.trim() || !context.genre.trim() ||
+        context.name.length > 100 || context.genre.length > 100) {
+      throw new Error("Invalid pull request status context.");
+    }
+    await this.request(`/pullRequests/${positiveId(pullRequestId)}/statuses`, {
+      method: "POST",
+      body: {
+        state: input.state,
+        description,
+        context: { name: context.name, genre: context.genre },
+        ...(input.targetUrl ? { targetUrl: input.targetUrl } : {})
+      }
+    });
   }
 
   async createThread(pullRequestId: number, input: CreateThreadInput): Promise<AdoThread> {

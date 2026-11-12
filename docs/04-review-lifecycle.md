@@ -94,8 +94,9 @@ runner supplies changed-file content to the recheck; a finding whose evidence is
 not present remains open.
 
 The runner now supplies bounded unchanged relative imports and nearby tests to
-both the review and the recheck. Semantic caller discovery, durable run/answer
-records, branch-policy completion gating and deployment of the trusted pipeline
-repository/YAML remain. Project service hooks can already be created from
-organization Setup for an existing native or broker endpoint. Missing output or
-filtered findings are never fix evidence.
+both the review and the recheck. It posts a `masthead/review` status so an
+administrator can require it in a branch policy; creating the policy itself and
+semantic caller discovery remain. Durable run/answer records and deployment of
+the trusted pipeline repository/YAML also remain. Project service hooks can
+already be created from organization Setup for an existing native or broker
+endpoint. Missing output or filtered findings are never fix evidence.

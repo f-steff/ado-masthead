@@ -35,6 +35,7 @@ These do not replace installation or end-to-end testing against Azure DevOps.
 - Reviews across repositories and projects selected during onboarding.
 - Reads related imports and nearby tests, not just the changed diff.
 - Posts inline findings and a summary on the pull request.
+- Posts a `masthead/review` status that an optional branch policy can require.
 - Adds a **Masthead** tab to the pull request with a review guide, coverage,
   and the current findings.
 - Answers author comments in its own review threads.

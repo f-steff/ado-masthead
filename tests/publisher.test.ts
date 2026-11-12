@@ -244,6 +244,37 @@ test("the REST client keeps the token out of URLs and sends an inline thread con
   }), /HTTPS/);
 });
 
+test("the REST client posts the Masthead review status with its fixed context", async () => {
+  const calls: Array<{ url: string; options: RequestInit }> = [];
+  const fetchImpl: typeof fetch = async (input, options) => {
+    calls.push({ url: String(input), options: options ?? {} });
+    return new Response("", { status: 200 });
+  };
+  const client = new AdoClient({
+    organizationUrl: "https://dev.azure.com/contoso",
+    project: "SampleProject",
+    repositoryId: "repo-id",
+    token: "pipeline-token",
+    fetchImpl
+  });
+  await client.createPullRequestStatus(2, {
+    state: "succeeded",
+    description: "Masthead review completed with no findings.",
+    context: { genre: "masthead", name: "review" }
+  });
+  assert.match(calls[0].url, /\/pullRequests\/2\/statuses\?api-version=7\.1$/);
+  assert.equal(calls[0].options.method, "POST");
+  assert.deepEqual(JSON.parse(String(calls[0].options.body)), {
+    state: "succeeded",
+    description: "Masthead review completed with no findings.",
+    context: { genre: "masthead", name: "review" }
+  });
+  await assert.rejects(
+    () => client.createPullRequestStatus(2, { state: "succeeded", description: "line\nbreak" }),
+    /description/
+  );
+});
+
 test("the REST client requests the preview connectionData API", async () => {
   const calls: string[] = [];
   const fetchImpl: typeof fetch = async (input) => {
