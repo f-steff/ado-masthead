@@ -15,7 +15,7 @@
           <img src="../../../images/icon-128.png" alt="">
         </div>
         <div>
-          <p class="eyebrow">Azure DevOps extension</p>
+          <p class="eyebrow">Global Settings</p>
           <h1>Masthead</h1>
           <p class="lede">Context-aware AI pull request reviews for Azure DevOps.</p>
         </div>
@@ -37,6 +37,7 @@
         <button type="button" class="tab" role="tab" aria-selected="false" data-tab="setup">Setup</button>
         <button type="button" class="tab" role="tab" aria-selected="false" data-tab="profile">Review profile</button>
         <button type="button" class="tab" role="tab" aria-selected="false" data-tab="about">About</button>
+        <button type="button" class="tab" role="tab" aria-selected="false" data-tab="examples">Examples</button>
       </div>
 
       <form id="settings-form">
@@ -250,12 +251,23 @@
             <p><strong>Version</strong> <span id="about-version">loading...</span></p>
             <p>Use <strong>General</strong> to set the organization master switch and the defaults used when new projects and repositories are discovered. The project table lets an organization administrator disable reviews for one project without changing its repository settings.</p>
             <p>Use <strong>Setup</strong> to choose event delivery, identify the central review pipeline, and validate that the pipeline is readable by the current identity.</p>
-            <p>Use <strong>Review profile</strong> to choose the default provider, model, reasoning options, lenses and review guide. Model suggestions refresh from the provider after a review and remain editable for custom names. Projects and repositories can inherit or override provider and lens choices.</p>
+            <p>Use <strong>Review profile</strong> to choose the default provider, model, reasoning options, lenses and review guide. Model suggestions come from the separate hourly catalogue pipeline and remain editable for custom names. Projects and repositories can inherit or override provider and lens choices. Use <strong>Examples</strong> to preview the input and expected output for every lens.</p>
             <p>Repository-level switches live under each project's <strong>Project settings &gt; Masthead</strong> page. A pull request is reviewed only when the organization, project and destination repository are all enabled. This also applies when the PR originates from a fork or another project: the destination repository supplies the gate.</p>
             <p>Provider keys are never entered in this browser page. Keep the provider key in an Azure DevOps secret variable group linked only to the central review pipeline.</p>
             <p>By default, comments use the pipeline's build-service identity. To show a dedicated review identity, create a service account and supply its short-lived PAT as the secret <code>MASTHEAD_ADO_TOKEN</code>; do not use your personal daily PAT.</p>
             <p>Automatic event delivery, deployment of a trusted pipeline repository/YAML, PR-tab publication and branch-policy completion gating are still being built. The worker now reads these settings before spending tokens.</p>
             <p><a href="https://github.com/f-steff/ado-masthead#readme" target="_blank" rel="noopener noreferrer">Project documentation</a></p>
+          </section>
+        </section>
+
+        <section class="tab-panel" data-panel="examples" role="tabpanel" hidden>
+          <section class="panel" aria-labelledby="examples-heading">
+            <h2 id="examples-heading">Lens examples</h2>
+            <p class="note">Choose one lens to see when it applies, a compact input example and the kind of finding it should produce. Examples are synthetic and do not represent a real pull request.</p>
+            <div class="example-layout">
+              <div id="org-example-tabs" class="example-nav" role="tablist" aria-label="Review lens examples"></div>
+              <div id="org-example-panel" class="example-panel" role="tabpanel"></div>
+            </div>
           </section>
         </section>
 
