@@ -47,6 +47,16 @@ function contextParams(): URLSearchParams {
   return search;
 }
 
+/** The host does not add query parameters to PR-tab iframes; use its referrer. */
+function pullRequestFromReferrer(): string | undefined {
+  try {
+    const url = new URL(document.referrer);
+    return /\/pullrequest\/([1-9]\d*)(?:\/|$)/i.exec(url.pathname)?.[1];
+  } catch {
+    return undefined;
+  }
+}
+
 function setStatus(message: string, kind: "info" | "success" | "error" = "info"): void {
   if (!prStatus) return;
   prStatus.textContent = message;
@@ -88,7 +98,9 @@ async function main(): Promise<void> {
   }
 
   const params = contextParams();
-  const pullRequestId = positiveNumber(params.get("pullRequestId") ?? params.get("prId") ?? "");
+  const pullRequestId = positiveNumber(
+    params.get("pullRequestId") ?? params.get("prId") ?? pullRequestFromReferrer() ?? ""
+  );
   let repositoryId = params.get("repositoryId") ?? params.get("repoId") ?? "";
   if (!projectId || !projectName) {
     if (prLede) prLede.textContent = "This tab was opened outside a project context.";
