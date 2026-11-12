@@ -59,6 +59,16 @@ test("service-hook subscriptions target one project and never embed credentials 
     eventType: "git.pullrequest.created",
     endpoint: { url: "https://broker.example.com/event" }
   }));
+
+  const native = buildServiceHookSubscription({
+    projectId,
+    eventType: "ms.vss-code.git-pullrequest-comment-event",
+    endpoint: { url: nativeServiceHookUrl("https://dev.azure.com/contoso", "Masthead") }
+  });
+  assert.equal(
+    (native.consumerInputs as Record<string, string>).url,
+    "https://dev.azure.com/contoso/_apis/public/distributedtask/webhooks/Masthead?api-version=6.0-preview"
+  );
 });
 
 test("only subscriptions for the configured project and endpoint are matched", () => {
