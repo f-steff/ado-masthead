@@ -121,6 +121,16 @@ test("the organization and project pages initialize the ADO host and split setti
   const projectScript = fs.readFileSync(path.join(root, "src/extension/project/index.ts"), "utf8");
   const host = fs.readFileSync(path.join(root, "src/extension/shared/host.ts"), "utf8");
   const manifest = JSON.parse(fs.readFileSync(path.join(root, "ado-manifests/azure-devops-extension-base.json"), "utf8"));
+  assert.match(orgHtml, /Global Settings/);
+  assert.match(projectHtml, /Project Settings/);
+  assert.doesNotMatch(orgHtml, /Azure DevOps extension/);
+  assert.doesNotMatch(projectHtml, /Azure DevOps project settings/);
+  assert.match(orgHtml, /data-tab="examples"/);
+  assert.match(projectHtml, /data-tab="examples"/);
+  assert.match(orgHtml, /id="org-example-tabs"/);
+  assert.match(projectHtml, /id="project-example-tabs"/);
+  assert.match(orgScript, /renderLensExamples/);
+  assert.match(projectScript, /renderLensExamples/);
   assert.match(orgHtml, /id="host-status"/);
   assert.match(orgHtml, /id="org-enabled"/);
   assert.match(orgHtml, /id="default-project"/);

@@ -1,6 +1,7 @@
 export * from "./ado";
 export * from "./providers";
 export * from "./review";
+export * from "./review/lens-examples";
 export * from "./settings";
 export * from "./worker/review";
 export * from "./worker/ado-review";

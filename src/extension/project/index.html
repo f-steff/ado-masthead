@@ -15,7 +15,7 @@
           <img src="../../../images/icon-128.png" alt="">
         </div>
         <div>
-          <p class="eyebrow">Azure DevOps project settings</p>
+          <p class="eyebrow">Project Settings</p>
           <h1>Masthead</h1>
           <p class="lede">Choose which repositories may receive pull request reviews in this project.</p>
         </div>
@@ -36,6 +36,7 @@
         <button type="button" class="tab active" role="tab" aria-selected="true" data-tab="general">General</button>
         <button type="button" class="tab" role="tab" aria-selected="false" data-tab="profile">Review profile</button>
         <button type="button" class="tab" role="tab" aria-selected="false" data-tab="about">About</button>
+        <button type="button" class="tab" role="tab" aria-selected="false" data-tab="examples">Examples</button>
       </div>
 
       <form id="project-form">
@@ -124,9 +125,21 @@
             <p>Use <strong>General</strong> to enable the project, choose what a newly discovered repository inherits, and turn individual repositories on or off. New repositories are disabled unless the project default says otherwise.</p>
             <p>Use <strong>Review profile</strong> to inherit the organization's provider, model, lenses and review guide, or to override them for this project. Each repository can have its own override as well.</p>
             <p>The destination repository decides the gate. A pull request from a fork or another project is checked against the project and repository that receive the merge.</p>
+            <p>Use <strong>Examples</strong> to see when each lens applies and the kind of finding it should produce.</p>
             <p>Organization administrators control the master switch, defaults, event delivery, central pipeline and the default review profile on the organization settings page.</p>
             <p>Provider keys are never entered here. They belong in an Azure DevOps secret variable group linked only to the central review pipeline.</p>
             <p><a href="https://github.com/f-steff/ado-masthead#readme" target="_blank" rel="noopener noreferrer">Project documentation</a></p>
+          </section>
+        </section>
+
+        <section class="tab-panel" data-panel="examples" role="tabpanel" hidden>
+          <section class="panel" aria-labelledby="examples-heading">
+            <h2 id="examples-heading">Lens examples</h2>
+            <p class="note">Choose one lens to see when it applies, a compact input example and the kind of finding it should produce. Examples are synthetic and do not represent a real pull request.</p>
+            <div class="example-layout">
+              <div id="project-example-tabs" class="example-nav" role="tablist" aria-label="Review lens examples"></div>
+              <div id="project-example-panel" class="example-panel" role="tabpanel"></div>
+            </div>
           </section>
         </section>
 

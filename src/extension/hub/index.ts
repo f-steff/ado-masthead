@@ -12,6 +12,7 @@ import {
 import { defaultReviewProfile, resolveReviewProfile } from "../../review/lenses";
 import { ModelCatalog, normalizeModelCatalog } from "../../models/catalog";
 import { initializeHost, notifyHostFailed, notifyHostLoaded, organizationUrl } from "../shared/host";
+import { renderLensExamples } from "../shared/lens-examples";
 import { fillModelOptions } from "../shared/model-suggestions";
 import { filterPipelines, pipelineLabel, PipelineOption } from "../shared/pipelines";
 import { renderLensOptions, selectedLenses } from "../shared/review-profile";
@@ -67,6 +68,8 @@ const reasoningField = document.querySelector<HTMLElement>("#reasoning-field");
 const thinkingField = document.querySelector<HTMLElement>("#thinking-field");
 const orgLensList = document.querySelector<HTMLElement>("#org-lens-list");
 const orgReviewGuide = document.querySelector<HTMLInputElement>("#org-review-guide");
+const orgExampleTabs = document.querySelector<HTMLElement>("#org-example-tabs");
+const orgExamplePanel = document.querySelector<HTMLElement>("#org-example-panel");
 const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-tab]"));
 const panels = Array.from(document.querySelectorAll<HTMLElement>("[data-panel]"));
 
@@ -632,6 +635,7 @@ async function main(): Promise<void> {
   }
 
   const initialTab = window.location.hash.replace(/^#/, "");
+  renderLensExamples(orgExampleTabs, orgExamplePanel);
   activateTab(initialTab);
 
   try {

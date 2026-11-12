@@ -14,6 +14,7 @@ import {
 import { defaultReviewProfile, resolveReviewProfile } from "../../review/lenses";
 import { ModelCatalog, normalizeModelCatalog } from "../../models/catalog";
 import { initializeHost, notifyHostFailed, notifyHostLoaded, organizationUrl } from "../shared/host";
+import { renderLensExamples } from "../shared/lens-examples";
 import { fillModelOptions } from "../shared/model-suggestions";
 import { renderLensOptions, selectedLenses, setLensOptionsDisabled } from "../shared/review-profile";
 import { loadSetting, saveSetting } from "../shared/storage";
@@ -42,6 +43,8 @@ const projectModelOptions = document.querySelector<HTMLDataListElement>("#projec
 const allModelOptions = document.querySelector<HTMLDataListElement>("#all-model-options");
 const projectLensList = document.querySelector<HTMLElement>("#project-lens-list");
 const projectReviewGuide = document.querySelector<HTMLInputElement>("#project-review-guide");
+const projectExampleTabs = document.querySelector<HTMLElement>("#project-example-tabs");
+const projectExamplePanel = document.querySelector<HTMLElement>("#project-example-panel");
 const repoProfileList = document.querySelector<HTMLElement>("#repo-profile-list");
 const form = document.querySelector<HTMLFormElement>("#project-form");
 const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-tab]"));
@@ -371,6 +374,7 @@ async function main(): Promise<void> {
     return;
   }
 
+  renderLensExamples(projectExampleTabs, projectExamplePanel);
   activateTab(window.location.hash.replace(/^#/, ""));
 
   try {
