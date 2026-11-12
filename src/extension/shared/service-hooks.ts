@@ -60,7 +60,7 @@ export function buildServiceHookSubscription(
   if (!SERVICE_HOOK_EVENTS.includes(input.eventType)) {
     throw new Error("Unsupported service-hook event.");
   }
-  const endpoint = validatedEndpoint(input.endpoint.url, "service-hook URL");
+  const endpoint = validatedEndpoint(input.endpoint.url, "service-hook URL", true);
   const consumerInputs: Record<string, string> = { url: endpoint };
   if (input.endpoint.basicAuthCredentials) {
     if (/[\r\n]/.test(input.endpoint.basicAuthCredentials)) {
@@ -99,7 +99,7 @@ export function isMastheadServiceHook(
 }
 
 /** Require HTTPS, or HTTP only on loopback, with no embedded credentials. */
-function validatedEndpoint(value: string, label: string): string {
+function validatedEndpoint(value: string, label: string, allowQuery = false): string {
   let url: URL;
   try {
     url = new URL(value.trim());
@@ -108,8 +108,8 @@ function validatedEndpoint(value: string, label: string): string {
   }
   const loopback = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
   if ((url.protocol !== "https:" && !(url.protocol === "http:" && loopback)) ||
-      url.username || url.password || url.search || url.hash) {
-    throw new Error(`The ${label} must use HTTPS (or HTTP on loopback) without credentials, a query or a fragment.`);
+      url.username || url.password || url.hash || (!allowQuery && url.search)) {
+    throw new Error(`The ${label} must use HTTPS (or HTTP on loopback) without credentials${allowQuery ? " or a fragment" : ", a query or a fragment"}.`);
   }
   return url.toString();
 }
