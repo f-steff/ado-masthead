@@ -154,13 +154,13 @@ not print the provider key, ADO token, prompt or raw repository content.
 - Project service hooks can be created from organization Setup once a native
   incoming-webhook service connection or broker endpoint exists. The step still
   needs that endpoint, and can also be run manually or by a pipeline.
-- The runner reads full changed-file content rather than a minimal diff.
-- Related unchanged files, callers and tests are not retrieved yet.
+- The runner reads full changed-file content rather than a minimal diff. It
+  also reads a bounded set of existing relative imports and nearby tests, but
+  not every caller or unrelated repository file.
 - A re-review does not resolve a finding merely because the model omitted it.
   A separate verification pass must return an evidence-backed `fixed` or
-  `withdrawn` result. The current verifier sees changed-file content only; a
+  `withdrawn` result. The verifier sees the same changed and related files; a
   finding whose evidence is not in that content stays open as `unverified`.
-- Related unchanged files are not retrieved for the verifier yet.
 - The organization, project and repository switches are read and enforced by
   the worker. A repository with no stored switch follows the configured
   new-repository default.

@@ -33,7 +33,7 @@ These do not replace installation or end-to-end testing against Azure DevOps.
 
 - Starts a review when a pull request is created or updated.
 - Reviews across repositories and projects selected during onboarding.
-- Reads related files, callers and tests, not just the changed diff.
+- Reads related imports and nearby tests, not just the changed diff.
 - Posts inline findings and a summary on the pull request.
 - Adds a **Masthead** tab to the pull request with a review guide, coverage,
   and the current findings.
