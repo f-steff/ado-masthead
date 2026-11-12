@@ -210,6 +210,7 @@ test("the pull request tab reads only its current context and exposes review sta
   assert.match(script, /getWebContext\(\)/);
   assert.match(script, /pullRequestId/);
   assert.match(script, /repositoryId/);
+  assert.match(script, /SDK\.getConfiguration\(\)/);
   assert.match(script, /document\.referrer/);
   assert.match(script, /isReviewEnabled/);
   assert.doesNotMatch(html + script, /type="password"/i);

@@ -1,5 +1,5 @@
-// Pull request tab. The host supplies the PR and repository ids in the iframe
-// query string; the page reads only the current project and PR, never unrelated
+// Pull request tab. The host supplies the current PR and repository ids through
+// the SDK configuration handshake; the page reads only that PR, never unrelated
 // tabs or repositories.
 import * as SDK from "azure-devops-extension-sdk";
 import {
@@ -47,7 +47,20 @@ function contextParams(): URLSearchParams {
   return search;
 }
 
-/** The host does not add query parameters to PR-tab iframes; use its referrer. */
+/**
+ * Read a string or positive integer from the SDK configuration. PR tabs are
+ * documented to receive pullRequestId and repositoryId, but older hosts differ.
+ */
+function configurationValue(configuration: Record<string, unknown>, ...keys: string[]): string {
+  for (const key of keys) {
+    const value = configuration[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+    if (typeof value === "number" && Number.isSafeInteger(value) && value > 0) return String(value);
+  }
+  return "";
+}
+
+/** Older hosts did not add query parameters to PR-tab iframes; support that too. */
 function pullRequestFromReferrer(): string | undefined {
   try {
     const url = new URL(document.referrer);
@@ -74,10 +87,12 @@ async function main(): Promise<void> {
   let extensionId = "";
   let projectId = "";
   let projectName = "";
+  let configuration: Record<string, unknown> = {};
   try {
     const context = await initializeHost();
     hostName = context.host.name;
     extensionId = context.extension.id;
+    configuration = SDK.getConfiguration();
     const project = SDK.getWebContext().project;
     projectId = project?.id ?? "";
     projectName = project?.name ?? "";
@@ -99,9 +114,16 @@ async function main(): Promise<void> {
 
   const params = contextParams();
   const pullRequestId = positiveNumber(
-    params.get("pullRequestId") ?? params.get("prId") ?? pullRequestFromReferrer() ?? ""
+    configurationValue(configuration, "pullRequestId", "prId") ||
+    params.get("pullRequestId") ||
+    params.get("prId") ||
+    pullRequestFromReferrer() ||
+    ""
   );
-  let repositoryId = params.get("repositoryId") ?? params.get("repoId") ?? "";
+  let repositoryId = configurationValue(configuration, "repositoryId", "gitRepositoryId", "repoId") ||
+    params.get("repositoryId") ||
+    params.get("repoId") ||
+    "";
   if (!projectId || !projectName) {
     if (prLede) prLede.textContent = "This tab was opened outside a project context.";
     setStatus("Open this tab from a pull request in an Azure DevOps project.", "error");
