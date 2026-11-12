@@ -108,10 +108,12 @@ This slice is manual or pipeline-invoked. The worker reads the persisted
 organization and destination-project gates before it spends tokens, applies the
 effective review profile and provider/model override, and then publishes through
 the normal reconciliation path. A repository with no stored switch follows the
-configured new-repository default. The slice does not yet receive service-hook
-events, create the central pipeline repository/YAML, or retrieve unchanged
-related files for every finding. A PR tab now shows the effective profile,
-gating state and existing Masthead thread counts.
+configured new-repository default. The organization Setup page can create the
+three project service-hook subscriptions for an existing native incoming-webhook
+service connection or broker endpoint; it does not create the service connection,
+broker host or central pipeline repository/YAML. The slice also does not retrieve
+unchanged related files for every finding. A PR tab now shows the effective
+profile, gating state and existing Masthead thread counts.
 
 ## Cross-project behavior
 

@@ -151,8 +151,9 @@ not print the provider key, ADO token, prompt or raw repository content.
 
 ## Current limits
 
-- There is no service-hook trigger yet; the step must be run manually or by a
-  pipeline.
+- Project service hooks can be created from organization Setup once a native
+  incoming-webhook service connection or broker endpoint exists. The step still
+  needs that endpoint, and can also be run manually or by a pipeline.
 - The runner reads full changed-file content rather than a minimal diff.
 - Related unchanged files, callers and tests are not retrieved yet.
 - A re-review does not resolve a finding merely because the model omitted it.
@@ -163,8 +164,10 @@ not print the provider key, ADO token, prompt or raw repository content.
 - The organization, project and repository switches are read and enforced by
   the worker. A repository with no stored switch follows the configured
   new-repository default.
-- The PR tab, review guide publication, event-service deployment and automated
-  central-pipeline creation are not connected.
+- The PR tab shows review state. Review guide publication and automated
+  central-pipeline creation are not connected. Service hooks point at an
+  existing native service connection or broker; the extension does not deploy
+  either one.
 - Settings reads depend on the pipeline identity's access to extension data.
   Use a dedicated token or an explicit settings snapshot when that access is
   not available.

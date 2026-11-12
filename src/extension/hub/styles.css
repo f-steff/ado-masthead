@@ -355,9 +355,14 @@ input[type="checkbox"]:disabled {
   font-weight: 600;
 }
 
+.field[hidden] {
+  display: none;
+}
+
 input[type="text"],
 input[type="url"],
 input[type="number"],
+input[type="password"],
 select {
   width: 100%;
   min-height: 34px;
@@ -486,6 +491,27 @@ select {
   display: grid;
   gap: 8px;
   margin-top: 8px;
+}
+
+.hook-project-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.hook-project-option {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--callout-border-color, #d0d7de);
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.hook-project-option:has(input:checked) {
+  border-color: rgba(14, 116, 144, 0.55);
+  background: rgba(14, 116, 144, 0.07);
 }
 
 .repo-profile {
@@ -679,7 +705,8 @@ button:disabled {
   }
 
   .field-grid,
-  .lens-list {
+  .lens-list,
+  .hook-project-list {
     grid-template-columns: 1fr;
   }
 
