@@ -7,6 +7,7 @@ import { publishReviewPlan, PublishReviewResult } from "../ado/publisher";
 import { FindingVerification, ReviewRevision, reconcileFindings, ReconciliationPlan, StoredFinding } from "../review/lifecycle";
 import { ReviewProfile } from "../review/lenses";
 import { detectRepositoryLicense } from "../review/license";
+import { relatedFileCandidates } from "../review/related-files";
 import { ReviewInput } from "../review/types";
 import { ReviewModel, ReviewRun, runReview } from "./review";
 import { runVerification } from "./verification";
@@ -17,6 +18,10 @@ export interface AdoReviewOptions {
   profile?: Partial<ReviewProfile>;
   maxChangedFiles?: number;
   maxFileCharacters?: number;
+  maxRelatedFiles?: number;
+  maxRelatedFileCharacters?: number;
+  maxRelatedTotalCharacters?: number;
+  maxRelatedCandidates?: number;
   /** A deterministic fake or a caller can disable the separate recheck. */
   verifyPrevious?: boolean;
 }
@@ -28,6 +33,8 @@ export interface AdoReviewRun {
   published: PublishReviewResult;
   storedBefore: StoredFinding[];
   revision: ReviewRevision;
+  /** Paths only; content stays inside the bounded prompt input. */
+  relatedFiles: string[];
 }
 
 const LICENSE_CANDIDATES = ["LICENSE", "LICENSE.md", "LICENSE.txt"];
@@ -43,6 +50,10 @@ export async function runAdoReview(
 ): Promise<AdoReviewRun> {
   const maxFiles = options.maxChangedFiles ?? 50;
   const maxFileCharacters = options.maxFileCharacters ?? 120_000;
+  const maxRelatedFiles = options.maxRelatedFiles ?? 12;
+  const maxRelatedFileCharacters = options.maxRelatedFileCharacters ?? 80_000;
+  const maxRelatedTotalCharacters = options.maxRelatedTotalCharacters ?? 200_000;
+  const maxRelatedCandidates = options.maxRelatedCandidates ?? 96;
   const pr = await client.getPullRequest(options.pullRequestId);
   if (pr.status !== "active") {
     throw new Error("Pull request is not active.");
@@ -59,18 +70,30 @@ export async function runAdoReview(
     state: item.state === "active" ? "active" as const : item.state === "dismissed" ? "dismissed" as const : "resolved" as const
   }));
   const changedFiles = await readChangedFiles(client, options.pullRequestId, revision.source, maxFiles, maxFileCharacters);
+  const relatedFiles = await readRelatedFiles(client, changedFiles, revision.source, {
+    maxFiles: maxRelatedFiles,
+    maxFileCharacters: maxRelatedFileCharacters,
+    maxTotalCharacters: maxRelatedTotalCharacters,
+    maxCandidates: maxRelatedCandidates
+  });
   const repositoryLicense = await readRepositoryLicense(client, revision.target);
   const input: ReviewInput = {
     title: pr.title,
     description: pr.description,
     changedFiles,
     repositoryLicense,
+    ...(relatedFiles.length === 0 ? {} : { relatedFiles }),
     ...(previousFindings.length === 0 ? {} : { previousFindings })
   };
   const review = await runReview(input, options.profile, options.model);
   const verification = options.verifyPrevious === false
     ? []
-    : (await runVerification({ findings: storedBefore, changedFiles, revision }, options.model)).verifications;
+    : (await runVerification({
+        findings: storedBefore,
+        changedFiles,
+        ...(relatedFiles.length === 0 ? {} : { relatedFiles }),
+        revision
+      }, options.model)).verifications;
   const plan = reconcileFindings(storedBefore, review.result, verification, revision, revision, identity.id);
   const published = plan.actions.length === 0
     ? { created: [], resolved: [], withdrawn: [], skipped: [] }
@@ -80,7 +103,15 @@ export async function runAdoReview(
         botId: identity.id,
         plan
       });
-  return { review, verification, plan, published, storedBefore, revision };
+  return {
+    review,
+    verification,
+    plan,
+    published,
+    storedBefore,
+    revision,
+    relatedFiles: relatedFiles.map((file) => file.path)
+  };
 }
 
 /** Read the existing bot-owned metadata without treating threads as trusted input. */
@@ -122,6 +153,36 @@ async function readChangedFiles(
       throw new Error(`Changed file exceeds the content budget: ${change.path}`);
     }
     files.push({ path: change.path, changeType: change.changeType, content });
+  }
+  return files;
+}
+
+/**
+ * Fetch a bounded set of unchanged imports and nearby tests. Candidates are
+ * deterministic and every item must exist at the fixed source commit.
+ */
+async function readRelatedFiles(
+  client: AdoReviewClient,
+  changedFiles: ReviewInput["changedFiles"],
+  sourceCommit: string,
+  limits: { maxFiles: number; maxFileCharacters: number; maxTotalCharacters: number; maxCandidates: number }
+): Promise<Array<{ path: string; content: string }>> {
+  if (!Number.isSafeInteger(limits.maxFiles) || limits.maxFiles < 1 ||
+      !Number.isSafeInteger(limits.maxFileCharacters) || limits.maxFileCharacters < 1 ||
+      !Number.isSafeInteger(limits.maxTotalCharacters) || limits.maxTotalCharacters < 1 ||
+      !Number.isSafeInteger(limits.maxCandidates) || limits.maxCandidates < 1) {
+    throw new Error("Invalid related-file limits.");
+  }
+  const files: Array<{ path: string; content: string }> = [];
+  let totalCharacters = 0;
+  for (const candidate of relatedFileCandidates(changedFiles).slice(0, limits.maxCandidates)) {
+    if (files.length >= limits.maxFiles || totalCharacters >= limits.maxTotalCharacters) break;
+    const content = await client.getItemContent(sourceCommit, candidate);
+    if (content === null || content.includes("\u0000")) continue;
+    if (content.length > limits.maxFileCharacters) continue;
+    if (totalCharacters + content.length > limits.maxTotalCharacters) continue;
+    files.push({ path: candidate, content });
+    totalCharacters += content.length;
   }
   return files;
 }

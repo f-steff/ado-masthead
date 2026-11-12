@@ -75,6 +75,7 @@ async function main(): Promise<void> {
     summary: run.review.result.summary,
     findingCount: run.review.result.findings.length,
     suppressedCount: run.review.suppressedCount,
+    relatedFiles: run.relatedFiles,
     verified: run.verification.map((item) => ({ findingId: item.findingId, outcome: item.outcome })),
     created: run.published.created,
     resolved: run.published.resolved,

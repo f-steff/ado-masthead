@@ -71,6 +71,9 @@ class FakeReviewClient implements AdoReviewClient {
     if (path === "src/user.ts") {
       return "export function normalizeEmail(user: User) { return user.profile.email.toLowerCase(); }";
     }
+    if (path === "src/user.test.ts") {
+      return "import { normalizeEmail } from './user';\ntest('normalizes email', () => normalizeEmail(user));";
+    }
     return null;
   }
 
@@ -137,6 +140,8 @@ test("the ADO runner fetches source, runs the worker and publishes validated fin
   assert.equal(client.created[1].filePath, "/src/user.ts");
   assert.equal(client.created[1].line, 6);
   assert.equal(prompts.length, 1);
+  assert.match(prompts[0].user, /src\/user\.test\.ts/);
+  assert.deepEqual(run.relatedFiles, ["src/user.test.ts"]);
   assert.equal(run.revision.source, revision.source);
   assert.deepEqual(storedFindingsFromThreads(client.threads, botId).map((item) => item.finding.id), [
     "repository-license-missing",

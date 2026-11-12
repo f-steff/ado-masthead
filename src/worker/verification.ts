@@ -8,6 +8,7 @@ import { ReviewLimits, ReviewModel } from "./review";
 export interface VerificationInput {
   findings: readonly StoredFinding[];
   changedFiles: readonly ReviewChangedFile[];
+  relatedFiles?: ReadonlyArray<{ path: string; content: string }>;
   revision: ReviewRevision;
 }
 
@@ -46,6 +47,7 @@ export async function runVerification(
   const data = {
     revision: input.revision,
     changedFiles: input.changedFiles,
+    relatedFiles: input.relatedFiles,
     findings: active.map((item) => ({
       id: item.finding.id,
       file: item.finding.file,
