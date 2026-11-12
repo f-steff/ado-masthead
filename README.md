@@ -18,9 +18,10 @@ defaults. The project page discovers repositories and stores project and
 per-repository review gates and profile overrides. The worker reads the
 persisted organization and project gates before it spends model tokens.
 
-Automatic PR-event delivery, central-pipeline creation, the PR tab and optional
-branch-policy completion gating are still being built. The features below
-describe the intended complete product.
+Automatic PR-event delivery, deployment of a trusted pipeline repository/YAML
+and optional branch-policy completion gating are still being built. A Masthead
+pull request tab shows the effective profile, gating state and existing review
+threads. The features below describe the intended complete product.
 
 Local tests exercise review validation, repository gating, finding
 reconciliation, ADO publication and the broker's HTTP delivery/retry handling.

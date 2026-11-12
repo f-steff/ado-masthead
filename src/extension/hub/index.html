@@ -255,7 +255,7 @@
             <p>Repository-level switches live under each project's <strong>Project settings &gt; Masthead</strong> page. A pull request is reviewed only when the organization, project and destination repository are all enabled. This also applies when the PR originates from a fork or another project: the destination repository supplies the gate.</p>
             <p>Provider keys are never entered in this browser page. Keep the provider key in an Azure DevOps secret variable group linked only to the central review pipeline.</p>
             <p>By default, comments use the pipeline's build-service identity. To show a dedicated review identity, create a service account and supply its short-lived PAT as the secret <code>MASTHEAD_ADO_TOKEN</code>; do not use your personal daily PAT.</p>
-            <p>Automatic event delivery, deployment of a trusted pipeline repository/YAML, PR-tab publication and branch-policy completion gating are still being built. The worker now reads these settings before spending tokens.</p>
+            <p>The Masthead pull request tab shows the effective profile, gating state and thread counts for the current PR. Automatic event delivery, deployment of a trusted pipeline repository/YAML and branch-policy completion gating are still being built. The worker now reads these settings before spending tokens.</p>
             <p><a href="https://github.com/f-steff/ado-masthead#readme" target="_blank" rel="noopener noreferrer">Project documentation</a></p>
           </section>
         </section>

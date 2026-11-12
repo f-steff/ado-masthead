@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Masthead pull request</title>
+    <link rel="stylesheet" href="../hub/styles.css">
+  </head>
+  <body>
+    <main class="page">
+      <header class="hero">
+        <div class="mark" aria-hidden="true">
+          <img src="../../../images/icon-128.png" alt="">
+        </div>
+        <div>
+          <p class="eyebrow">Pull request review</p>
+          <h1>Masthead</h1>
+          <p class="lede" id="pr-lede">Loading pull request context...</p>
+        </div>
+      </header>
+
+      <section class="panel" aria-labelledby="connection-heading">
+        <div class="connection">
+          <span class="status-dot" id="status-dot" aria-hidden="true"></span>
+          <div>
+            <h2 id="connection-heading">Extension host</h2>
+            <p id="host-status">Connecting to Azure DevOps...</p>
+            <p class="meta" id="host-meta"></p>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="summary-heading">
+        <h2 id="summary-heading">Review status</h2>
+        <p id="pr-title" class="pr-title">Waiting for the pull request...</p>
+        <div class="field-grid">
+          <div class="field">
+            <span>Masthead threads</span>
+            <strong id="thread-count">-</strong>
+          </div>
+          <div class="field">
+            <span>Active / fixed</span>
+            <strong id="thread-state">-</strong>
+          </div>
+        </div>
+        <p class="note" id="gate-state"></p>
+        <p class="note" id="profile-state"></p>
+        <p id="pr-status" class="status-message" role="status" aria-live="polite"></p>
+      </section>
+
+      <section class="panel help-panel" aria-labelledby="help-heading">
+        <h2 id="help-heading">About this tab</h2>
+        <p>Masthead reviews this pull request from the central review pipeline. The organization, project and destination repository must all be enabled for a new review to run.</p>
+        <p><a id="project-settings-link" href="#" target="_blank" rel="noopener noreferrer">Open project Masthead settings</a></p>
+        <p><a id="pr-link" href="#" target="_blank" rel="noopener noreferrer">Open the pull request</a></p>
+      </section>
+    </main>
+    <script src="index.js"></script>
+  </body>
+</html>

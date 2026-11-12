@@ -68,6 +68,22 @@ for (const file of ["index.html", "styles.css"]) {
   fs.copyFileSync(path.join(hubSource, file), path.join(hubDirectory, file));
 }
 
+// Pull request tabs are a separate contribution hosted inside the PR page.
+const prSource = path.join(rootDir, "src", "extension", "pr");
+const prDirectory = path.join(distDir, "extension", "pr");
+fs.mkdirSync(prDirectory, { recursive: true });
+esbuild.buildSync({
+  entryPoints: [path.join(prSource, "index.ts")],
+  outfile: path.join(prDirectory, "index.js"),
+  bundle: true,
+  platform: "browser",
+  format: "iife",
+  target: "es2020",
+  sourcemap: !production,
+  minify: production
+});
+fs.copyFileSync(path.join(prSource, "index.html"), path.join(prDirectory, "index.html"));
+
 // Project settings is a separate contribution so repository gating stays in
 // the project administration surface rather than the organization page.
 const projectSource = path.join(rootDir, "src", "extension", "project");
