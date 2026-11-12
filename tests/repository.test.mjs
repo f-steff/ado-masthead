@@ -195,6 +195,23 @@ test("the organization and project pages initialize the ADO host and split setti
   const project = manifest.contributions.find((entry) => entry.targets.includes("ms.vss-web.project-admin-hub-group"));
   assert.equal(org.properties.uri, "dist/extension/hub/index.html");
   assert.equal(project.properties.uri, "dist/extension/project/index.html");
+  const pr = manifest.contributions.find((entry) => entry.targets.includes("ms.vss-code-web.pr-tabs"));
+  assert.ok(pr);
+  assert.equal(pr.type, "ms.vss-web.tab");
+  assert.equal(pr.properties.uri, "dist/extension/pr/index.html");
+});
+
+test("the pull request tab reads only its current context and exposes review state", () => {
+  const html = fs.readFileSync(path.join(root, "src/extension/pr/index.html"), "utf8");
+  const script = fs.readFileSync(path.join(root, "src/extension/pr/index.ts"), "utf8");
+  assert.match(html, /id="thread-count"/);
+  assert.match(html, /id="gate-state"/);
+  assert.match(html, /id="project-settings-link"/);
+  assert.match(script, /getWebContext\(\)/);
+  assert.match(script, /pullRequestId/);
+  assert.match(script, /repositoryId/);
+  assert.match(script, /isReviewEnabled/);
+  assert.doesNotMatch(html + script, /type="password"/i);
 });
 
 test("local packaging has no credentials while publishing requires an ephemeral token", () => {

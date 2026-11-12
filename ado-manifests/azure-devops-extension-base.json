@@ -50,6 +50,15 @@
         "uri": "dist/extension/project/index.html",
         "icon": "images/icon-32.png"
       }
+    },
+    {
+      "id": "masthead-pr",
+      "type": "ms.vss-web.tab",
+      "targets": ["ms.vss-code-web.pr-tabs"],
+      "properties": {
+        "name": "Masthead",
+        "uri": "dist/extension/pr/index.html"
+      }
     }
   ]
 }
