@@ -164,10 +164,11 @@ not print the provider key, ADO token, prompt or raw repository content.
 - The organization, project and repository switches are read and enforced by
   the worker. A repository with no stored switch follows the configured
   new-repository default.
-- The PR tab shows review state. Review guide publication and automated
-  central-pipeline creation are not connected. Service hooks point at an
-  existing native service connection or broker; the extension does not deploy
-  either one.
+- The PR tab shows review state and the latest `masthead/review` status. Review
+  guide publication and automated central-pipeline creation are not connected.
+  Service hooks point at an existing native service connection or broker; the
+  extension does not deploy either one. An administrator can require the
+  posted status in a branch policy; the extension does not create the policy.
 - Settings reads depend on the pipeline identity's access to extension data.
   Use a dedicated token or an explicit settings snapshot when that access is
   not available.

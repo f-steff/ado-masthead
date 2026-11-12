@@ -62,56 +62,88 @@ export async function runAdoReview(
     source: commitId(pr.lastMergeSourceCommit.commitId, "source"),
     target: commitId(pr.lastMergeTargetCommit.commitId, "target")
   };
-  const identity = await client.getAuthenticatedIdentity();
-  if (!identity.id) throw new Error("Azure DevOps did not provide a Masthead identity.");
-  const storedBefore = await readStoredFindings(client, options.pullRequestId, identity.id);
-  const previousFindings = storedBefore.map((item) => ({
-    finding: item.finding,
-    state: item.state === "active" ? "active" as const : item.state === "dismissed" ? "dismissed" as const : "resolved" as const
-  }));
-  const changedFiles = await readChangedFiles(client, options.pullRequestId, revision.source, maxFiles, maxFileCharacters);
-  const relatedFiles = await readRelatedFiles(client, changedFiles, revision.source, {
-    maxFiles: maxRelatedFiles,
-    maxFileCharacters: maxRelatedFileCharacters,
-    maxTotalCharacters: maxRelatedTotalCharacters,
-    maxCandidates: maxRelatedCandidates
-  });
-  const repositoryLicense = await readRepositoryLicense(client, revision.target);
-  const input: ReviewInput = {
-    title: pr.title,
-    description: pr.description,
-    changedFiles,
-    repositoryLicense,
-    ...(relatedFiles.length === 0 ? {} : { relatedFiles }),
-    ...(previousFindings.length === 0 ? {} : { previousFindings })
-  };
-  const review = await runReview(input, options.profile, options.model);
-  const verification = options.verifyPrevious === false
-    ? []
-    : (await runVerification({
-        findings: storedBefore,
-        changedFiles,
-        ...(relatedFiles.length === 0 ? {} : { relatedFiles }),
-        revision
-      }, options.model)).verifications;
-  const plan = reconcileFindings(storedBefore, review.result, verification, revision, revision, identity.id);
-  const published = plan.actions.length === 0
-    ? { created: [], resolved: [], withdrawn: [], skipped: [] }
-    : await publishReviewPlan(client, {
-        pullRequestId: options.pullRequestId,
-        revision,
-        botId: identity.id,
-        plan
-      });
-  return {
-    review,
-    verification,
-    plan,
-    published,
-    storedBefore,
-    revision,
-    relatedFiles: relatedFiles.map((file) => file.path)
-  };
+  await postReviewStatus(client, options.pullRequestId, "pending", "Masthead review in progress.");
+  try {
+    const identity = await client.getAuthenticatedIdentity();
+    if (!identity.id) throw new Error("Azure DevOps did not provide a Masthead identity.");
+    const storedBefore = await readStoredFindings(client, options.pullRequestId, identity.id);
+    const previousFindings = storedBefore.map((item) => ({
+      finding: item.finding,
+      state: item.state === "active" ? "active" as const : item.state === "dismissed" ? "dismissed" as const : "resolved" as const
+    }));
+    const changedFiles = await readChangedFiles(client, options.pullRequestId, revision.source, maxFiles, maxFileCharacters);
+    const relatedFiles = await readRelatedFiles(client, changedFiles, revision.source, {
+      maxFiles: maxRelatedFiles,
+      maxFileCharacters: maxRelatedFileCharacters,
+      maxTotalCharacters: maxRelatedTotalCharacters,
+      maxCandidates: maxRelatedCandidates
+    });
+    const repositoryLicense = await readRepositoryLicense(client, revision.target);
+    const input: ReviewInput = {
+      title: pr.title,
+      description: pr.description,
+      changedFiles,
+      repositoryLicense,
+      ...(relatedFiles.length === 0 ? {} : { relatedFiles }),
+      ...(previousFindings.length === 0 ? {} : { previousFindings })
+    };
+    const review = await runReview(input, options.profile, options.model);
+    const verification = options.verifyPrevious === false
+      ? []
+      : (await runVerification({
+          findings: storedBefore,
+          changedFiles,
+          ...(relatedFiles.length === 0 ? {} : { relatedFiles }),
+          revision
+        }, options.model)).verifications;
+    const plan = reconcileFindings(storedBefore, review.result, verification, revision, revision, identity.id);
+    const published = plan.actions.length === 0
+      ? { created: [], resolved: [], withdrawn: [], skipped: [] }
+      : await publishReviewPlan(client, {
+          pullRequestId: options.pullRequestId,
+          revision,
+          botId: identity.id,
+          plan
+        });
+    await postReviewStatus(
+      client,
+      options.pullRequestId,
+      "succeeded",
+      review.result.findings.length === 0
+        ? "Masthead review completed with no findings."
+        : `Masthead review completed with ${review.result.findings.length} advisory finding${review.result.findings.length === 1 ? "" : "s"}.`
+    );
+    return {
+      review,
+      verification,
+      plan,
+      published,
+      storedBefore,
+      revision,
+      relatedFiles: relatedFiles.map((file) => file.path)
+    };
+  } catch (error) {
+    await postReviewStatus(client, options.pullRequestId, "error", "Masthead review failed before completion.");
+    throw error;
+  }
+}
+
+/** Status posting is advisory infrastructure; it must not hide the review result. */
+async function postReviewStatus(
+  client: AdoReviewClient,
+  pullRequestId: number,
+  state: "pending" | "succeeded" | "error",
+  description: string
+): Promise<void> {
+  try {
+    await client.createPullRequestStatus(pullRequestId, {
+      state,
+      description,
+      context: { genre: "masthead", name: "review" }
+    });
+  } catch {
+    // A missing status permission must not block review publication.
+  }
 }
 
 /** Read the existing bot-owned metadata without treating threads as trusted input. */

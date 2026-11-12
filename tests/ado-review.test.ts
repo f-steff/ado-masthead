@@ -48,6 +48,7 @@ class FakeReviewClient implements AdoReviewClient {
   created: CreateThreadInput[] = [];
   comments: AdoComment[] = [];
   statusUpdates: Array<{ threadId: number; status: AdoThread["status"] }> = [];
+  pullRequestStatuses: Array<{ state: string; description: string }> = [];
   private nextThreadId = 10;
   private nextCommentId = 100;
 
@@ -75,6 +76,13 @@ class FakeReviewClient implements AdoReviewClient {
       return "import { normalizeEmail } from './user';\ntest('normalizes email', () => normalizeEmail(user));";
     }
     return null;
+  }
+
+  async createPullRequestStatus(
+    _pullRequestId: number,
+    input: { state: string; description: string }
+  ): Promise<void> {
+    this.pullRequestStatuses.push({ state: input.state, description: input.description });
   }
 
   async createThread(_pullRequestId: number, input: CreateThreadInput): Promise<AdoThread> {
@@ -142,6 +150,10 @@ test("the ADO runner fetches source, runs the worker and publishes validated fin
   assert.equal(prompts.length, 1);
   assert.match(prompts[0].user, /src\/user\.test\.ts/);
   assert.deepEqual(run.relatedFiles, ["src/user.test.ts"]);
+  assert.deepEqual(client.pullRequestStatuses, [
+    { state: "pending", description: "Masthead review in progress." },
+    { state: "succeeded", description: "Masthead review completed with 2 advisory findings." }
+  ]);
   assert.equal(run.revision.source, revision.source);
   assert.deepEqual(storedFindingsFromThreads(client.threads, botId).map((item) => item.finding.id), [
     "repository-license-missing",
@@ -235,6 +247,10 @@ test("the runner rejects changed files that exceed its bounded input", async () 
     }),
     /content budget/
   );
+  assert.deepEqual(client.pullRequestStatuses, [
+    { state: "pending", description: "Masthead review in progress." },
+    { state: "error", description: "Masthead review failed before completion." }
+  ]);
 });
 
 test("verification requires known finding IDs and evidence for a fix", async () => {

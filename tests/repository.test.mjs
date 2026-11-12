@@ -213,6 +213,7 @@ test("the pull request tab reads only its current context and exposes review sta
   const html = fs.readFileSync(path.join(root, "src/extension/pr/index.html"), "utf8");
   const script = fs.readFileSync(path.join(root, "src/extension/pr/index.ts"), "utf8");
   assert.match(html, /id="thread-count"/);
+  assert.match(html, /id="review-status"/);
   assert.match(html, /id="gate-state"/);
   assert.match(html, /id="project-settings-link"/);
   assert.match(script, /getWebContext\(\)/);
@@ -221,6 +222,7 @@ test("the pull request tab reads only its current context and exposes review sta
   assert.match(script, /SDK\.getConfiguration\(\)/);
   assert.match(script, /document\.referrer/);
   assert.match(script, /isReviewEnabled/);
+  assert.match(script, /latestMastheadStatus/);
   assert.doesNotMatch(html + script, /type="password"/i);
 });
 

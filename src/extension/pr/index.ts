@@ -22,6 +22,7 @@ const prLede = document.querySelector<HTMLElement>("#pr-lede");
 const prTitle = document.querySelector<HTMLElement>("#pr-title");
 const threadCount = document.querySelector<HTMLElement>("#thread-count");
 const threadState = document.querySelector<HTMLElement>("#thread-state");
+const reviewStatus = document.querySelector<HTMLElement>("#review-status");
 const gateState = document.querySelector<HTMLElement>("#gate-state");
 const profileState = document.querySelector<HTMLElement>("#profile-state");
 const prStatus = document.querySelector<HTMLElement>("#pr-status");
@@ -33,6 +34,35 @@ interface PullRequestSummary {
   title?: string;
   status?: string;
   repository?: { id?: string; name?: string; project?: { id?: string; name?: string } };
+}
+
+interface PullRequestStatusSummary {
+  state: string;
+  description?: string;
+  timestamp: number;
+}
+
+/** Read the latest Masthead status without trusting arbitrary status entries. */
+function latestMastheadStatus(values: unknown[]): PullRequestStatusSummary | undefined {
+  const matches: PullRequestStatusSummary[] = [];
+  for (const value of values) {
+    if (typeof value !== "object" || value === null) continue;
+    const status = value as { state?: unknown; description?: unknown; context?: unknown; updatedDate?: unknown; creationDate?: unknown };
+    if (typeof status.state !== "string" || typeof status.context !== "object" || status.context === null) continue;
+    const context = status.context as { genre?: unknown; name?: unknown };
+    if (context.genre !== "masthead" || context.name !== "review") continue;
+    const date = typeof status.updatedDate === "string"
+      ? Date.parse(status.updatedDate)
+      : typeof status.creationDate === "string"
+        ? Date.parse(status.creationDate)
+        : 0;
+    matches.push({
+      state: status.state,
+      ...(typeof status.description === "string" && status.description ? { description: status.description } : {}),
+      timestamp: Number.isFinite(date) ? date : 0
+    });
+  }
+  return matches.sort((left, right) => right.timestamp - left.timestamp)[0];
 }
 
 /** Read ids from either the query string or a hash-query supplied by the host. */
@@ -178,12 +208,26 @@ async function main(): Promise<void> {
         (comment as { content: string }).content.includes("<!-- masthead:1:")
       );
     });
-    const statuses = mastheadThreads.map((thread) =>
+    const threadStatuses = mastheadThreads.map((thread) =>
       String((thread as { status?: unknown }).status ?? "unknown")
     );
-    const fixed = statuses.filter((state) => state === "fixed" || state === "closed" || state === "byDesign" || state === "wontFix").length;
+    const fixed = threadStatuses.filter((state) => state === "fixed" || state === "closed" || state === "byDesign" || state === "wontFix").length;
     if (threadCount) threadCount.textContent = String(mastheadThreads.length);
     if (threadState) threadState.textContent = `${mastheadThreads.length - fixed} / ${fixed}`;
+
+    const pullRequestStatuses = repositoryId
+      ? await getJson<{ value?: unknown[] }>(
+          `${organizationUrl(hostName)}/${encodeURIComponent(projectName)}/_apis/git/repositories/` +
+          `${encodeURIComponent(repositoryId)}/pullRequests/${pullRequestId}/statuses?api-version=7.1`,
+          headers
+        )
+      : { value: [] };
+    const mastheadStatus = latestMastheadStatus(pullRequestStatuses.value ?? []);
+    if (reviewStatus) {
+      reviewStatus.textContent = mastheadStatus
+        ? `Review status: ${mastheadStatus.state}${mastheadStatus.description ? ` - ${mastheadStatus.description}` : ""}`
+        : "Review status: no Masthead status has been posted yet.";
+    }
 
     let organization = defaultOrganizationSettings();
     let project = defaultProjectSettings();

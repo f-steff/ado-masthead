@@ -156,9 +156,13 @@ provider secrets.
 PR eligibility is controlled per project and repository. A project can turn
 reviews off without uninstalling Masthead.
 
-Completion gating is separate. A branch policy can require a Masthead status,
-but it is optional and never enabled silently. Review completion, review
-failure and review coverage are distinct states.
+Completion gating is separate. The worker posts a `masthead/review` pull
+request status with `pending`, `succeeded` or `error`; a branch policy can
+require that status. A repository that is disabled posts `notApplicable`, which
+bypasses the required policy instead of blocking completion. The status is
+advisory unless an administrator adds the required policy, and Masthead does not
+create the policy because that would need code-write access. Review completion,
+review failure and review coverage remain distinct states.
 
 ## Why not run inside application pipelines
 

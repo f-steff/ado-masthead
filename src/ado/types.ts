@@ -53,6 +53,15 @@ export interface CreateThreadInput {
   status?: AdoThreadStatus;
 }
 
+export type AdoPullRequestStatusState = "pending" | "succeeded" | "failed" | "error" | "notApplicable";
+
+export interface AdoPullRequestStatusInput {
+  state: AdoPullRequestStatusState;
+  description: string;
+  context?: { name: string; genre: string };
+  targetUrl?: string;
+}
+
 export interface AdoChangedFile {
   path: string;
   changeType: "add" | "edit" | "delete" | "rename";
