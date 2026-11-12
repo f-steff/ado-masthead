@@ -8,13 +8,18 @@ Masthead never asks for a provider key in the browser and never reads an
 ordinary variable group value from a settings page.
 
 The broker does not receive provider keys. It only receives PR events and
-queues the pipeline.
+queues the pipeline. When organization Setup creates broker service hooks, the
+broker secret is used only for that browser request as the Basic-auth password.
+It is not written to extension data, the page URL or logs, and it is cleared
+from the form after a successful create.
 
 ## Permissions
 
 The extension installation should request the minimum it needs to configure
-hooks and read project settings. Posting review comments is performed by the
-central pipeline identity, not by the browser extension.
+hooks and read project settings. Creating service-hook subscriptions also
+requires the signed-in user to be a project administrator; a project-level 403
+is reported in Setup instead of being retried. Posting review comments is
+performed by the central pipeline identity, not by the browser extension.
 
 The central pipeline needs:
 

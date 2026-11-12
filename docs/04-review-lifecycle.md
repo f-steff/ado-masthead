@@ -93,6 +93,8 @@ only a non-empty evidence-based reason can authorize resolution. The current
 runner supplies changed-file content to the recheck; a finding whose evidence is
 not present remains open.
 
-The remaining production work is automatic event delivery, related unchanged
-file retrieval for every finding, durable run/answer records and the PR tab.
-Missing output or filtered findings are never fix evidence.
+The remaining production work is related unchanged-file retrieval for every
+finding, durable run/answer records, branch-policy completion gating and
+deployment of the trusted pipeline repository/YAML. Project service hooks can
+already be created from organization Setup for an existing native or broker
+endpoint. Missing output or filtered findings are never fix evidence.

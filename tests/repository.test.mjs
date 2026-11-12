@@ -147,8 +147,14 @@ test("the organization and project pages initialize the ADO host and split setti
   assert.match(orgHtml, /id="install-pipeline"/);
   assert.match(orgHtml, /id="delete-pipeline"/);
   assert.match(orgHtml, /id="pipeline-create-project"/);
+  assert.match(orgHtml, /id="hook-project-list"/);
+  assert.match(orgHtml, /id="create-hooks"/);
+  assert.match(orgHtml, /id="remove-hooks"/);
+  assert.match(orgHtml, /Broker secret \(not saved\)/);
   assert.match(orgScript, /async function installPipeline/);
   assert.match(orgScript, /async function deletePipeline/);
+  assert.match(orgScript, /async function createServiceHooks/);
+  assert.match(orgScript, /async function removeServiceHooks/);
   assert.match(orgHtml, /data-tab="profile"/);
   assert.match(orgHtml, /id="org-lens-list"/);
   assert.match(orgHtml, /id="review-model-options"/);
@@ -173,7 +179,9 @@ test("the organization and project pages initialize the ADO host and split setti
   assert.match(projectHtml, /About Masthead in this project/);
   assert.match(projectHtml, /\.\.\/\.\.\/\.\.\/images\/icon-128\.png/);
   assert.match(projectScript, /function activateTab/);
-  assert.doesNotMatch(orgHtml + projectHtml, /type="password"/i);
+  assert.match(orgHtml, /<input type="password" id="broker-secret"/);
+  assert.doesNotMatch(orgHtml.replace(/<input type="password" id="broker-secret"[^>]*>/, ""), /type="password"/i);
+  assert.doesNotMatch(projectHtml, /type="password"/i);
   assert.match(host, /SDK\.init\(\{ loaded: false/);
   assert.match(host, /SDK\.notifyLoadSucceeded\(\)/);
   assert.match(host, /SDK\.notifyLoadFailed/);

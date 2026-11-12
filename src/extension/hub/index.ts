@@ -16,6 +16,15 @@ import { renderLensExamples } from "../shared/lens-examples";
 import { fillModelOptions } from "../shared/model-suggestions";
 import { filterPipelines, pipelineLabel, PipelineOption } from "../shared/pipelines";
 import { renderLensOptions, selectedLenses } from "../shared/review-profile";
+import {
+  brokerBasicAuth,
+  brokerServiceHookUrl,
+  buildServiceHookSubscription,
+  isMastheadServiceHook,
+  nativeServiceHookUrl,
+  SERVICE_HOOK_EVENTS,
+  ServiceHookEndpoint
+} from "../shared/service-hooks";
 import { loadSetting, saveSetting } from "../shared/storage";
 
 interface ProjectRow {
@@ -39,6 +48,12 @@ const nativeChoice = document.querySelector<HTMLElement>("#native-choice");
 const brokerChoice = document.querySelector<HTMLElement>("#broker-choice");
 const nativeWebhook = document.querySelector<HTMLInputElement>("#native-webhook");
 const brokerUrl = document.querySelector<HTMLInputElement>("#broker-url");
+const brokerSecretField = document.querySelector<HTMLElement>("#broker-secret-field");
+const brokerSecret = document.querySelector<HTMLInputElement>("#broker-secret");
+const hookProjectList = document.querySelector<HTMLElement>("#hook-project-list");
+const createHooksButton = document.querySelector<HTMLButtonElement>("#create-hooks");
+const removeHooksButton = document.querySelector<HTMLButtonElement>("#remove-hooks");
+const hookStatus = document.querySelector<HTMLElement>("#hook-status");
 const pipelineSearch = document.querySelector<HTMLInputElement>("#pipeline-search");
 const pipelineProject = document.querySelector<HTMLSelectElement>("#pipeline-project");
 const pipelineOptions = document.querySelector<HTMLDataListElement>("#pipeline-options");
@@ -451,6 +466,7 @@ function renderOrganization(value: OrganizationSettings): void {
   if (reasoningEffort) reasoningEffort.value = value.reasoningEffort ?? "";
   if (thinkingBudget) thinkingBudget.value = value.thinkingBudget ? String(value.thinkingBudget) : "";
   syncProviderOptions();
+  syncDeliveryChoice();
   const profile = resolveReviewProfile(value.profile ?? defaultReviewProfile());
   renderLensOptions(orgLensList, profile.enabledLenses);
   if (orgReviewGuide) orgReviewGuide.checked = profile.reviewGuide;
@@ -483,6 +499,203 @@ function syncProviderOptions(): void {
 function syncDeliveryChoice(): void {
   nativeChoice?.classList.toggle("selected", nativeRadio?.checked === true);
   brokerChoice?.classList.toggle("selected", brokerRadio?.checked === true);
+  if (brokerSecretField) brokerSecretField.hidden = brokerRadio?.checked !== true;
+}
+
+/** Hook provisioning is explicit per project; no project is selected by default. */
+function renderHookProjects(): void {
+  if (!hookProjectList) return;
+  hookProjectList.replaceChildren();
+  if (projects.length === 0) {
+    hookProjectList.textContent = "No projects are available for service hooks.";
+    return;
+  }
+  for (const project of projects) {
+    const label = document.createElement("label");
+    label.className = "hook-project-option";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.value = project.id;
+    const name = document.createElement("span");
+    name.textContent = project.name;
+    label.append(input, name);
+    hookProjectList.append(label);
+  }
+}
+
+function selectedHookProjects(): ProjectRow[] {
+  const inputs = hookProjectList
+    ? Array.from(hookProjectList.querySelectorAll<HTMLInputElement>("input[type=checkbox]:checked"))
+    : [];
+  const selected = new Set(inputs.map((input) => input.value));
+  return projects.filter((project) => selected.has(project.id));
+}
+
+/**
+ * Resolve the current delivery endpoint. The broker secret is optional for
+ * removal, but required when creating the Basic-auth-protected subscriptions.
+ */
+function hookEndpoint(requireBrokerSecret = true): ServiceHookEndpoint | undefined {
+  try {
+    if (brokerRadio?.checked) {
+      const url = brokerUrl?.value.trim() ?? "";
+      if (!url) throw new Error("Enter the broker URL before managing service hooks.");
+      const secret = brokerSecret?.value ?? "";
+      if (requireBrokerSecret && !secret) {
+        throw new Error("Enter the broker secret before creating service hooks.");
+      }
+      return {
+        url: brokerServiceHookUrl(url),
+        ...(requireBrokerSecret && secret ? { basicAuthCredentials: brokerBasicAuth(secret) } : {})
+      };
+    }
+    return { url: nativeServiceHookUrl(organizationUrl(hostName), nativeWebhook?.value ?? "") };
+  } catch (error) {
+    setMessage(hookStatus, error instanceof Error ? error.message : "The event endpoint is invalid.", "error");
+    return undefined;
+  }
+}
+
+async function listServiceHooks(): Promise<Array<Record<string, unknown>>> {
+  const token = await SDK.getAccessToken();
+  const response = await fetch(
+    `${organizationUrl(hostName)}/_apis/hooks/subscriptions?api-version=7.1`,
+    { headers: { authorization: `Bearer ${token}`, accept: "application/json" }, redirect: "error" }
+  );
+  if (!response.ok) throw new Error(`Service hooks could not be read (HTTP ${response.status}).`);
+  const value = await response.json() as { value?: unknown };
+  return Array.isArray(value.value)
+    ? value.value.filter((item): item is Record<string, unknown> =>
+        typeof item === "object" && item !== null && !Array.isArray(item))
+    : [];
+}
+
+/** Create only missing subscriptions for the selected projects and endpoint. */
+async function createServiceHooks(): Promise<void> {
+  const selected = selectedHookProjects();
+  if (selected.length === 0) {
+    setMessage(hookStatus, "Select at least one project.", "error");
+    return;
+  }
+  const endpoint = hookEndpoint(true);
+  if (!endpoint) return;
+  if (createHooksButton) createHooksButton.disabled = true;
+  if (removeHooksButton) removeHooksButton.disabled = true;
+  setMessage(hookStatus, "Creating project service hooks...");
+  let created = 0;
+  let skipped = 0;
+  const failures: string[] = [];
+  try {
+    const existing = await listServiceHooks();
+    const token = await SDK.getAccessToken();
+    for (const project of selected) {
+      for (const eventType of SERVICE_HOOK_EVENTS) {
+        if (existing.some((hook) =>
+          hook.eventType === eventType && isMastheadServiceHook(hook, project.id, endpoint.url)
+        )) {
+          skipped += 1;
+          continue;
+        }
+        try {
+          const response = await fetch(
+            `${organizationUrl(hostName)}/_apis/hooks/subscriptions?api-version=7.1`,
+            {
+              method: "POST",
+              headers: {
+                authorization: `Bearer ${token}`,
+                accept: "application/json",
+                "content-type": "application/json"
+              },
+              body: JSON.stringify(buildServiceHookSubscription({ projectId: project.id, eventType, endpoint })),
+              redirect: "error"
+            }
+          );
+          if (response.ok) {
+            created += 1;
+          } else if (response.status === 403) {
+            failures.push(`${project.name}: project administrator permission is required`);
+          } else {
+            failures.push(`${project.name} / ${eventType} (HTTP ${response.status})`);
+          }
+        } catch {
+          failures.push(`${project.name} / ${eventType}`);
+        }
+      }
+    }
+    if (brokerRadio?.checked && brokerSecret) brokerSecret.value = "";
+    const summary = `Created ${created}, skipped ${skipped} existing${failures.length ? `, failed ${failures.length}` : ""}.`;
+    setMessage(
+      hookStatus,
+      failures.length ? `${summary} ${failures.slice(0, 2).join("; ")}` : summary,
+      failures.length ? "error" : "success"
+    );
+  } catch (error) {
+    setMessage(hookStatus, error instanceof Error ? error.message : "Service hooks could not be created.", "error");
+  } finally {
+    if (createHooksButton) createHooksButton.disabled = false;
+    if (removeHooksButton) removeHooksButton.disabled = false;
+  }
+}
+
+/** Remove only subscriptions that point at the current endpoint and project. */
+async function removeServiceHooks(): Promise<void> {
+  const selected = selectedHookProjects();
+  if (selected.length === 0) {
+    setMessage(hookStatus, "Select at least one project.", "error");
+    return;
+  }
+  const endpoint = hookEndpoint(false);
+  if (!endpoint) return;
+  if (createHooksButton) createHooksButton.disabled = true;
+  if (removeHooksButton) removeHooksButton.disabled = true;
+  setMessage(hookStatus, "Looking up Masthead service hooks...");
+  const failures: string[] = [];
+  let removed = 0;
+  try {
+    const existing = await listServiceHooks();
+    const ids = new Set<string>();
+    for (const project of selected) {
+      for (const hook of existing) {
+        if (typeof hook.id === "string" &&
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(hook.id) &&
+            isMastheadServiceHook(hook, project.id, endpoint.url)) {
+          ids.add(hook.id);
+        }
+      }
+    }
+    if (ids.size === 0) {
+      setMessage(hookStatus, "No Masthead service hooks matched the selected projects and endpoint.", "info");
+      return;
+    }
+    if (!window.confirm(`Remove ${ids.size} Masthead service hook${ids.size === 1 ? "" : "s"} for the selected projects?`)) {
+      setMessage(hookStatus, "Service-hook removal cancelled.", "info");
+      return;
+    }
+    const token = await SDK.getAccessToken();
+    for (const id of ids) {
+      try {
+        const response = await fetch(
+          `${organizationUrl(hostName)}/_apis/hooks/subscriptions/${encodeURIComponent(id)}?api-version=7.1`,
+          {
+            method: "DELETE",
+            headers: { authorization: `Bearer ${token}`, accept: "application/json" },
+            redirect: "error"
+          }
+        );
+        if (response.ok) removed += 1;
+        else failures.push(`HTTP ${response.status}`);
+      } catch {
+        failures.push("request failed");
+      }
+    }
+    const summary = `Removed ${removed} Masthead service hook${removed === 1 ? "" : "s"}${failures.length ? `, failed ${failures.length}` : ""}.`;
+    setMessage(hookStatus, summary, failures.length ? "error" : "success");
+  } catch (error) {
+    setMessage(hookStatus, error instanceof Error ? error.message : "Service hooks could not be removed.", "error");
+  } finally {
+    if (createHooksButton) createHooksButton.disabled = false;
+    if (removeHooksButton) removeHooksButton.disabled = false;
+  }
 }
 
 /** Validate ordinary URLs; provider secrets never enter this form. */
@@ -598,6 +811,7 @@ async function loadProjects(): Promise<void> {
     }));
     projects = rows;
     renderProjectList();
+    renderHookProjects();
     renderCreateProjectOptions();
     renderPipelineProjectOptions(discovered);
     pipelines = await fetchPipelines(discovered);
@@ -611,6 +825,7 @@ async function loadProjects(): Promise<void> {
     projects = [];
     pipelines = [];
     if (projectList) projectList.textContent = "Projects could not be loaded.";
+    renderHookProjects();
     renderPipelineOptions();
     restorePipelineSelection();
     setMessage(projectStatus, "Project list could not be loaded. Organization settings can still be saved.", "error");
@@ -674,6 +889,12 @@ async function main(): Promise<void> {
   });
   nativeRadio?.addEventListener("change", syncDeliveryChoice);
   brokerRadio?.addEventListener("change", syncDeliveryChoice);
+  createHooksButton?.addEventListener("click", () => {
+    void createServiceHooks();
+  });
+  removeHooksButton?.addEventListener("click", () => {
+    void removeServiceHooks();
+  });
   enabled?.addEventListener("change", syncProjectUseState);
   reviewProvider?.addEventListener("change", () => {
     fillModelOptions(reviewModelOptions, reviewProvider.value, modelCatalog);

@@ -121,6 +121,25 @@
             <p class="note">Provider keys are never entered here. They belong in the Azure DevOps secret variable group linked only to the central review pipeline.</p>
           </section>
 
+          <section class="panel" aria-labelledby="hooks-heading">
+            <h2 id="hooks-heading">Project service hooks</h2>
+            <p class="note">Create the project subscriptions that deliver PR events to the selected endpoint. Creating hooks requires project administrator permission. Native mode requires an Incoming Webhook service connection with the same name and leaves the endpoint public; broker mode posts to the broker's <code>/event</code> route and should be used when authenticated delivery is required.</p>
+            <label class="field" id="broker-secret-field" hidden>
+              <span>Broker secret (not saved)</span>
+              <input type="password" id="broker-secret" maxlength="500" autocomplete="new-password" placeholder="At least 32 characters">
+            </label>
+            <p class="note">The broker secret is used only for this browser request. It is not stored in extension data, logs or the page URL.</p>
+            <fieldset class="choice-group">
+              <legend>Projects</legend>
+              <div id="hook-project-list" class="hook-project-list"></div>
+            </fieldset>
+            <div class="actions">
+              <button type="button" class="secondary" id="create-hooks">Create service hooks</button>
+              <button type="button" class="secondary" id="remove-hooks">Remove Masthead hooks</button>
+              <p id="hook-status" class="status-message" role="status" aria-live="polite"></p>
+            </div>
+          </section>
+
           <section class="panel" aria-labelledby="pipeline-heading">
             <h2 id="pipeline-heading">Central review pipeline</h2>
             <p class="note">Search for an existing trusted pipeline here. Masthead validates the target and refreshes its status whenever Setup is opened.</p>
