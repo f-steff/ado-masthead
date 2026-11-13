@@ -108,17 +108,22 @@ overrides. A repository with no stored switch follows the configured
 new-repository default; the default itself is disabled unless an administrator
 opts in.
 
-This slice is manual or pipeline-invoked. The worker reads the persisted
-organization and destination-project gates before it spends tokens, applies the
-effective review profile and provider/model override, and then publishes through
-the normal reconciliation path. A repository with no stored switch follows the
-configured new-repository default. The organization Setup page can create the
-three project service-hook subscriptions for an existing native incoming-webhook
-service connection or broker endpoint; it does not create the service connection,
-broker host or central pipeline repository/YAML. The runner now fetches a
-bounded set of unchanged relative imports and nearby tests at the reviewed
-commit, but it is not a semantic index of every caller. A PR tab now shows the
-effective profile, gating state and existing Masthead thread counts.
+This slice is event-driven, manual or pipeline-invoked. `review-event.mjs` routes
+created/updated events into the review job and comment events into a reply-only
+conversation job. Both paths read the persisted organization and destination
+gates before spending tokens. The review job applies the effective profile and
+provider/model override, publishes through the normal reconciliation path and
+writes one durable summary/run marker. A completed run marker for the same
+source and target revisions suppresses a retried review unless a forced re-run
+is requested. A repository with no stored switch follows the configured
+new-repository default. The organization Setup page can create the three project
+service-hook subscriptions for an existing native incoming-webhook service
+connection or broker endpoint; it does not create the service connection,
+broker host or deploy the central pipeline YAML. `ado-pipelines/review.yml` is
+the packaged broker/manual definition. The runner fetches a bounded set of
+unchanged relative imports and nearby tests at the reviewed commit, but it is
+not a semantic index of every caller. The PR tab shows the effective profile,
+gating state, status, summary, guide and current findings.
 
 ## Cross-project behavior
 
