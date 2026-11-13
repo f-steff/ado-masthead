@@ -33,6 +33,7 @@ esbuild.buildSync({
   ],
   outdir: path.join(distDir, "worker"),
   entryNames: "[name]",
+  outExtension: { ".js": ".mjs" },
   bundle: true,
   platform: "node",
   format: "esm",

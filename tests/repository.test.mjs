@@ -245,6 +245,7 @@ test("the central review pipeline accepts broker and manual identifiers", () => 
   assert.match(text, /SYSTEM_ACCESSTOKEN: \$\(System\.AccessToken\)/);
   const build = fs.readFileSync(path.join(root, "scripts/build.js"), "utf8");
   assert.match(build, /review-event\.ts/);
+  assert.match(build, /outExtension: \{ "\.js": "\.mjs" \}/);
 });
 
 test("the pull request tab reads only its current context and exposes review state", () => {
