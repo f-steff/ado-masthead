@@ -22,13 +22,22 @@ export function defaultBranchName(refName: string | undefined): string {
   return refName.slice("refs/heads/".length);
 }
 
-/** Read policy state without trusting arbitrary server values. */
-export function summarizeBranchPolicies(values: readonly unknown[]): BranchPolicySummary {
+/**
+ * Read policy state without trusting arbitrary server values. The list endpoint
+ * can return project-wide policies, so every scope is matched locally.
+ */
+export function summarizeBranchPolicies(
+  values: readonly unknown[],
+  repositoryId: string,
+  refName: string
+): BranchPolicySummary {
   let total = 0;
   let enabled = 0;
   let masthead: MastheadPolicyState | undefined;
   for (const value of values) {
-    if (!isRecord(value) || value.isDeleted === true) continue;
+    if (!isRecord(value) || value.isDeleted === true || !policyAppliesTo(value, repositoryId, refName)) {
+      continue;
+    }
     total += 1;
     if (value.isEnabled === true) enabled += 1;
     if (!isRecord(value.settings)) continue;
@@ -78,6 +87,30 @@ export function branchPolicyUrl(
   const base = `${organizationUrl.replace(/\/+$/, "")}/${encodeURIComponent(projectName)}/` +
     `_settings/repositories?repo=${encodeURIComponent(repositoryId)}&_a=policiesMid`;
   return defaultBranch ? `${base}&refs=${encodeURIComponent(`refs/heads/${defaultBranch}`)}` : base;
+}
+
+/** Match one policy's scope entries against the requested repository branch. */
+export function policyAppliesTo(
+  value: Record<string, unknown>,
+  repositoryId: string,
+  refName: string
+): boolean {
+  if (!isRecord(value.settings) || !Array.isArray(value.settings.scope)) return false;
+  return value.settings.scope.some((entry) => {
+    if (!isRecord(entry)) return false;
+    if (typeof entry.repositoryId === "string" && entry.repositoryId && entry.repositoryId !== repositoryId) {
+      return false;
+    }
+    if (entry.repositoryId !== undefined && entry.repositoryId !== null && typeof entry.repositoryId !== "string") {
+      return false;
+    }
+    const matchKind = typeof entry.matchKind === "string" ? entry.matchKind.toLowerCase() : "exact";
+    if (matchKind === "defaultbranch") return true;
+    if (typeof entry.refName !== "string" || !entry.refName) return false;
+    return matchKind === "prefix"
+      ? refName.startsWith(entry.refName)
+      : entry.refName.toLowerCase() === refName.toLowerCase();
+  });
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

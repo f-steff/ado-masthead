@@ -3,23 +3,29 @@ import test from "node:test";
 import {
   branchPolicyUrl,
   defaultBranchName,
+  policyAppliesTo,
   policyConfigurationsUrl,
   summarizeBranchPolicies
 } from "../src/extension/shared/policy-state";
 
+const repositoryId = "repo-id";
+const mainRef = "refs/heads/main";
+
 function statusPolicy(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  const { id = 7, isDeleted = false, isEnabled = true, isBlocking = true, ...settings } = overrides;
   return {
-    id: 7,
-    isDeleted: false,
-    isEnabled: true,
-    isBlocking: true,
+    id,
+    isDeleted,
+    isEnabled,
+    isBlocking,
     settings: {
       statusGenre: "masthead",
       statusName: "review",
       policyApplicability: 1,
       invalidateOnSourceUpdate: true,
       defaultDisplayName: "Masthead review",
-      ...overrides
+      scope: [{ repositoryId, refName: mainRef, matchKind: "Exact" }],
+      ...settings
     }
   };
 }
@@ -34,9 +40,9 @@ test("the default branch name is derived from a trusted ref", () => {
 test("the Masthead status policy is recognized and summarized", () => {
   const summary = summarizeBranchPolicies([
     statusPolicy(),
-    { id: 8, isEnabled: true, isBlocking: false, settings: { statusGenre: "other", statusName: "review" } },
-    { id: 9, isEnabled: true, isBlocking: true, settings: { statusGenre: "masthead", statusName: "other" } }
-  ]);
+    statusPolicy({ statusGenre: "other" }),
+    statusPolicy({ statusName: "other" })
+  ], repositoryId, mainRef);
   assert.equal(summary.total, 3);
   assert.equal(summary.enabled, 3);
   assert.deepEqual(summary.masthead, {
@@ -50,19 +56,31 @@ test("the Masthead status policy is recognized and summarized", () => {
 });
 
 test("disabled, deleted and optional policies are distinguished", () => {
-  const disabled = summarizeBranchPolicies([
-    statusPolicy({}), { ...statusPolicy(), isEnabled: false }
-  ]);
-  assert.equal(disabled.masthead?.enabled, true);
   assert.equal(summarizeBranchPolicies([
-    { ...statusPolicy(), isEnabled: false }
-  ]).masthead?.enabled, false);
+    statusPolicy({ isEnabled: false })
+  ], repositoryId, mainRef).masthead?.enabled, false);
   assert.equal(summarizeBranchPolicies([
-    { ...statusPolicy(), isDeleted: true, id: 99 }
-  ]).masthead, undefined);
+    statusPolicy({ isDeleted: true, id: 99 })
+  ], repositoryId, mainRef).masthead, undefined);
   assert.equal(summarizeBranchPolicies([
-    { ...statusPolicy(), isBlocking: false }
-  ]).masthead?.blocking, false);
+    statusPolicy({ isBlocking: false })
+  ], repositoryId, mainRef).masthead?.blocking, false);
+});
+
+test("policy scopes match exact, prefix, default-branch and project-wide entries", () => {
+  const exact = statusPolicy();
+  assert.equal(policyAppliesTo(exact, repositoryId, mainRef), true);
+  assert.equal(policyAppliesTo(exact, "other-repo", mainRef), false);
+  assert.equal(policyAppliesTo(statusPolicy({ scope: [
+    { repositoryId, refName: "refs/heads/release/", matchKind: "Prefix" }
+  ] }), repositoryId, "refs/heads/release/1.0"), true);
+  assert.equal(policyAppliesTo(statusPolicy({ scope: [
+    { repositoryId, matchKind: "DefaultBranch" }
+  ] }), repositoryId, mainRef), true);
+  assert.equal(policyAppliesTo(statusPolicy({ scope: [
+    { repositoryId: null, refName: mainRef, matchKind: "Exact" }
+  ] }), "other-repo", mainRef), true);
+  assert.equal(policyAppliesTo(statusPolicy({ scope: [] }), repositoryId, mainRef), false);
 });
 
 test("policy and branch-policy URLs encode repository, project and branch", () => {
