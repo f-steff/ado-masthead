@@ -25,6 +25,9 @@ const threadState = document.querySelector<HTMLElement>("#thread-state");
 const reviewStatus = document.querySelector<HTMLElement>("#review-status");
 const gateState = document.querySelector<HTMLElement>("#gate-state");
 const profileState = document.querySelector<HTMLElement>("#profile-state");
+const reviewSummary = document.querySelector<HTMLElement>("#review-summary");
+const reviewGuide = document.querySelector<HTMLElement>("#review-guide");
+const findingList = document.querySelector<HTMLElement>("#finding-list");
 const prStatus = document.querySelector<HTMLElement>("#pr-status");
 const projectSettingsLink = document.querySelector<HTMLAnchorElement>("#project-settings-link");
 const prLink = document.querySelector<HTMLAnchorElement>("#pr-link");
@@ -40,6 +43,28 @@ interface PullRequestStatusSummary {
   state: string;
   description?: string;
   timestamp: number;
+}
+
+interface ReviewRunSummary {
+  ownerId: string;
+  summary: string;
+  findingCount: number;
+  reviewedAt?: string;
+  guide?: {
+    intent: string;
+    readingOrder: string[];
+    attention: string[];
+    verification: string[];
+  };
+}
+
+interface FindingSummary {
+  id: string;
+  title: string;
+  severity: string;
+  file: string;
+  line?: number;
+  state: string;
 }
 
 /** Read the latest Masthead status without trusting arbitrary status entries. */
@@ -98,6 +123,178 @@ function pullRequestFromReferrer(): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+/** Decode a Masthead thread marker without trusting its content as HTML. */
+function decodeMarker(content: string, kind: "finding" | "run"): Record<string, unknown> | undefined {
+  const pattern = kind === "run"
+    ? /^\s*<!-- masthead:run:1:([A-Za-z0-9_-]+) -->/
+    : /^\s*<!-- masthead:1:([A-Za-z0-9_-]+) -->/;
+  const match = pattern.exec(content);
+  if (!match) return undefined;
+  try {
+    const base64 = match[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+    const binary = atob(padded);
+    const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+    const value: unknown = JSON.parse(new TextDecoder().decode(bytes));
+    return isRecord(value) ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function parseGuide(value: unknown): ReviewRunSummary["guide"] | undefined {
+  if (!isRecord(value) || typeof value.intent !== "string") return undefined;
+  const list = (item: unknown): string[] => Array.isArray(item)
+    ? item.filter((entry): entry is string => typeof entry === "string")
+    : [];
+  return {
+    intent: value.intent,
+    readingOrder: list(value.readingOrder),
+    attention: list(value.attention),
+    verification: list(value.verification)
+  };
+}
+
+function latestRunSummary(values: readonly unknown[]): ReviewRunSummary | undefined {
+  let latest: { commentId: number; summary: ReviewRunSummary } | undefined;
+  for (const thread of values) {
+    if (!isRecord(thread) || !Array.isArray(thread.comments)) continue;
+    for (const comment of thread.comments) {
+      if (!isRecord(comment) || typeof comment.content !== "string") continue;
+      const metadata = decodeMarker(comment.content, "run");
+      if (!metadata || metadata.version !== 1 || metadata.kind !== "run" ||
+          typeof metadata.ownerId !== "string" || typeof metadata.summary !== "string" ||
+          !isRecord(comment.author) || comment.author.id !== metadata.ownerId ||
+          typeof metadata.findingCount !== "number" || !Number.isSafeInteger(metadata.findingCount) ||
+          metadata.findingCount < 0) {
+        continue;
+      }
+      const commentId = typeof comment.id === "number" ? comment.id : 0;
+      if (latest && commentId <= latest.commentId) continue;
+      const guide = parseGuide(metadata.guide);
+      latest = {
+        commentId,
+        summary: {
+          ownerId: metadata.ownerId,
+          summary: metadata.summary,
+          findingCount: metadata.findingCount,
+          ...(typeof metadata.reviewedAt === "string" ? { reviewedAt: metadata.reviewedAt } : {}),
+          ...(guide ? { guide } : {})
+        }
+      };
+    }
+  }
+  return latest?.summary;
+}
+
+function latestFindings(values: readonly unknown[], ownerId?: string): FindingSummary[] {
+  const latest = new Map<string, { commentId: number; finding: FindingSummary }>();
+  for (const thread of values) {
+    if (!isRecord(thread) || !Array.isArray(thread.comments)) continue;
+    for (const comment of thread.comments) {
+      if (!isRecord(comment) || typeof comment.content !== "string" ||
+          !isRecord(comment.author) || typeof comment.author.id !== "string") {
+        continue;
+      }
+      const metadata = decodeMarker(comment.content, "finding");
+      if (!metadata || metadata.version !== 1 || metadata.kind !== "finding" ||
+          metadata.ownerId !== comment.author.id ||
+          (ownerId !== undefined && metadata.ownerId !== ownerId) ||
+          !isRecord(metadata.finding)) {
+        continue;
+      }
+      const finding = metadata.finding;
+      if (typeof finding.id !== "string" || typeof finding.title !== "string" ||
+          typeof finding.severity !== "string" || typeof finding.file !== "string") {
+        continue;
+      }
+      const state = metadata.state === "bot-fixed" || thread.status === "fixed"
+        ? "resolved"
+        : metadata.state === "bot-withdrawn" ? "withdrawn" : "active";
+      const commentId = typeof comment.id === "number" ? comment.id : 0;
+      const existing = latest.get(finding.id);
+      if (existing && existing.commentId >= commentId) continue;
+      latest.set(finding.id, {
+        commentId,
+        finding: {
+          id: finding.id,
+          title: finding.title,
+          severity: finding.severity,
+          file: finding.file,
+          ...(typeof finding.line === "number" && Number.isSafeInteger(finding.line) ? { line: finding.line } : {}),
+          state
+        }
+      });
+    }
+  }
+  const rank: Record<string, number> = { critical: 0, major: 1, warning: 2, minor: 3, info: 4 };
+  return [...latest.values()]
+    .map((entry) => entry.finding)
+    .sort((left, right) =>
+      (rank[left.severity] ?? 9) - (rank[right.severity] ?? 9) ||
+      left.file.localeCompare(right.file) ||
+      (left.line ?? 0) - (right.line ?? 0)
+    );
+}
+
+function appendGuide(container: HTMLElement, title: string, values: readonly string[]): void {
+  if (values.length === 0) return;
+  const heading = document.createElement("h4");
+  heading.textContent = title;
+  const list = document.createElement("ul");
+  for (const value of values) {
+    const item = document.createElement("li");
+    item.textContent = value;
+    list.append(item);
+  }
+  container.append(heading, list);
+}
+
+function renderReviewDetails(values: readonly unknown[]): void {
+  const run = latestRunSummary(values);
+  if (reviewSummary) {
+    reviewSummary.textContent = run
+      ? run.summary
+      : "No completed review summary has been published yet.";
+  }
+  if (reviewGuide) {
+    reviewGuide.replaceChildren();
+    if (run?.guide) {
+      appendGuide(reviewGuide, "Intent", [run.guide.intent]);
+      appendGuide(reviewGuide, "Reading order", run.guide.readingOrder);
+      appendGuide(reviewGuide, "Attention", run.guide.attention);
+      appendGuide(reviewGuide, "Verification", run.guide.verification);
+    } else if (run) {
+      reviewGuide.textContent = "No review guide was published for this run.";
+    }
+  }
+  const findings = latestFindings(values, run?.ownerId);
+  if (!findingList) return;
+  findingList.replaceChildren();
+  if (findings.length === 0) {
+    findingList.textContent = run ? "No advisory findings for this run." : "No review findings are available.";
+    return;
+  }
+  for (const finding of findings) {
+    const item = document.createElement("div");
+    item.className = "finding-item";
+    const title = document.createElement("h4");
+    const severity = document.createElement("span");
+    severity.className = "finding-severity";
+    severity.textContent = finding.severity;
+    title.append(severity, document.createTextNode(finding.title));
+    const meta = document.createElement("div");
+    meta.className = "finding-meta";
+    meta.textContent = `${finding.file}${finding.line ? `:${finding.line}` : ""} - ${finding.state}`;
+    item.append(title, meta);
+    findingList.append(item);
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function setStatus(message: string, kind: "info" | "success" | "error" = "info"): void {
@@ -214,6 +411,7 @@ async function main(): Promise<void> {
     const fixed = threadStatuses.filter((state) => state === "fixed" || state === "closed" || state === "byDesign" || state === "wontFix").length;
     if (threadCount) threadCount.textContent = String(mastheadThreads.length);
     if (threadState) threadState.textContent = `${mastheadThreads.length - fixed} / ${fixed}`;
+    renderReviewDetails(threads.value ?? []);
 
     const pullRequestStatuses = repositoryId
       ? await getJson<{ value?: unknown[] }>(

@@ -3,7 +3,7 @@
 // settings lookup and service-hook deployment belong to the surrounding worker.
 import { AdoReviewClient } from "../ado/client";
 import { storedFindingsFromThreads } from "../ado/metadata";
-import { publishReviewPlan, PublishReviewResult } from "../ado/publisher";
+import { publishReviewPlan, publishReviewSummary, PublishReviewResult } from "../ado/publisher";
 import { FindingVerification, ReviewRevision, reconcileFindings, ReconciliationPlan, StoredFinding } from "../review/lifecycle";
 import { ReviewProfile } from "../review/lenses";
 import { detectRepositoryLicense } from "../review/license";
@@ -24,6 +24,8 @@ export interface AdoReviewOptions {
   maxRelatedCandidates?: number;
   /** A deterministic fake or a caller can disable the separate recheck. */
   verifyPrevious?: boolean;
+  /** Optional event delivery key recorded in the durable summary. */
+  deliveryKey?: string;
 }
 
 export interface AdoReviewRun {
@@ -35,6 +37,8 @@ export interface AdoReviewRun {
   revision: ReviewRevision;
   /** Paths only; content stays inside the bounded prompt input. */
   relatedFiles: string[];
+  /** The summary thread is best-effort; findings are already published. */
+  summaryThreadId?: number;
 }
 
 const LICENSE_CANDIDATES = ["LICENSE", "LICENSE.md", "LICENSE.txt"];
@@ -113,6 +117,22 @@ export async function runAdoReview(
         ? "Masthead review completed with no findings."
         : `Masthead review completed with ${review.result.findings.length} advisory finding${review.result.findings.length === 1 ? "" : "s"}.`
     );
+    let summaryThreadId: number | undefined;
+    try {
+      const summary = await publishReviewSummary(client, {
+        pullRequestId: options.pullRequestId,
+        botId: identity.id,
+        revision,
+        summary: review.result.summary,
+        findingCount: review.result.findings.length,
+        ...(review.result.guide ? { guide: review.result.guide } : {}),
+        ...(options.deliveryKey ? { deliveryKey: options.deliveryKey } : {})
+      });
+      summaryThreadId = summary.threadId;
+    } catch {
+      // The findings and status are already published; a summary failure is not
+      // allowed to turn a completed review into a failed one.
+    }
     return {
       review,
       verification,
@@ -120,7 +140,8 @@ export async function runAdoReview(
       published,
       storedBefore,
       revision,
-      relatedFiles: relatedFiles.map((file) => file.path)
+      relatedFiles: relatedFiles.map((file) => file.path),
+      ...(summaryThreadId ? { summaryThreadId } : {})
     };
   } catch (error) {
     await postReviewStatus(client, options.pullRequestId, "error", "Masthead review failed before completion.");

@@ -11,12 +11,18 @@ import {
   AdoThread,
   CreateThreadInput,
   decodeFindingMetadata,
+  decodeRunMetadata,
   encodeFindingMetadata,
+  encodeRunMetadata,
   FindingThreadMetadata,
+  latestRunFromThreads,
   publishReviewPlan,
+  publishReviewSummary,
   reconcileFindings,
   renderFindingComment,
   renderResolutionComment,
+  renderRunComment,
+  ReviewRunMetadata,
   storedFindingsFromThreads
 } from "../src";
 import type { ReviewFinding, ReviewRevision } from "../src";
@@ -242,6 +248,65 @@ test("the REST client keeps the token out of URLs and sends an inline thread con
     token: "t",
     fetchImpl
   }), /HTTPS/);
+});
+
+test("review summaries are durable, reusable and contain the guide", async () => {
+  const client = new FakeThreadClient();
+  const guide = {
+    intent: "Add a guarded email normalizer.",
+    readingOrder: ["src/user.ts"],
+    attention: ["optional profile"],
+    verification: ["run the new tests"]
+  };
+  const first = await publishReviewSummary(client, {
+    pullRequestId: 2,
+    botId,
+    revision,
+    summary: "One guarded access issue.",
+    findingCount: 2,
+    guide,
+    deliveryKey: "git.pullrequest.created:event-1"
+  });
+  assert.equal(first.created, true);
+  const latest = latestRunFromThreads(client.threads, botId);
+  assert.equal(latest?.threadId, first.threadId);
+  assert.equal(latest?.metadata.findingCount, 2);
+  assert.deepEqual(latest?.metadata.guide, guide);
+  assert.match(client.created[0].content, /## Masthead review/);
+  assert.match(client.created[0].content, /Reading order/);
+  const metadata = latest?.metadata;
+  assert.ok(metadata);
+  const rendered = renderRunComment(metadata);
+  assert.ok(decodeRunMetadata(rendered));
+  assert.ok(renderRunComment(metadata).includes("One guarded access issue."));
+
+  const second = await publishReviewSummary(client, {
+    pullRequestId: 2,
+    botId,
+    revision,
+    summary: "A later summary.",
+    findingCount: 1
+  });
+  assert.equal(second.created, false);
+  assert.equal(second.threadId, first.threadId);
+  assert.equal(latestRunFromThreads(client.threads, botId)?.metadata.summary, "A later summary.");
+});
+
+test("run markers reject malformed metadata", () => {
+  assert.equal(decodeRunMetadata("not a marker"), undefined);
+  assert.equal(decodeRunMetadata("<!-- masthead:run:1:not-base64 -->"), undefined);
+  const metadata: ReviewRunMetadata = {
+    version: 1,
+    kind: "run",
+    ownerId: botId,
+    revision,
+    status: "completed",
+    summary: "ok",
+    findingCount: 0,
+    reviewedAt: "2026-11-13T00:00:00Z"
+  };
+  const encoded = encodeRunMetadata(metadata);
+  assert.deepEqual(decodeRunMetadata(encoded)?.revision, revision);
 });
 
 test("the REST client posts the Masthead review status with its fixed context", async () => {

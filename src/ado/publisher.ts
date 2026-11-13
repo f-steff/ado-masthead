@@ -11,6 +11,8 @@ import {
 } from "./metadata";
 import { AdoThread, AdoThreadStatus } from "./types";
 import { ReconciliationPlan, ReviewRevision, sameRevision } from "../review/lifecycle";
+import { latestRunFromThreads, renderRunComment, ReviewRunMetadata } from "./run-metadata";
+import { ReviewGuide } from "../review/types";
 
 export interface PublishReviewOptions {
   pullRequestId: number;
@@ -116,6 +118,64 @@ export async function publishReviewPlan(
   }
 
   return result;
+}
+
+export interface PublishReviewSummaryOptions {
+  pullRequestId: number;
+  botId: string;
+  revision: ReviewRevision;
+  summary: string;
+  findingCount: number;
+  guide?: ReviewGuide;
+  deliveryKey?: string;
+}
+
+export interface PublishReviewSummaryResult {
+  threadId: number;
+  created: boolean;
+}
+
+/**
+ * Create or update the single human-readable review summary thread. The run
+ * marker in this thread is also the durable deduplication record.
+ */
+export async function publishReviewSummary(
+  client: AdoClientLike,
+  options: PublishReviewSummaryOptions
+): Promise<PublishReviewSummaryResult> {
+  if (!options.botId) throw new Error("Masthead identity is required.");
+  const summary = options.summary.trim();
+  if (!summary || summary.length > 8_000) throw new Error("Review summary is missing or too large.");
+  if (!Number.isSafeInteger(options.findingCount) || options.findingCount < 0) {
+    throw new Error("A valid finding count is required.");
+  }
+  const metadata: ReviewRunMetadata = {
+    version: 1,
+    kind: "run",
+    ownerId: options.botId,
+    revision: options.revision,
+    status: "completed",
+    summary,
+    findingCount: options.findingCount,
+    reviewedAt: new Date().toISOString(),
+    ...(options.guide ? { guide: options.guide } : {}),
+    ...(options.deliveryKey ? { deliveryKey: options.deliveryKey } : {})
+  };
+  const threads = await client.listThreads(options.pullRequestId);
+  const latest = latestRunFromThreads(threads, options.botId);
+  if (latest) {
+    await client.addThreadComment(
+      options.pullRequestId,
+      latest.threadId,
+      renderRunComment(metadata),
+      0
+    );
+    return { threadId: latest.threadId, created: false };
+  }
+  const created = await client.createThread(options.pullRequestId, {
+    content: renderRunComment(metadata)
+  });
+  return { threadId: created.id, created: true };
 }
 
 /** Find the most recent bot-authored marker in a thread. */
