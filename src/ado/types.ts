@@ -44,6 +44,7 @@ export interface AdoPullRequest {
   lastMergeSourceCommit: { commitId: string };
   lastMergeTargetCommit: { commitId: string };
   repository: { id: string; project?: { id?: string; name?: string } };
+  createdBy?: { id?: string; displayName?: string };
 }
 
 export interface CreateThreadInput {

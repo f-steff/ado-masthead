@@ -80,7 +80,11 @@ The first implementation stores finding metadata in the Masthead-authored
 thread comment itself. A versioned marker records the finding and the source and
 target revisions. It is accepted only when the comment author matches the
 authenticated pipeline identity. The visible comment remains readable; the
-marker lets a later run reconcile without a separate database.
+marker lets a later run reconcile without a separate database. A second marker
+is stored in one general summary thread and records the completed revision,
+summary, finding count and optional review guide. That run marker is the durable
+deduplication record and the source for the PR tab summary. It is accepted only
+from the authenticated bot identity.
 
 ### Implemented first slice
 

@@ -96,7 +96,10 @@ not present remains open.
 The runner now supplies bounded unchanged relative imports and nearby tests to
 both the review and the recheck. It posts a `masthead/review` status so an
 administrator can require it in a branch policy; creating the policy itself and
-semantic caller discovery remain. Durable run/answer records and deployment of
-the trusted pipeline repository/YAML also remain. Project service hooks can
-already be created from organization Setup for an existing native or broker
-endpoint. Missing output or filtered findings are never fix evidence.
+semantic caller discovery remain. A completed run marker in the PR summary
+thread prevents re-running the same revision on a retried delivery; a forced
+re-run remains available. Native/broker pipeline templates and the event router
+are packaged, while deployment of a trusted pipeline repository/YAML remains a
+setup step. Project service hooks can already be created from organization Setup
+for an existing native or broker endpoint. Missing output or filtered findings
+are never fix evidence.

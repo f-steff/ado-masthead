@@ -1,0 +1,108 @@
+# Central Masthead review pipeline. Use this for manual runs or as the fixed
+# definition queued by the Masthead broker. The broker passes only identifiers;
+# the worker re-reads the PR, settings and repository content from Azure DevOps.
+trigger: none
+pr: none
+
+pool:
+  vmImage: ubuntu-24.04
+
+parameters:
+  - name: mastheadRef
+    type: string
+    default: develop
+  - name: mastheadEventType
+    type: string
+    default: manual
+  - name: mastheadDeliveryKey
+    type: string
+    default: ""
+  - name: mastheadProjectId
+    type: string
+    default: ""
+  - name: mastheadRepositoryId
+    type: string
+    default: ""
+  - name: mastheadPullRequestId
+    type: string
+    default: ""
+  - name: mastheadThreadId
+    type: string
+    default: ""
+  - name: mastheadCommentId
+    type: string
+    default: ""
+  - name: mastheadCommentRevision
+    type: string
+    default: ""
+  - name: targetProject
+    type: string
+    default: ""
+  - name: targetRepository
+    type: string
+    default: ""
+  - name: pullRequestId
+    type: string
+    default: ""
+  - name: provider
+    type: string
+    default: deepseek
+  - name: model
+    type: string
+    default: deepseek-chat
+  - name: maxTokens
+    type: string
+    default: "8192"
+  - name: forceReview
+    type: boolean
+    default: false
+
+variables:
+  - group: masthead-secrets
+  - name: MASTHEAD_EXTENSION_ID
+    value: masthead-dev
+  - name: MASTHEAD_EXTENSION_PUBLISHER
+    value: f-steff
+
+steps:
+  - checkout: none
+  - bash: |
+      set -euo pipefail
+      case "$MASTHEAD_REF" in
+        ""|*[!A-Za-z0-9._/-]*)
+          echo "Invalid mastheadRef. Use a branch or tag name without shell metacharacters."
+          exit 1
+          ;;
+      esac
+      rm -rf /tmp/masthead
+      git clone --depth 1 --branch "$MASTHEAD_REF" https://github.com/f-steff/ado-masthead.git /tmp/masthead
+      cd /tmp/masthead
+      npm ci
+      node node_modules/esbuild/install.js
+      npm run build:prod
+      node dist/worker/review-event.mjs
+    displayName: Run Masthead event
+    env:
+      AZURE_DEVOPS_ORG_URL: $(System.CollectionUri)
+      MASTHEAD_REF: ${{ parameters.mastheadRef }}
+      MASTHEAD_EVENT_TYPE: ${{ parameters.mastheadEventType }}
+      MASTHEAD_DELIVERY_KEY: ${{ parameters.mastheadDeliveryKey }}
+      MASTHEAD_THREAD_ID: ${{ parameters.mastheadThreadId }}
+      MASTHEAD_COMMENT_ID: ${{ parameters.mastheadCommentId }}
+      MASTHEAD_COMMENT_REVISION: ${{ parameters.mastheadCommentRevision }}
+      MASTHEAD_PROVIDER: ${{ parameters.provider }}
+      MASTHEAD_MODEL: ${{ parameters.model }}
+      MASTHEAD_MAX_TOKENS: ${{ parameters.maxTokens }}
+      MASTHEAD_FORCE_REVIEW: ${{ parameters.forceReview }}
+      ${{ if ne(parameters.mastheadProjectId, '') }}:
+        MASTHEAD_PROJECT: ${{ parameters.mastheadProjectId }}
+        MASTHEAD_REPOSITORY: ${{ parameters.mastheadRepositoryId }}
+        MASTHEAD_PULL_REQUEST_ID: ${{ parameters.mastheadPullRequestId }}
+      ${{ else }}:
+        MASTHEAD_PROJECT: ${{ parameters.targetProject }}
+        MASTHEAD_REPOSITORY: ${{ parameters.targetRepository }}
+        MASTHEAD_PULL_REQUEST_ID: ${{ parameters.pullRequestId }}
+      DEEPSEEK_API_KEY: $(DEEPSEEK_API_KEY)
+      ANTHROPIC_API_KEY: $(ANTHROPIC_API_KEY)
+      OPENAI_API_KEY: $(OPENAI_API_KEY)
+      SYSTEM_ACCESSTOKEN: $(System.AccessToken)

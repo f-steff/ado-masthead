@@ -220,11 +220,43 @@ test("the organization and project pages initialize the ADO host and split setti
   assert.equal(pr.properties.uri, "dist/extension/pr/index.html");
 });
 
+test("the central review pipeline accepts broker and manual identifiers", () => {
+  const text = fs.readFileSync(path.join(root, "ado-pipelines/review.yml"), "utf8");
+  const pipeline = parse(text);
+  const names = pipeline.parameters.map((entry) => entry.name);
+  for (const name of [
+    "mastheadEventType",
+    "mastheadProjectId",
+    "mastheadRepositoryId",
+    "mastheadPullRequestId",
+    "mastheadThreadId",
+    "mastheadCommentId",
+    "targetProject",
+    "targetRepository",
+    "pullRequestId",
+    "mastheadRef",
+    "forceReview"
+  ]) {
+    assert.ok(names.includes(name), name);
+  }
+  assert.match(text, /group: masthead-secrets/);
+  assert.match(text, /MASTHEAD_EVENT_TYPE: \$\{\{ parameters\.mastheadEventType \}\}/);
+  assert.match(text, /node dist\/worker\/review-event\.mjs/);
+  assert.match(text, /SYSTEM_ACCESSTOKEN: \$\(System\.AccessToken\)/);
+  const build = fs.readFileSync(path.join(root, "scripts/build.js"), "utf8");
+  assert.match(build, /review-event\.ts/);
+});
+
 test("the pull request tab reads only its current context and exposes review state", () => {
   const html = fs.readFileSync(path.join(root, "src/extension/pr/index.html"), "utf8");
   const script = fs.readFileSync(path.join(root, "src/extension/pr/index.ts"), "utf8");
   assert.match(html, /id="thread-count"/);
   assert.match(html, /id="review-status"/);
+  assert.match(html, /id="review-summary"/);
+  assert.match(html, /id="review-guide"/);
+  assert.match(html, /id="finding-list"/);
+  assert.match(script, /latestRunSummary/);
+  assert.match(script, /latestFindings/);
   assert.match(html, /id="gate-state"/);
   assert.match(html, /id="project-settings-link"/);
   assert.match(script, /getWebContext\(\)/);

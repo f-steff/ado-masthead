@@ -34,7 +34,9 @@ These do not replace installation or end-to-end testing against Azure DevOps.
 - Starts a review when a pull request is created or updated.
 - Reviews across repositories and projects selected during onboarding.
 - Reads related imports and nearby tests, not just the changed diff.
-- Posts inline findings and a summary on the pull request.
+- Posts inline findings and a durable review summary with the guide.
+- Skips a repeated review when the same source and target revisions were already
+  reviewed, while allowing a deliberate forced re-run.
 - Posts a `masthead/review` status that an optional branch policy can require.
 - Shows per-repository policy readiness on the project settings page, with
   deep links for setting up or removing the Masthead status policy.

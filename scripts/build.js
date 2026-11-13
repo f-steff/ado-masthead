@@ -27,8 +27,12 @@ esbuild.buildSync({
 // extension bundle.
 fs.mkdirSync(path.join(distDir, "worker"), { recursive: true });
 esbuild.buildSync({
-  entryPoints: [path.join(rootDir, "src", "worker", "review-pr.ts")],
-  outfile: path.join(distDir, "worker", "review-pr.mjs"),
+  entryPoints: [
+    path.join(rootDir, "src", "worker", "review-pr.ts"),
+    path.join(rootDir, "src", "worker", "review-event.ts")
+  ],
+  outdir: path.join(distDir, "worker"),
+  entryNames: "[name]",
   bundle: true,
   platform: "node",
   format: "esm",
