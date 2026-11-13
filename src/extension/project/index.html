@@ -67,6 +67,17 @@
             <div id="repository-list" class="repository-list" aria-live="polite">Loading repositories...</div>
             <p id="repository-status" class="status-message" role="status" aria-live="polite"></p>
           </section>
+
+          <section class="panel" aria-labelledby="policies-heading">
+            <h2 id="policies-heading">Completion policies</h2>
+            <p class="note">Masthead posts a <code>masthead/review</code> status. A branch policy can require it before a pull request completes. This page checks each repository's default branch and is read-only; setup and removal happen in Azure DevOps branch policies.</p>
+            <div class="actions">
+              <button type="button" class="secondary" id="refresh-policies">Refresh policy state</button>
+              <p id="policy-status" class="status-message" role="status" aria-live="polite"></p>
+            </div>
+            <div id="policy-list" class="policy-list" aria-live="polite">Loading policy state...</div>
+            <p class="note">Other branches are managed separately in branch policies. A required policy blocks completion only when the review pipeline is running and posting status.</p>
+          </section>
         </section>
 
         <section class="tab-panel" data-panel="profile" role="tabpanel" hidden>
