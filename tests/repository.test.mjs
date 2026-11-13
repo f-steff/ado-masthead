@@ -169,6 +169,14 @@ test("the organization and project pages initialize the ADO host and split setti
   assert.match(projectHtml, />Save settings</);
   assert.match(projectHtml, /id="project-enabled"/);
   assert.match(projectHtml, /id="repository-list"/);
+  assert.match(projectHtml, /id="policies-heading"/);
+  assert.match(projectHtml, /id="policy-list"/);
+  assert.match(projectHtml, /id="refresh-policies"/);
+  assert.match(projectHtml, /id="policy-status"/);
+  assert.match(projectScript, /loadCompletionPolicies/);
+  assert.match(projectScript, /policyConfigurationsUrl/);
+  assert.match(projectScript, /branchPolicyUrl/);
+  assert.match(projectScript, /summarizeBranchPolicies/);
   assert.match(projectHtml, /data-tab="about"/);
   assert.match(projectHtml, /data-tab="profile"/);
   assert.match(projectHtml, /id="inherit-profile"/);
@@ -199,6 +207,9 @@ test("the organization and project pages initialize the ADO host and split setti
   assert.match(styles, /background-color: #0e7490/);
   assert.match(styles, /\.project-row\.inactive/);
   assert.match(styles, /\.lens-option/);
+  assert.match(styles, /\.policy-card/);
+  assert.match(styles, /\.policy-badge/);
+  assert.match(styles, /\.policy-help/);
   const org = manifest.contributions.find((entry) => entry.targets.includes("ms.vss-web.collection-admin-hub-group"));
   const project = manifest.contributions.find((entry) => entry.targets.includes("ms.vss-web.project-admin-hub-group"));
   assert.equal(org.properties.uri, "dist/extension/hub/index.html");

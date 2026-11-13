@@ -161,7 +161,10 @@ request status with `pending`, `succeeded` or `error`; a branch policy can
 require that status. A repository that is disabled posts `notApplicable`, which
 bypasses the required policy instead of blocking completion. The status is
 advisory unless an administrator adds the required policy, and Masthead does not
-create the policy because that would need code-write access. Review completion,
+create the policy because that would need code-write access. The project
+settings page reads the policies that apply to each repository's default branch
+and shows whether branch protection and the Masthead gate exist. It is read-only
+and links to the branch-policy page for setup or removal. Review completion,
 review failure and review coverage remain distinct states.
 
 ## Why not run inside application pipelines
