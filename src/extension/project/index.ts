@@ -210,7 +210,7 @@ async function readRepositoryPolicies(repository: Repository, token: string): Pr
     if (!response.ok) return { repository, error: `HTTP ${response.status}` };
     const value = await response.json() as { value?: unknown };
     if (!Array.isArray(value.value)) return { repository, error: "Invalid policy response." };
-    return { repository, summary: summarizeBranchPolicies(value.value) };
+    return { repository, summary: summarizeBranchPolicies(value.value, repository.id, repository.defaultBranch) };
   } catch {
     return { repository, error: "Policy request failed." };
   }
