@@ -383,7 +383,9 @@ function parseComment(value: unknown): AdoComment {
     ...(isRecord(value.author) && typeof value.author.id === "string"
       ? { author: { id: value.author.id, ...(typeof value.author.displayName === "string" ? { displayName: value.author.displayName } : {}) } }
       : {}),
-    ...(typeof value.content === "string" ? { content: value.content } : {})
+    ...(typeof value.content === "string" ? { content: value.content } : {}),
+    ...(typeof value.publishedDate === "string" ? { publishedDate: value.publishedDate } : {}),
+    ...(typeof value.lastUpdatedDate === "string" ? { lastUpdatedDate: value.lastUpdatedDate } : {})
   };
 }
 

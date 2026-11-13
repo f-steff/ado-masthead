@@ -340,6 +340,33 @@ test("the REST client posts the Masthead review status with its fixed context", 
   );
 });
 
+test("the REST client preserves comment timestamps for reply revision fallback", async () => {
+  const fetchImpl: typeof fetch = async () => new Response(JSON.stringify({
+    value: [{
+      id: 3,
+      status: "active",
+      comments: [{
+        id: 2,
+        parentCommentId: 0,
+        author: { id: "author" },
+        content: "question",
+        publishedDate: "2026-11-13T19:08:12.69Z",
+        lastUpdatedDate: "2026-11-13T19:08:12.69Z"
+      }]
+    }]
+  }), { status: 200 });
+  const client = new AdoClient({
+    organizationUrl: "https://dev.azure.com/contoso",
+    project: "SampleProject",
+    repositoryId: "repo-id",
+    token: "pipeline-token",
+    fetchImpl
+  });
+  const threads = await client.listThreads(2);
+  assert.equal(threads[0].comments[0].lastUpdatedDate, "2026-11-13T19:08:12.69Z");
+  assert.equal(threads[0].comments[0].publishedDate, "2026-11-13T19:08:12.69Z");
+});
+
 test("the REST client requests the preview connectionData API", async () => {
   const calls: string[] = [];
   const fetchImpl: typeof fetch = async (input) => {
