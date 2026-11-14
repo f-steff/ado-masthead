@@ -15,11 +15,23 @@ from the form after a successful create.
 
 ## Permissions
 
-The extension installation should request the minimum it needs to configure
-hooks and read project settings. Creating service-hook subscriptions also
-requires the signed-in user to be a project administrator; a project-level 403
-is reported in Setup instead of being retried. Posting review comments is
-performed by the central pipeline identity, not by the browser extension.
+The extension installation requests the minimum it needs to configure hooks,
+read project settings, manage the Masthead status policy and deploy the bundled
+pipeline YAML. Creating service-hook subscriptions and changing branch policies
+also requires the signed-in user to be an administrator; a project-level 403 is
+reported in Setup instead of being retried. Posting review comments is performed
+by the central pipeline identity, not by the browser extension.
+
+The extension has `vso.code_write` for two narrow administrator actions:
+
+- writing one bundled Masthead template, chosen in Setup, to a path in a
+  trusted repository's default branch; and
+- creating or removing the Masthead status policy on a repository's default
+  branch.
+
+It never writes reviewed source branches, pull request branches or application
+files, and it never edits other branch policies. The YAML content comes from the
+extension package, not from a pull request or repository file.
 
 The central pipeline needs:
 

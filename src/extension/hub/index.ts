@@ -15,6 +15,12 @@ import { initializeHost, notifyHostFailed, notifyHostLoaded, organizationUrl } f
 import { renderLensExamples } from "../shared/lens-examples";
 import { fillModelOptions } from "../shared/model-suggestions";
 import { filterPipelines, pipelineLabel, PipelineOption } from "../shared/pipelines";
+import {
+  pipelinePushRequest,
+  pipelineTemplateFile,
+  PipelineTemplate,
+  validatePipelinePath
+} from "../shared/pipeline-deploy";
 import { renderLensOptions, selectedLenses } from "../shared/review-profile";
 import {
   brokerBasicAuth,
@@ -64,6 +70,8 @@ const saveStatus = document.querySelector<HTMLElement>("#save-status");
 const pipelineStatus = document.querySelector<HTMLElement>("#pipeline-status");
 const validateButton = document.querySelector<HTMLButtonElement>("#validate-pipeline");
 const clearPipelineButton = document.querySelector<HTMLButtonElement>("#clear-pipeline");
+const createSource = document.querySelector<HTMLSelectElement>("#pipeline-create-source");
+const createTemplate = document.querySelector<HTMLSelectElement>("#pipeline-create-template");
 const createProject = document.querySelector<HTMLSelectElement>("#pipeline-create-project");
 const createRepository = document.querySelector<HTMLSelectElement>("#pipeline-create-repository");
 const createName = document.querySelector<HTMLInputElement>("#pipeline-create-name");
@@ -97,7 +105,7 @@ let settings = defaultOrganizationSettings();
 let projects: ProjectRow[] = [];
 let pipelines: PipelineOption[] = [];
 let selectedPipeline: PipelineOption | undefined;
-let pipelineRepositories: Array<{ id: string; name: string }> = [];
+let pipelineRepositories: Array<{ id: string; name: string; defaultBranch?: string }> = [];
 
 /** Report host failure without exposing organization details. */
 function showHostFailure(): void {
@@ -207,7 +215,13 @@ async function loadPipelineRepositories(project: string): Promise<void> {
     pipelineRepositories = entries
       .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null && !Array.isArray(item))
       .filter((item) => typeof item.id === "string" && typeof item.name === "string")
-      .map((item) => ({ id: item.id as string, name: item.name as string }))
+      .map((item) => ({
+        id: item.id as string,
+        name: item.name as string,
+        ...(typeof item.defaultBranch === "string" && item.defaultBranch
+          ? { defaultBranch: item.defaultBranch }
+          : {})
+      }))
       .sort((left, right) => left.name.localeCompare(right.name));
     createRepository.replaceChildren();
     const empty = document.createElement("option");
@@ -230,25 +244,212 @@ async function loadPipelineRepositories(project: string): Promise<void> {
   }
 }
 
+/**
+ * Commit the bundled canonical template to the selected trusted repository.
+ * Only the fixed template content is written; no repository file is read as
+ * executable input for this operation.
+ */
+async function writePipelineTemplate(
+  project: string,
+  repositoryId: string,
+  path: string,
+  template: PipelineTemplate,
+  token: string
+): Promise<boolean> {
+  const repository = pipelineRepositories.find((item) => item.id === repositoryId);
+  const branchRef = repository?.defaultBranch;
+  if (!branchRef || !/^refs\/heads\//.test(branchRef)) {
+    throw new Error("The selected repository has no default branch.");
+  }
+  const fileName = pipelineTemplateFile(template);
+  const templateResponse = await fetch(`../templates/${fileName}`, { cache: "no-store" });
+  if (!templateResponse.ok) throw new Error("The bundled pipeline template could not be loaded.");
+  const content = await templateResponse.text();
+  if (!content.trim()) throw new Error("The bundled pipeline template is empty.");
+  const headers = { authorization: `Bearer ${token}`, accept: "application/json" };
+  const branch = branchRef.slice("refs/heads/".length);
+  const refsResponse = await fetch(
+    `${organizationUrl(hostName)}/${encodeURIComponent(project)}/_apis/git/repositories/` +
+    `${encodeURIComponent(repositoryId)}/refs?filter=${encodeURIComponent(`heads/${branch}`)}&api-version=7.1`,
+    { headers, redirect: "error" }
+  );
+  if (!refsResponse.ok) throw new Error(`Repository branch could not be read (HTTP ${refsResponse.status}).`);
+  const refs = await refsResponse.json() as { value?: unknown };
+  const ref = Array.isArray(refs.value) && refs.value[0] && typeof refs.value[0] === "object"
+    ? refs.value[0] as { objectId?: unknown }
+    : {};
+  if (typeof ref.objectId !== "string") throw new Error("The default branch commit id is unavailable.");
+  const itemResponse = await fetch(
+    `${organizationUrl(hostName)}/${encodeURIComponent(project)}/_apis/git/repositories/` +
+    `${encodeURIComponent(repositoryId)}/items?path=${encodeURIComponent(path)}` +
+    `&versionDescriptor.version=${encodeURIComponent(branch)}&versionDescriptor.versionType=branch` +
+    `&includeContent=true&api-version=7.1`,
+    { headers, redirect: "error" }
+  );
+  let exists = false;
+  if (itemResponse.ok) {
+    exists = true;
+    const current = await itemResponse.json() as { content?: unknown };
+    if (current.content === content) return false;
+  } else if (itemResponse.status !== 404) {
+    throw new Error(`YAML file could not be checked (HTTP ${itemResponse.status}).`);
+  }
+  const push = await fetch(
+    `${organizationUrl(hostName)}/${encodeURIComponent(project)}/_apis/git/repositories/` +
+    `${encodeURIComponent(repositoryId)}/pushes?api-version=7.1`,
+    {
+      method: "POST",
+      headers: { ...headers, "content-type": "application/json" },
+      body: JSON.stringify(pipelinePushRequest({
+        branchRef,
+        oldObjectId: ref.objectId,
+        path,
+        content,
+        exists
+      })),
+      redirect: "error"
+    }
+  );
+  if (!push.ok) throw new Error(`YAML commit failed with HTTP ${push.status}.`);
+  return true;
+}
+
+/** Switch the default YAML path when the operator changes the bundled template. */
+function syncPipelineTemplatePath(): void {
+  if (!createTemplate || !createPath) return;
+  const template: PipelineTemplate = createTemplate.value === "review-native" ? "review-native" : "review";
+  const expected = template === "review-native" ? "/masthead/review-native.yml" : "/masthead/review.yml";
+  const current = createPath.value.trim();
+  // Preserve a deliberately custom path. Only replace paths that still look
+  // like one of our defaults, so the selector never silently overwrites input.
+  const defaults = new Set([
+    "",
+    "/masthead/review.yml",
+    "/masthead/review-native.yml",
+    "/azure-pipelines.yml"
+  ]);
+  if (defaults.has(current)) createPath.value = expected;
+}
+
+/** Existing YAML is read-only here, so hide the template choice for that mode. */
+function syncPipelineSource(): void {
+  if (!createSource || !createTemplate) return;
+  createTemplate.disabled = createSource.value === "existing";
+}
+
+/** One existing YAML definition, inspected so install can avoid duplicates. */
+interface ExistingPipeline {
+  project: string;
+  id: number;
+  name: string;
+  yamlPath: string;
+  repositoryId: string;
+  isYaml: boolean;
+}
+
+/** Narrow unknown API values without trusting their shape. */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** Find a definition by exact name; list results omit the process, so read it. */
+async function findExistingPipeline(
+  project: string,
+  name: string,
+  token: string
+): Promise<ExistingPipeline | undefined> {
+  const headers = { authorization: `Bearer ${token}`, accept: "application/json" };
+  const list = await fetch(
+    `${organizationUrl(hostName)}/${encodeURIComponent(project)}/_apis/build/definitions` +
+    `?name=${encodeURIComponent(name)}&api-version=7.1`,
+    { headers, redirect: "error" }
+  );
+  if (!list.ok) return undefined;
+  const body = await list.json() as { value?: unknown };
+  if (!Array.isArray(body.value)) return undefined;
+  const match = body.value.find((item): item is Record<string, unknown> =>
+    typeof item === "object" && item !== null && !Array.isArray(item) &&
+    item.name === name && typeof item.id === "number" && Number.isSafeInteger(item.id)
+  );
+  if (!match) return undefined;
+  const detailResponse = await fetch(
+    `${organizationUrl(hostName)}/${encodeURIComponent(project)}/_apis/build/definitions/${match.id}?api-version=7.1`,
+    { headers, redirect: "error" }
+  );
+  if (!detailResponse.ok) return undefined;
+  const detail = await detailResponse.json() as Record<string, unknown>;
+  const process = isRecord(detail.process) ? detail.process : {};
+  const repository = isRecord(detail.repository) ? detail.repository : {};
+  return {
+    project,
+    id: match.id as number,
+    name,
+    yamlPath: typeof process.yamlFilename === "string" ? process.yamlFilename : "",
+    repositoryId: typeof repository.id === "string" ? repository.id.toLowerCase() : "",
+    isYaml: process.type === 2
+  };
+}
+
 /** Create a YAML pipeline definition from a trusted repository. */
 async function installPipeline(): Promise<void> {
   const project = createProject?.value ?? "";
   const repositoryId = createRepository?.value ?? "";
   const name = createName?.value.trim() ?? "";
-  const path = createPath?.value.trim() ?? "";
-  if (!project || !repositoryId || !name || !path.startsWith("/")) {
-    setMessage(createStatus, "Select a project/repository and provide a pipeline name and absolute YAML path.", "error");
+  let path: string;
+  try {
+    path = validatePipelinePath(createPath?.value ?? "");
+  } catch (error) {
+    setMessage(createStatus, error instanceof Error ? error.message : "Invalid YAML path.", "error");
     return;
   }
+  if (!project || !repositoryId || !name) {
+    setMessage(createStatus, "Select a project/repository and provide a pipeline name.", "error");
+    return;
+  }
+  const source = createSource?.value === "existing" ? "existing" : "template";
+  const template: PipelineTemplate = createTemplate?.value === "review-native" ? "review-native" : "review";
   if (installPipelineButton) installPipelineButton.disabled = true;
-  setMessage(createStatus, "Checking the YAML file...");
   try {
     const token = await SDK.getAccessToken();
-    const item = await fetch(
-      `${organizationUrl(hostName)}/${encodeURIComponent(project)}/_apis/git/repositories/${encodeURIComponent(repositoryId)}/items?path=${encodeURIComponent(path)}&api-version=7.1`,
-      { headers: { authorization: `Bearer ${token}`, accept: "application/json" }, redirect: "error" }
-    );
-    if (!item.ok) throw new Error(`YAML file was not found (HTTP ${item.status}).`);
+    let committed = false;
+    if (source === "template") {
+      setMessage(createStatus, "Writing the bundled Masthead YAML...");
+      committed = await writePipelineTemplate(project, repositoryId, path, template, token);
+    } else {
+      setMessage(createStatus, "Checking the YAML file...");
+      const item = await fetch(
+        `${organizationUrl(hostName)}/${encodeURIComponent(project)}/_apis/git/repositories/${encodeURIComponent(repositoryId)}/items?path=${encodeURIComponent(path)}&api-version=7.1`,
+        { headers: { authorization: `Bearer ${token}`, accept: "application/json" }, redirect: "error" }
+      );
+      if (!item.ok) throw new Error(`YAML file was not found (HTTP ${item.status}).`);
+    }
+    setMessage(createStatus, "Checking for an existing pipeline...");
+    const existing = await findExistingPipeline(project, name, token);
+    const yamlState = source === "existing"
+      ? "the existing YAML file"
+      : committed
+        ? "the bundled YAML (committed)"
+        : "the bundled YAML (already current)";
+    if (existing) {
+      if (!existing.isYaml || existing.yamlPath !== path ||
+          existing.repositoryId !== repositoryId.toLowerCase()) {
+        throw new Error(
+          `A pipeline named "${name}" already exists with a different repository or YAML path. ` +
+          "Delete it or choose another name."
+        );
+      }
+      selectedPipeline = { project, id: existing.id, name };
+      if (pipelineSearch) pipelineSearch.value = pipelineLabel(selectedPipeline);
+      if (pipelineProject) pipelineProject.value = project;
+      if (pipelineSelected) pipelineSelected.textContent = `Selected ${pipelineLabel(selectedPipeline)}.`;
+      await save();
+      setMessage(
+        createStatus,
+        `Pipeline ${name} was already installed and is bound, using ${yamlState}.`,
+        "success"
+      );
+      return;
+    }
     setMessage(createStatus, "Creating the pipeline definition...");
     const response = await fetch(
       `${organizationUrl(hostName)}/${encodeURIComponent(project)}/_apis/pipelines?api-version=7.1`,
@@ -271,7 +472,7 @@ async function installPipeline(): Promise<void> {
     if (pipelineProject) pipelineProject.value = project;
     if (pipelineSelected) pipelineSelected.textContent = `Selected ${pipelineLabel(selectedPipeline)}.`;
     await save();
-    setMessage(createStatus, `Pipeline ${selectedPipeline.name} installed and bound.`, "success");
+    setMessage(createStatus, `Pipeline ${selectedPipeline.name} installed, bound and using ${yamlState}.`, "success");
   } catch (error) {
     setMessage(createStatus, error instanceof Error ? error.message : "Pipeline installation failed.", "error");
   } finally {
@@ -903,6 +1104,10 @@ async function main(): Promise<void> {
   createProject?.addEventListener("change", () => {
     void loadPipelineRepositories(createProject.value);
   });
+  createSource?.addEventListener("change", syncPipelineSource);
+  createTemplate?.addEventListener("change", syncPipelineTemplatePath);
+  syncPipelineSource();
+  syncPipelineTemplatePath();
   installPipelineButton?.addEventListener("click", () => {
     void installPipeline();
   });

@@ -83,7 +83,7 @@ test("edition manifests retain one code package and distinct public/private iden
     assert.ok(effective.files.some((entry) => entry.path === "dist/core/index.mjs" && entry.contentType === "application/javascript"));
     assert.ok(effective.contributions.some((entry) => entry.targets.includes("ms.vss-web.collection-admin-hub-group")));
     assert.ok(effective.contributions.some((entry) => entry.targets.includes("ms.vss-web.project-admin-hub-group")));
-    assert.deepEqual(effective.scopes, ["vso.extension.data_write", "vso.code", "vso.build", "vso.build_execute", "vso.project"]);
+    assert.deepEqual(effective.scopes, ["vso.extension.data_write", "vso.code", "vso.code_write", "vso.build", "vso.build_execute", "vso.project"]);
     assert.ok(!JSON.stringify(effective).includes("static-dev"));
   }
 });
@@ -147,6 +147,12 @@ test("the organization and project pages initialize the ADO host and split setti
   assert.match(orgHtml, /id="install-pipeline"/);
   assert.match(orgHtml, /id="delete-pipeline"/);
   assert.match(orgHtml, /id="pipeline-create-project"/);
+  assert.match(orgHtml, /id="pipeline-create-source"/);
+  assert.match(orgHtml, /id="pipeline-create-template"/);
+  assert.match(orgHtml, /value="\/masthead\/review.yml"/);
+  assert.match(orgScript, /writePipelineTemplate/);
+  assert.match(orgScript, /syncPipelineTemplatePath/);
+  assert.match(orgScript, /findExistingPipeline/);
   assert.match(orgHtml, /id="generate-native-webhook"/);
   assert.match(orgHtml, /id="native-webhook-note"/);
   assert.match(orgScript, /generateWebhookName/);
@@ -180,6 +186,9 @@ test("the organization and project pages initialize the ADO host and split setti
   assert.match(projectScript, /policyConfigurationsUrl/);
   assert.match(projectScript, /branchPolicyUrl/);
   assert.match(projectScript, /summarizeBranchPolicies/);
+  assert.match(projectScript, /manageMastheadPolicy/);
+  assert.match(projectScript, /policyManagementUrl/);
+  assert.match(projectHtml, /Enable the required gate/);
   assert.match(projectHtml, /data-tab="about"/);
   assert.match(projectHtml, /data-tab="profile"/);
   assert.match(projectHtml, /id="inherit-profile"/);
@@ -250,6 +259,8 @@ test("the central review pipeline accepts broker and manual identifiers", () => 
   assert.match(build, /review-event\.ts/);
   assert.match(build, /native-event\.ts/);
   assert.match(build, /outExtension: \{ "\.js": "\.mjs" \}/);
+  assert.match(build, /templates/);
+  assert.match(build, /review-native\.yml/);
 
   const nativeText = fs.readFileSync(path.join(root, "ado-pipelines/review-native.yml"), "utf8");
   const nativePipeline = parse(nativeText);

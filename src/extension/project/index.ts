@@ -19,7 +19,9 @@ import { fillModelOptions } from "../shared/model-suggestions";
 import {
   branchPolicyUrl,
   defaultBranchName,
+  mastheadPolicyRequestBody,
   policyConfigurationsUrl,
+  policyManagementUrl,
   summarizeBranchPolicies
 } from "../shared/policy-state";
 import type { BranchPolicySummary } from "../shared/policy-state";
@@ -280,7 +282,88 @@ function mastheadGateLabel(read: PolicyRead): { label: string; tone: "good" | "m
 
 function policyHelpSummary(read: PolicyRead): string {
   if (read.error) return "Policy details";
-  return read.summary?.masthead ? "Manage or remove policy" : "Set up policy";
+  return read.summary?.masthead ? "Policy details" : "Set up policy";
+}
+
+/** Create, require or remove only the Masthead policy on the default branch. */
+async function manageMastheadPolicy(
+  read: PolicyRead,
+  action: "create" | "enable" | "delete",
+  button: HTMLButtonElement
+): Promise<void> {
+  const repository = read.repository;
+  const branchRef = repository.defaultBranch;
+  const branch = defaultBranchName(branchRef);
+  if (!branchRef || !branch) {
+    setMessage(policyStatus, "The repository has no default branch to protect.", "error");
+    return;
+  }
+  const gate = read.summary?.masthead;
+  const prompt = action === "delete"
+    ? `Remove the Masthead completion gate from ${branch}? Pull requests will no longer require the Masthead status.`
+    : `Enable a required Masthead status policy on ${branch}? Pull requests will be blocked until Masthead posts succeeded or notApplicable. The policy is conditional and resets on new commits.`;
+  if (!window.confirm(prompt)) return;
+  if (button) button.disabled = true;
+  setMessage(policyStatus, action === "delete" ? "Removing the completion gate..." : "Enabling the completion gate...");
+  try {
+    const token = await SDK.getAccessToken();
+    const headers = {
+      authorization: `Bearer ${token}`,
+      accept: "application/json",
+      "content-type": "application/json"
+    };
+    let response: Response;
+    if (action === "delete") {
+      if (!gate?.id) throw new Error("The Masthead policy id is unavailable. Refresh and try again.");
+      response = await fetch(policyManagementUrl(organizationUrl(hostName), projectName, gate.id), {
+        method: "DELETE",
+        headers,
+        redirect: "error"
+      });
+    } else {
+      const body = mastheadPolicyRequestBody(repository.id, branchRef);
+      if (action === "create" || !gate?.id) {
+        response = await fetch(policyManagementUrl(organizationUrl(hostName), projectName), {
+          method: "POST",
+          headers,
+          body: JSON.stringify(body),
+          redirect: "error"
+        });
+      } else {
+        const revision = await mastheadPolicyRevision(gate.id, headers);
+        response = await fetch(policyManagementUrl(organizationUrl(hostName), projectName, gate.id), {
+          method: "PUT",
+          headers,
+          body: JSON.stringify({ ...body, id: gate.id, revision }),
+          redirect: "error"
+        });
+      }
+    }
+    if (!response.ok) throw new Error(`Policy change failed with HTTP ${response.status}.`);
+    await loadCompletionPolicies();
+    setMessage(
+      policyStatus,
+      action === "delete" ? "Masthead completion gate removed." : "Masthead completion gate enabled.",
+      "success"
+    );
+  } catch (error) {
+    setMessage(policyStatus, error instanceof Error ? error.message : "Policy change failed.", "error");
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+async function mastheadPolicyRevision(policyId: number, headers: Record<string, string>): Promise<number> {
+  const response = await fetch(policyManagementUrl(organizationUrl(hostName), projectName, policyId), {
+    headers,
+    redirect: "error"
+  });
+  if (!response.ok) throw new Error(`Policy lookup failed with HTTP ${response.status}.`);
+  const value = await response.json() as { revision?: unknown };
+  if (typeof value.revision !== "number" || !Number.isSafeInteger(value.revision)) {
+    throw new Error("The Masthead policy revision is unavailable.");
+  }
+  return value.revision;
 }
 
 function appendPolicyHelp(container: HTMLElement, read: PolicyRead): void {
@@ -332,10 +415,10 @@ function appendPolicyHelp(container: HTMLElement, read: PolicyRead): void {
     container.append(message, behavior);
     const action = document.createElement("p");
     action.textContent = !gate.enabled
-      ? "Enable or remove the masthead/review status check on the branch policies page."
+      ? "Use Enable required gate above or edit the masthead/review status check on the branch policies page."
       : gate.blocking
-        ? "To change or remove the requirement, edit or delete the masthead/review status check on the branch policies page."
-        : "To require the status, edit the masthead/review status check on the branch policies page and set Required.";
+        ? "Use Remove completion gate above, or edit or delete the masthead/review status check on the branch policies page."
+        : "Use Enable required gate above, or edit the masthead/review status check on the branch policies page and set Required.";
     container.append(action);
   }
 
@@ -374,13 +457,37 @@ function renderPolicyCard(read: PolicyRead): HTMLElement {
   head.append(title, branch);
 
   const protection = branchProtectionLabel(read);
-  const gate = mastheadGateLabel(read);
+  const gateBadge = mastheadGateLabel(read);
   const badges = document.createElement("div");
   badges.className = "policy-badges";
   badges.append(
     policyBadge("Branch protection", protection.label, protection.tone),
-    policyBadge("Masthead gate", gate.label, gate.tone)
+    policyBadge("Masthead gate", gateBadge.label, gateBadge.tone)
   );
+
+  const gate = read.summary?.masthead;
+  const action = !read.repository.defaultBranch || read.error
+    ? undefined
+    : !gate
+      ? "create" as const
+      : !gate.enabled || !gate.blocking
+        ? "enable" as const
+        : "delete" as const;
+  if (action) {
+    const actions = document.createElement("div");
+    actions.className = "policy-actions";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = action === "delete" ? "secondary" : "primary";
+    button.textContent = action === "delete" ? "Remove completion gate" : "Enable required gate";
+    button.addEventListener("click", () => {
+      void manageMastheadPolicy(read, action, button);
+    });
+    actions.append(button);
+    card.append(head, badges, actions);
+  } else {
+    card.append(head, badges);
+  }
 
   const details = document.createElement("details");
   details.className = "policy-help";
@@ -391,8 +498,7 @@ function renderPolicyCard(read: PolicyRead): HTMLElement {
   body.className = "policy-help-body";
   appendPolicyHelp(body, read);
   details.append(summary, body);
-
-  card.append(head, badges, details);
+  card.append(details);
   return card;
 }
 

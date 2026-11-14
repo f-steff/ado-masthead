@@ -169,7 +169,23 @@
 
           <section class="panel" aria-labelledby="install-heading">
             <h2 id="install-heading">Install or delete review pipeline</h2>
-            <p class="note">Create a pipeline definition from a trusted repository and YAML file. The YAML must contain the Masthead review step; this action does not edit application repositories or write pipeline YAML.</p>
+            <p class="note">Write the bundled Masthead YAML into a trusted repository and create the pipeline definition, or use an existing YAML file. Native webhook mode needs the native template and an Incoming Webhook service connection named <code>MastheadPR</code>.</p>
+            <div class="field-grid">
+              <label class="field">
+                <span>YAML source</span>
+                <select id="pipeline-create-source">
+                  <option value="template">Write bundled Masthead YAML</option>
+                  <option value="existing">Use existing YAML file</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Template</span>
+                <select id="pipeline-create-template">
+                  <option value="review">Broker/manual review</option>
+                  <option value="review-native">Native webhook review</option>
+                </select>
+              </label>
+            </div>
             <div class="field-grid">
               <label class="field">
                 <span>Project</span>
@@ -191,15 +207,15 @@
               </label>
               <label class="field">
                 <span>YAML path</span>
-                <input type="text" id="pipeline-create-path" maxlength="300" autocomplete="off" value="/azure-pipelines.yml">
+                <input type="text" id="pipeline-create-path" maxlength="300" autocomplete="off" value="/masthead/review.yml">
               </label>
             </div>
             <div class="actions">
-              <button type="button" class="primary" id="install-pipeline">Install review pipeline</button>
+              <button type="button" class="primary" id="install-pipeline">Install or update review pipeline</button>
               <button type="button" class="secondary" id="delete-pipeline">Delete review pipeline</button>
               <p id="create-status" class="status-message" role="status" aria-live="polite"></p>
             </div>
-            <p class="note">Deleting removes the Azure Pipelines definition bound above. It does not delete repositories, YAML files or pull request threads.</p>
+            <p class="note">Writing YAML commits only the selected Masthead template to the selected repository. Deleting removes only the pipeline definition, not repositories, YAML files or pull request threads.</p>
           </section>
         </section>
 

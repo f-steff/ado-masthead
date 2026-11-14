@@ -788,6 +788,13 @@ button:disabled {
   color: var(--text-secondary-color, #57606a);
 }
 
+.policy-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
 .policy-help {
   margin-top: 10px;
 }
