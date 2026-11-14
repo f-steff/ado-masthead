@@ -9,7 +9,7 @@
 | Author replies in a Masthead-owned thread | Queue a targeted conversation or recheck; no commit is required. |
 | Author mentions Masthead elsewhere | Answer only when the request is explicit and authorized. |
 | Masthead's own comment or status changes | Ignore to prevent a feedback loop. |
-| Duplicate or out-of-order delivery | Deduplicate by event, revision and comment identity. |
+| Duplicate or out-of-order delivery | Deduplicate by event, revision and comment identity; a revision lock blocks a concurrent duplicate review. |
 
 ## Four kinds of work
 

@@ -7,6 +7,7 @@ import { reviewSelection } from "../settings";
 import { runAdoReview } from "./ado-review";
 import { createJobContext, truthy } from "./job-context";
 import { ReviewModel } from "./review";
+import { acquireReviewLock, ReviewLock } from "./review-lock";
 import { loadReviewSettings, reviewGate } from "./settings";
 
 export async function runReviewJob(env: NodeJS.ProcessEnv): Promise<void> {
@@ -65,36 +66,88 @@ export async function runReviewJob(env: NodeJS.ProcessEnv): Promise<void> {
       return;
     }
 
-    const selection = reviewSelection(settings.organization, settings.project, settings.repositoryId);
-    const provider = providerFromEnvironment(env, selection);
-    const model: ReviewModel = (request, signal) => complete(provider, request, fetch, signal);
-    reviewStarted = true;
-    const run = await runAdoReview(client, {
-      pullRequestId,
-      model,
-      profile: selection.profile,
-      ...(env.MASTHEAD_DELIVERY_KEY ? { deliveryKey: env.MASTHEAD_DELIVERY_KEY } : {})
-    });
-    console.log(JSON.stringify({
-      provider: provider.name,
-      model: provider.model,
-      reasoningEffort: provider.reasoningEffort,
-      thinkingBudget: provider.thinkingBudget,
-      enabledLenses: selection.profile.enabledLenses,
-      reviewGuide: selection.profile.reviewGuide,
-      settingsSource: settings.source,
-      pullRequestId,
-      summary: run.review.result.summary,
-      findingCount: run.review.result.findings.length,
-      suppressedCount: run.review.suppressedCount,
-      relatedFiles: run.relatedFiles,
-      summaryThreadId: run.summaryThreadId,
-      verified: run.verification.map((item) => ({ findingId: item.findingId, outcome: item.outcome })),
-      created: run.published.created,
-      resolved: run.published.resolved,
-      withdrawn: run.published.withdrawn,
-      skipped: run.published.skipped
-    }, null, 2));
+    // Native and broker delivery are at-least-once. A revision-scoped lock stops
+    // duplicate events from starting two provider calls and two publish passes.
+    const lockExtensionId = settings.extensionId || extensionId;
+    const lockResult = lockExtensionId
+      ? await acquireReviewLock({
+          organizationUrl,
+          token: auth.token,
+          tokenScheme: auth.scheme,
+          publisher: (env.MASTHEAD_EXTENSION_PUBLISHER || "f-steff").trim(),
+          extensionId: lockExtensionId,
+          projectId: destinationProjectId,
+          repositoryId: pr.repository.id,
+          pullRequestId,
+          source: currentRevision.source,
+          target: currentRevision.target
+        })
+      : { state: "unavailable" as const, message: "The Masthead extension id is unknown." };
+    if (lockResult.state === "held") {
+      await postStatus(client, pullRequestId, "pending", "Masthead review is already running for this revision.");
+      console.log(JSON.stringify({
+        skipped: "review-locked",
+        pullRequestId,
+        ...(lockResult.acquiredAt ? { acquiredAt: lockResult.acquiredAt } : {}),
+        revision: currentRevision
+      }, null, 2));
+      return;
+    }
+    let lock: ReviewLock | undefined;
+    if (lockResult.state === "acquired") {
+      lock = lockResult.lock;
+    } else {
+      // A settings or extension-data outage must not stop reviews entirely.
+      console.warn(JSON.stringify({
+        warning: "review-lock-unavailable",
+        message: lockResult.message,
+        pullRequestId
+      }, null, 2));
+    }
+
+    try {
+      const selection = reviewSelection(settings.organization, settings.project, settings.repositoryId);
+      const provider = providerFromEnvironment(env, selection);
+      const model: ReviewModel = (request, signal) => complete(provider, request, fetch, signal);
+      reviewStarted = true;
+      const run = await runAdoReview(client, {
+        pullRequestId,
+        model,
+        profile: selection.profile,
+        ...(env.MASTHEAD_DELIVERY_KEY ? { deliveryKey: env.MASTHEAD_DELIVERY_KEY } : {})
+      });
+      console.log(JSON.stringify({
+        provider: provider.name,
+        model: provider.model,
+        reasoningEffort: provider.reasoningEffort,
+        thinkingBudget: provider.thinkingBudget,
+        enabledLenses: selection.profile.enabledLenses,
+        reviewGuide: selection.profile.reviewGuide,
+        settingsSource: settings.source,
+        reviewLock: lock ? "acquired" : "unavailable",
+        pullRequestId,
+        summary: run.review.result.summary,
+        findingCount: run.review.result.findings.length,
+        suppressedCount: run.review.suppressedCount,
+        relatedFiles: run.relatedFiles,
+        summaryThreadId: run.summaryThreadId,
+        verified: run.verification.map((item) => ({ findingId: item.findingId, outcome: item.outcome })),
+        created: run.published.created,
+        resolved: run.published.resolved,
+        withdrawn: run.published.withdrawn,
+        skipped: run.published.skipped
+      }, null, 2));
+    } finally {
+      if (lock) {
+        await lock.release().catch((error: unknown) => {
+          console.warn(JSON.stringify({
+            warning: "review-lock-release-failed",
+            message: error instanceof Error ? error.message : "Review lock release failed.",
+            pullRequestId
+          }, null, 2));
+        });
+      }
+    }
   } catch (error) {
     if (!reviewStarted) {
       // Configuration and setup failures happen before runAdoReview owns status.
@@ -108,7 +161,7 @@ export async function runReviewJob(env: NodeJS.ProcessEnv): Promise<void> {
 async function postStatus(
   client: ReturnType<typeof createJobContext>["client"],
   pullRequestId: number,
-  state: "notApplicable" | "succeeded" | "error",
+  state: "pending" | "notApplicable" | "succeeded" | "error",
   description: string
 ): Promise<void> {
   await client.createPullRequestStatus(pullRequestId, {

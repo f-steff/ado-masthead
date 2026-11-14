@@ -5,6 +5,7 @@ export * from "./review/lens-examples";
 export * from "./settings";
 export * from "./worker/review";
 export * from "./worker/review-job";
+export * from "./worker/review-lock";
 export * from "./worker/job-context";
 export * from "./worker/reply";
 export * from "./worker/event-envelope";
