@@ -58,11 +58,26 @@ comment prevents a duplicate answer on a retried delivery.
 
 ## Native incoming webhook
 
-Native mode still needs an Incoming Webhook service connection and a pipeline
-with a `resources.webhooks` resource whose connection name matches the
-extension's native webhook name. That native pipeline wrapper is not included
-here yet. Use broker mode for the complete created, updated and comment-event
-path until the native wrapper is validated.
+`review-native.yml` is the native wrapper. It subscribes to an Incoming Webhook
+service connection named `MastheadPR`, passes the raw service-hook payload to
+`native-event.mjs`, and lets that normalizer route created, updated and comment
+events. The payload is data; no event text is interpolated into a command or
+YAML expression.
+
+Setup:
+
+1. Create an Incoming Webhook service connection named `MastheadPR`.
+2. Set its WebHook Name to the value shown on the Masthead organization Setup
+   page. Use a long random value; the public endpoint is protected by the
+   unguessable name, not by a secret.
+3. Create a YAML pipeline from `review-native.yml` in a trusted repository.
+4. Create the project service hooks from Masthead Setup, or create the same
+   three subscriptions manually.
+5. Push a commit or add a comment to a test PR and verify the review and reply
+   paths.
+
+Native mode is public. Use broker mode when authenticated event delivery is
+required.
 
 ## Security
 

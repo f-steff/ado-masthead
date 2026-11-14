@@ -3,11 +3,12 @@ import test from "node:test";
 import {
   classifyComment,
   hasBotReply,
+  nativeEventEnvironment,
   parseEventEnvelope,
   renderReply,
   truthy
 } from "../src";
-import type { AdoComment, AdoThread } from "../src";
+import type { AdoComment, AdoThread, NormalizedPrEvent } from "../src";
 
 test("manual and review events carry only trusted envelope fields", () => {
   assert.deepEqual(parseEventEnvelope({}), { eventType: "manual" });
@@ -80,4 +81,36 @@ test("pipeline booleans accept the Azure Pipelines True spelling", () => {
   assert.equal(truthy("1"), true);
   assert.equal(truthy("False"), false);
   assert.equal(truthy(undefined), false);
+});
+
+test("normalized native events become the shared job environment", () => {
+  const review: NormalizedPrEvent = {
+    eventType: "git.pullrequest.updated",
+    deliveryKey: "git.pullrequest.updated:event-1",
+    projectId: "project-1",
+    repositoryId: "repo-1",
+    pullRequestId: 7,
+    sourceCommit: "a".repeat(40),
+    targetCommit: "b".repeat(40),
+    status: "active"
+  };
+  const reviewEnv = nativeEventEnvironment({ AZURE_DEVOPS_ORG_URL: "https://dev.azure.com/contoso" }, review);
+  assert.equal(reviewEnv.env.MASTHEAD_PROJECT, "project-1");
+  assert.equal(reviewEnv.env.MASTHEAD_REPOSITORY, "repo-1");
+  assert.equal(reviewEnv.env.MASTHEAD_PULL_REQUEST_ID, "7");
+  assert.equal(reviewEnv.env.MASTHEAD_EVENT_TYPE, "git.pullrequest.updated");
+  assert.equal(reviewEnv.env.MASTHEAD_THREAD_ID, undefined);
+  assert.equal(reviewEnv.envelope.threadId, undefined);
+
+  const comment: NormalizedPrEvent = {
+    ...review,
+    eventType: "ms.vss-code.git-pullrequest-comment-event",
+    comment: { id: 2, threadId: 4, authorId: "author", revision: "2026-11-14T00:00:00Z" }
+  };
+  const commentEnv = nativeEventEnvironment({}, comment);
+  assert.equal(commentEnv.env.MASTHEAD_THREAD_ID, "4");
+  assert.equal(commentEnv.env.MASTHEAD_COMMENT_ID, "2");
+  assert.equal(commentEnv.env.MASTHEAD_COMMENT_REVISION, "2026-11-14T00:00:00Z");
+  assert.equal(commentEnv.envelope.commentId, 2);
+  assert.throws(() => nativeEventEnvironment({}, { ...review, eventType: "git.push" }), /Unsupported/);
 });

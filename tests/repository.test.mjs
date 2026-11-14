@@ -245,7 +245,15 @@ test("the central review pipeline accepts broker and manual identifiers", () => 
   assert.match(text, /SYSTEM_ACCESSTOKEN: \$\(System\.AccessToken\)/);
   const build = fs.readFileSync(path.join(root, "scripts/build.js"), "utf8");
   assert.match(build, /review-event\.ts/);
+  assert.match(build, /native-event\.ts/);
   assert.match(build, /outExtension: \{ "\.js": "\.mjs" \}/);
+
+  const nativeText = fs.readFileSync(path.join(root, "ado-pipelines/review-native.yml"), "utf8");
+  const nativePipeline = parse(nativeText);
+  assert.equal(nativePipeline.resources.webhooks[0].connection, "MastheadPR");
+  assert.match(nativeText, /convertToJson\(parameters\.MastheadPR\)/);
+  assert.match(nativeText, /node dist\/worker\/native-event\.mjs/);
+  assert.match(nativeText, /MASTHEAD_EVENT_JSON/);
 });
 
 test("the pull request tab reads only its current context and exposes review state", () => {

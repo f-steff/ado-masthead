@@ -8,6 +8,7 @@ export * from "./worker/review-job";
 export * from "./worker/job-context";
 export * from "./worker/reply";
 export * from "./worker/event-envelope";
+export * from "./worker/native-event-envelope";
 export * from "./worker/ado-review";
 export * from "./worker/verification";
 export * from "./worker/events";
