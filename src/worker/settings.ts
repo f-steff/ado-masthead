@@ -252,7 +252,7 @@ function requiredSegment(value: string, name: string): string {
  * Extension data is served by the extension-management host. Derive it from the
  * organization URL so an event or pull request cannot redirect a token.
  */
-function extensionManagementUrl(value: string): string {
+export function extensionManagementUrl(value: string): string {
   let url: URL;
   try {
     url = new URL(value);

@@ -86,6 +86,13 @@ summary, finding count and optional review guide. That run marker is the durable
 deduplication record and the source for the PR tab summary. It is accepted only
 from the authenticated bot identity.
 
+A revision-scoped lock in extension data prevents two at-least-once deliveries
+from reviewing the same source and target concurrently. The lock document is
+created atomically, records its owner and acquisition time, and is released by
+its owner. A stale lock is replaced only when its stored ETag still matches, so
+a concurrent takeover loses cleanly. If the lock service is unavailable, the
+review continues with a warning rather than blocking every pull request.
+
 ### Implemented first slice
 
 `src/extension/hub` is now an SDK-initialized organization page. It completes
