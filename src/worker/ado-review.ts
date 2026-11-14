@@ -7,7 +7,7 @@ import { publishReviewPlan, publishReviewSummary, PublishReviewResult } from "..
 import { FindingVerification, ReviewRevision, reconcileFindings, ReconciliationPlan, StoredFinding } from "../review/lifecycle";
 import { ReviewProfile } from "../review/lenses";
 import { detectRepositoryLicense } from "../review/license";
-import { relatedFileCandidates } from "../review/related-files";
+import { callerSearchTerms, relatedFileCandidates } from "../review/related-files";
 import { ReviewInput } from "../review/types";
 import { ReviewModel, ReviewRun, runReview } from "./review";
 import { runVerification } from "./verification";
@@ -81,6 +81,9 @@ export async function runAdoReview(
       maxFileCharacters: maxRelatedFileCharacters,
       maxTotalCharacters: maxRelatedTotalCharacters,
       maxCandidates: maxRelatedCandidates
+    }, {
+      projectName: pr.repository.project?.name ?? "",
+      repositoryName: pr.repository.name ?? ""
     });
     const repositoryLicense = await readRepositoryLicense(client, revision.target);
     const input: ReviewInput = {
@@ -211,14 +214,16 @@ async function readChangedFiles(
 }
 
 /**
- * Fetch a bounded set of unchanged imports and nearby tests. Candidates are
- * deterministic and every item must exist at the fixed source commit.
+ * Fetch a bounded set of unchanged imports, nearby tests and code-search
+ * callers. Local candidates are deterministic; search adds paths only when the
+ * deployment supports it. Every item must exist at the fixed source commit.
  */
 async function readRelatedFiles(
   client: AdoReviewClient,
   changedFiles: ReviewInput["changedFiles"],
   sourceCommit: string,
-  limits: { maxFiles: number; maxFileCharacters: number; maxTotalCharacters: number; maxCandidates: number }
+  limits: { maxFiles: number; maxFileCharacters: number; maxTotalCharacters: number; maxCandidates: number },
+  search: { projectName: string; repositoryName: string }
 ): Promise<Array<{ path: string; content: string }>> {
   if (!Number.isSafeInteger(limits.maxFiles) || limits.maxFiles < 1 ||
       !Number.isSafeInteger(limits.maxFileCharacters) || limits.maxFileCharacters < 1 ||
@@ -226,9 +231,27 @@ async function readRelatedFiles(
       !Number.isSafeInteger(limits.maxCandidates) || limits.maxCandidates < 1) {
     throw new Error("Invalid related-file limits.");
   }
+  const candidates = relatedFileCandidates(changedFiles);
+  const candidateSet = new Set(candidates);
+  const changedSet = new Set(changedFiles.map((file) => file.path));
+  if (client.searchCodePaths && search.projectName && search.repositoryName) {
+    for (const term of callerSearchTerms(changedFiles)) {
+      if (candidates.length >= limits.maxCandidates) break;
+      const paths = await client.searchCodePaths(term, {
+        projectName: search.projectName,
+        repositoryName: search.repositoryName
+      }).catch(() => []);
+      for (const path of paths) {
+        if (changedSet.has(path) || candidateSet.has(path)) continue;
+        candidateSet.add(path);
+        candidates.push(path);
+        if (candidates.length >= limits.maxCandidates) break;
+      }
+    }
+  }
   const files: Array<{ path: string; content: string }> = [];
   let totalCharacters = 0;
-  for (const candidate of relatedFileCandidates(changedFiles).slice(0, limits.maxCandidates)) {
+  for (const candidate of candidates.slice(0, limits.maxCandidates)) {
     if (files.length >= limits.maxFiles || totalCharacters >= limits.maxTotalCharacters) break;
     const content = await client.getItemContent(sourceCommit, candidate);
     if (content === null || content.includes("\u0000")) continue;

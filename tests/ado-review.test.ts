@@ -161,6 +161,39 @@ test("the ADO runner fetches source, runs the worker and publishes validated fin
   ]);
 });
 
+test("code search adds same-repository caller files within the related-file budget", async () => {
+  class SearchingReviewClient extends FakeReviewClient {
+    searched: string[] = [];
+    override async getPullRequest(): Promise<AdoPullRequest> {
+      return {
+        ...pr(),
+        repository: { id: "repo-id", name: "StaticEmpty", project: { id: "project-id", name: "StaticEmpty" } }
+      };
+    }
+    async searchCodePaths(searchText: string): Promise<string[]> {
+      this.searched.push(searchText);
+      return ["src/caller.ts"];
+    }
+    override async getItemContent(commitId: string, path: string): Promise<string | null> {
+      if (path === "src/caller.ts") return "import { normalizeEmail } from './user';";
+      return super.getItemContent(commitId, path);
+    }
+  }
+  const client = new SearchingReviewClient();
+  const prompts: Array<{ system: string; user: string }> = [];
+  const run = await runAdoReview(client, {
+    pullRequestId: 2,
+    profile: { enabledLenses: ["correctness"], reviewGuide: false },
+    model: async (prompt) => {
+      prompts.push(prompt);
+      return { model: "fixture-model", text: JSON.stringify({ summary: "No new findings.", findings: [] }) };
+    }
+  });
+  assert.deepEqual(client.searched, ["normalizeEmail"]);
+  assert.deepEqual(run.relatedFiles, ["src/user.test.ts", "src/caller.ts"]);
+  assert.match(prompts[0].user, /src\/caller\.ts/);
+});
+
 test("a second run reuses published findings instead of creating duplicate threads", async () => {
   const client = new FakeReviewClient();
   const model = async (prompt: { system: string }) => prompt.system.includes("rechecking earlier review findings")

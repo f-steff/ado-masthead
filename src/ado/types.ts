@@ -43,7 +43,7 @@ export interface AdoPullRequest {
   targetRefName: string;
   lastMergeSourceCommit: { commitId: string };
   lastMergeTargetCommit: { commitId: string };
-  repository: { id: string; project?: { id?: string; name?: string } };
+  repository: { id: string; name?: string; project?: { id?: string; name?: string } };
   createdBy?: { id?: string; displayName?: string };
 }
 

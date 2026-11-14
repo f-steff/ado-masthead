@@ -157,8 +157,10 @@ not print the provider key, ADO token, prompt or raw repository content.
   incoming-webhook service connection or broker endpoint exists. The step still
   needs that endpoint, and can also be run manually or by a pipeline.
 - The runner reads full changed-file content rather than a minimal diff. It
-  also reads a bounded set of existing relative imports and nearby tests, but
-  not every caller or unrelated repository file.
+  also reads a bounded set of existing relative imports, nearby tests and
+  code-search caller candidates. Code search is optional and advisory; reviews
+  continue when the search service is unavailable or the deployment does not
+  provide it.
 - A re-review does not resolve a finding merely because the model omitted it.
   A separate verification pass must return an evidence-backed `fixed` or
   `withdrawn` result. The verifier sees the same changed and related files; a

@@ -5,6 +5,17 @@ import { posix as path } from "node:path";
 import { ReviewChangedFile } from "./types";
 
 const SCRIPT_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"];
+const CALLER_TERM_LIMIT = 6;
+const CALLER_TERMS_PER_FILE = 3;
+const GENERIC_CALLER_NAMES = new Set([
+  "build", "class", "client", "config", "const", "constructor", "create", "default",
+  "delete", "error", "execute", "export", "false", "filter", "format", "function",
+  "handle", "import", "interface", "length", "match", "module", "names", "number",
+  "object", "options", "parse", "process", "public", "record", "reduce", "reject",
+  "render", "replace", "request", "resolve", "response", "result", "return", "search",
+  "server", "setup", "slice", "splice", "start", "static", "string", "struct", "tests",
+  "tostring", "update", "value", "valueof", "values"
+]);
 
 /** Return deterministic, repository-relative candidates, never changed files. */
 export function relatedFileCandidates(changedFiles: readonly ReviewChangedFile[]): string[] {
@@ -36,8 +47,30 @@ export function relatedFileCandidates(changedFiles: readonly ReviewChangedFile[]
   return candidates;
 }
 
-/** Keep paths inside the repository and in POSIX form for ADO item requests. */
-export function normalizeRelative(value: string): string | undefined {
+/**
+ * Symbols worth searching in code search. Only exported or public declarations
+ * are used; the output is a small deterministic set so a review cannot spend an
+ * unbounded number of search calls.
+ */
+export function callerSearchTerms(changedFiles: readonly ReviewChangedFile[]): string[] {
+  const terms: string[] = [];
+  const seen = new Set<string>();
+  for (const file of changedFiles) {
+    if (file.changeType === "delete" || !file.content) continue;
+    let perFile = 0;
+    for (const name of exportedSymbols(file.content)) {
+      if (perFile >= CALLER_TERMS_PER_FILE) break;
+      if (seen.has(name) || GENERIC_CALLER_NAMES.has(name.toLowerCase())) continue;
+      seen.add(name);
+      terms.push(name);
+      perFile += 1;
+      if (terms.length >= CALLER_TERM_LIMIT) return terms;
+    }
+  }
+  return terms;
+}
+
+/** Keep paths inside the repository and in POSIX form for ADO item requests. */export function normalizeRelative(value: string): string | undefined {
   const slash = value.replace(/\\/g, "/").replace(/^\/+/, "");
   if (!slash || /[\u0000-\u001f]/.test(slash)) return undefined;
   const normalized = path.normalize(slash);
@@ -135,6 +168,28 @@ function pythonTestCandidates(file: string): string[] {
 
 function isScript(file: string): boolean {
   return SCRIPT_EXTENSIONS.includes(path.extname(file));
+}
+
+/** Extract public declaration names without a language-specific parser. */
+function exportedSymbols(content: string): string[] {
+  const names: string[] = [];
+  const patterns = [
+    /\bexport\s+(?:async\s+)?function\s+([A-Za-z_$][\w$]{3,})/g,
+    /\bexport\s+(?:default\s+)?class\s+([A-Za-z_$][\w$]{3,})/g,
+    /\bexport\s+(?:const|let|var)\s+([A-Za-z_$][\w$]{3,})/g,
+    /^[ \t]*(?:async[ \t]+)?def[ \t]+([A-Za-z_]\w{3,})/gm,
+    /^func[ \t]+([A-Z]\w{3,})\s*\(/gm,
+    /\bpublic\s+(?:static\s+)?(?:async\s+)?(?:class|interface|record|enum|struct)\s+([A-Za-z_]\w{3,})/g
+  ];
+  for (const pattern of patterns) {
+    for (const match of content.matchAll(pattern)) {
+      const name = match[1];
+      if (name && !name.startsWith("_") && !/^[A-Z_0-9]+$/.test(name) && !names.includes(name)) {
+        names.push(name);
+      }
+    }
+  }
+  return names;
 }
 
 function isString(value: string | undefined): value is string {

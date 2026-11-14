@@ -93,13 +93,14 @@ only a non-empty evidence-based reason can authorize resolution. The current
 runner supplies changed-file content to the recheck; a finding whose evidence is
 not present remains open.
 
-The runner now supplies bounded unchanged relative imports and nearby tests to
-both the review and the recheck. It posts a `masthead/review` status so an
-administrator can require it in a branch policy; creating the policy itself and
-semantic caller discovery remain. A completed run marker in the PR summary
-thread prevents re-running the same revision on a retried delivery; a forced
+The runner supplies bounded unchanged relative imports, nearby tests and
+code-search caller candidates to both the review and the recheck. It posts a
+`masthead/review` status so an administrator can require it in a branch policy.
+The project settings page can create or remove that one policy, and Setup can
+commit the packaged pipeline YAML to a trusted repository. A completed run marker
+in the PR summary thread prevents re-running the same revision on a retried
+delivery; a revision lock also stops concurrent duplicate runs, and a forced
 re-run remains available. Native/broker pipeline templates and the event router
-are packaged, while deployment of a trusted pipeline repository/YAML remains a
-setup step. Project service hooks can already be created from organization Setup
-for an existing native or broker endpoint. Missing output or filtered findings
-are never fix evidence.
+are packaged. Project service hooks can be created from organization Setup for
+an existing native or broker endpoint. Missing output or filtered findings are
+never fix evidence.
