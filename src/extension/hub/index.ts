@@ -47,6 +47,8 @@ const brokerRadio = document.querySelector<HTMLInputElement>("#delivery-broker")
 const nativeChoice = document.querySelector<HTMLElement>("#native-choice");
 const brokerChoice = document.querySelector<HTMLElement>("#broker-choice");
 const nativeWebhook = document.querySelector<HTMLInputElement>("#native-webhook");
+const nativeWebhookNote = document.querySelector<HTMLElement>("#native-webhook-note");
+const generateNativeWebhookButton = document.querySelector<HTMLButtonElement>("#generate-native-webhook");
 const brokerUrl = document.querySelector<HTMLInputElement>("#broker-url");
 const brokerSecretField = document.querySelector<HTMLElement>("#broker-secret-field");
 const brokerSecret = document.querySelector<HTMLInputElement>("#broker-secret");
@@ -458,6 +460,7 @@ function renderOrganization(value: OrganizationSettings): void {
   nativeChoice?.classList.toggle("selected", value.deploymentMode === "native");
   brokerChoice?.classList.toggle("selected", value.deploymentMode === "broker");
   if (nativeWebhook) nativeWebhook.value = value.nativeWebhookName ?? "MastheadPR";
+  renderNativeWebhookNote();
   if (brokerUrl) brokerUrl.value = value.brokerUrl ?? "";
   if (reviewProvider) reviewProvider.value = value.provider ?? "";
   if (reviewModel) reviewModel.value = value.model ?? "";
@@ -500,6 +503,25 @@ function syncDeliveryChoice(): void {
   nativeChoice?.classList.toggle("selected", nativeRadio?.checked === true);
   brokerChoice?.classList.toggle("selected", brokerRadio?.checked === true);
   if (brokerSecretField) brokerSecretField.hidden = brokerRadio?.checked !== true;
+}
+
+/** A public webhook endpoint needs an unguessable name, not a secret in the URL. */
+function generateWebhookName(): string {
+  const bytes = new Uint8Array(18);
+  crypto.getRandomValues(bytes);
+  return `masthead-${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+}
+
+function renderNativeWebhookNote(): void {
+  if (!nativeWebhookNote) return;
+  const value = nativeWebhook?.value.trim() ?? "";
+  if (!value) {
+    nativeWebhookNote.textContent = "Generate a value and use it as the WebHook Name in an Incoming Webhook service connection named MastheadPR.";
+  } else if (value.length < 24) {
+    nativeWebhookNote.textContent = "This name is short or predictable. Generate a secure name; the native endpoint is public and relies on an unguessable name.";
+  } else {
+    nativeWebhookNote.textContent = "Use this value as the WebHook Name in an Incoming Webhook service connection named MastheadPR. The public endpoint relies on the unguessable name.";
+  }
 }
 
 /** Hook provisioning is explicit per project; no project is selected by default. */
@@ -889,6 +911,13 @@ async function main(): Promise<void> {
   });
   nativeRadio?.addEventListener("change", syncDeliveryChoice);
   brokerRadio?.addEventListener("change", syncDeliveryChoice);
+  nativeWebhook?.addEventListener("input", renderNativeWebhookNote);
+  generateNativeWebhookButton?.addEventListener("click", () => {
+    if (!nativeWebhook) return;
+    nativeWebhook.value = generateWebhookName();
+    renderNativeWebhookNote();
+    nativeWebhook.focus();
+  });
   createHooksButton?.addEventListener("click", () => {
     void createServiceHooks();
   });

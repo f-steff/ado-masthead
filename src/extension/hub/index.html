@@ -109,15 +109,17 @@
             </fieldset>
 
             <div class="field-grid">
-              <label class="field">
-                <span>Native webhook name</span>
+              <div class="field">
+                <label for="native-webhook">Native webhook name</label>
                 <input type="text" id="native-webhook" maxlength="160" autocomplete="off">
-              </label>
+                <button type="button" class="secondary" id="generate-native-webhook">Generate secure name</button>
+              </div>
               <label class="field">
                 <span>Broker URL</span>
                 <input type="url" id="broker-url" maxlength="500" autocomplete="off" placeholder="https://masthead.example.com">
               </label>
             </div>
+            <p class="note" id="native-webhook-note"></p>
             <p class="note">Provider keys are never entered here. They belong in the Azure DevOps secret variable group linked only to the central review pipeline.</p>
           </section>
 

@@ -20,6 +20,30 @@ separately only when a dedicated review identity is required.
 `MASTHEAD_EXTENSION_ID` and `MASTHEAD_EXTENSION_PUBLISHER` must match the
 installed Masthead edition. The template defaults to the dev edition.
 
+## Trusted repository and setup script
+
+Keep `review.yml` and, when native delivery is needed, `review-native.yml` in a
+small trusted repository such as `masthead-pipelines`. Protect its default
+branch and review changes like any other pipeline code.
+
+An administrator can create the pipeline definition with:
+
+```sh
+export AZDO_ORG="https://dev.azure.com/contoso"
+export AZDO_PROJECT="Contoso"
+export PIPELINE_REPO="masthead-pipelines"
+export PIPELINE_NAME="Masthead review"
+export PIPELINE_YAML="/ado-pipelines/review.yml"
+sh ci/setup-review-pipeline.sh
+```
+
+The script uses the signed-in Azure CLI identity and creates only the pipeline
+definition. It does not create the repository, copy the YAML or write source
+code. Copying the YAML once is the manual fallback and works the same way.
+
+The first run asks to authorize the `masthead-secrets` variable group. Grant
+that permission to the pipeline, then bind the pipeline in organization Setup.
+
 ## Manual run
 
 Queue the pipeline with:
