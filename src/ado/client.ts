@@ -47,6 +47,14 @@ export interface AdoReviewClient extends AdoClientLike {
   listPullRequestChanges(pullRequestId: number): Promise<AdoChangedFile[]>;
   getItemContent(commitId: string, path: string): Promise<string | null>;
   createPullRequestStatus(pullRequestId: number, input: AdoPullRequestStatusInput): Promise<void>;
+  /** Optional because code search is absent on some deployments. */
+  searchCodePaths?(searchText: string, options: CodeSearchOptions): Promise<string[]>;
+}
+
+export interface CodeSearchOptions {
+  projectName: string;
+  repositoryName: string;
+  top?: number;
 }
 
 export class AdoClient implements AdoReviewClient {
@@ -152,6 +160,61 @@ export class AdoClient implements AdoReviewClient {
   }
 
   /**
+   * Find files that mention one changed symbol. Code search is advisory: an
+   * unavailable search service or an unsupported deployment returns no paths.
+   */
+  async searchCodePaths(searchText: string, options: CodeSearchOptions): Promise<string[]> {
+    const term = searchText.trim();
+    if (!/^[A-Za-z_$][\w$]{3,59}$/.test(term)) return [];
+    const base = searchServiceBase(this.organizationUrl);
+    if (!base) return [];
+    const projectName = requiredSegment(options.projectName, "project name");
+    const repositoryName = requiredSegment(options.repositoryName, "repository name");
+    const top = Number.isSafeInteger(options.top) && (options.top ?? 0) > 0
+      ? Math.min(options.top as number, 50)
+      : 20;
+    let payload: unknown;
+    try {
+      payload = await this.send(
+        `${base}/${encodeURIComponent(projectName)}/_apis/search/codesearchresults?api-version=7.1`,
+        {
+          method: "POST",
+          body: {
+            searchText: term,
+            $top: top,
+            includeFacets: false,
+            filters: { Project: [projectName], Repository: [repositoryName] }
+          },
+          timeoutMs: 10_000
+        }
+      );
+    } catch {
+      return [];
+    }
+    const results = isRecord(payload) && Array.isArray(payload.results) ? payload.results : [];
+    const paths: string[] = [];
+    const seen = new Set<string>();
+    for (const result of results) {
+      if (!isRecord(result) || typeof result.path !== "string") continue;
+      const repository = isRecord(result.repository) ? result.repository : {};
+      if (typeof repository.id !== "string" ||
+          repository.id.toLowerCase() !== this.repositoryId.toLowerCase()) {
+        continue;
+      }
+      let normalized: string;
+      try {
+        normalized = repositoryPath(result.path.replace(/^\/+/, ""));
+      } catch {
+        continue;
+      }
+      if (seen.has(normalized)) continue;
+      seen.add(normalized);
+      paths.push(normalized);
+    }
+    return paths;
+  }
+
+  /**
    * Post the review status that an optional branch policy can require. The
    * publisher identity owns this status; it is not a vote or approval.
    */
@@ -247,9 +310,9 @@ export class AdoClient implements AdoReviewClient {
   /** Bound the request and never retain a response body in an error message. */
   private async send(
     url: string,
-    options: { method?: string; body?: unknown } = {}
+    options: { method?: string; body?: unknown; timeoutMs?: number } = {}
   ): Promise<unknown> {
-    const timeout = AbortSignal.timeout(this.timeoutMs);
+    const timeout = AbortSignal.timeout(options.timeoutMs ?? this.timeoutMs);
     let response: Response;
     try {
       response = await this.fetchImpl(url, {
@@ -304,8 +367,23 @@ function validOrganizationUrl(value: string): string {
   return url.href.replace(/\/+$/, "");
 }
 
-function requiredSegment(value: string, name: string): string {
-  const trimmed = value.trim();
+/**
+ * Code search uses a dedicated host in Azure DevOps Services. On-premises
+ * deployments do not share this host, so caller discovery is skipped.
+ */
+function searchServiceBase(organizationUrl: string): string | undefined {
+  const url = new URL(organizationUrl);
+  if (url.hostname === "dev.azure.com") {
+    const organization = url.pathname.split("/").filter(Boolean)[0];
+    return organization ? `https://almsearch.dev.azure.com/${encodeURIComponent(organization)}` : undefined;
+  }
+  const visualStudio = /^([^.]+)\.visualstudio\.com$/i.exec(url.hostname);
+  return visualStudio?.[1]
+    ? `https://${visualStudio[1].toLowerCase()}.almsearch.visualstudio.com`
+    : undefined;
+}
+
+function requiredSegment(value: string, name: string): string {  const trimmed = value.trim();
   if (!trimmed || trimmed.length > 200 || /[\/\\?#]/.test(trimmed)) {
     throw new Error(`Invalid Azure DevOps ${name}.`);
   }

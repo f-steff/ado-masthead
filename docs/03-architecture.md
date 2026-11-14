@@ -125,12 +125,13 @@ source and target revisions suppresses a retried review unless a forced re-run
 is requested. A repository with no stored switch follows the configured
 new-repository default. The organization Setup page can create the three project
 service-hook subscriptions for an existing native incoming-webhook service
-connection or broker endpoint; it does not create the service connection,
-broker host or deploy the central pipeline YAML. `ado-pipelines/review.yml` is
-the packaged broker/manual definition. The runner fetches a bounded set of
-unchanged relative imports and nearby tests at the reviewed commit, but it is
-not a semantic index of every caller. The PR tab shows the effective profile,
-gating state, status, summary, guide and current findings.
+connection or broker endpoint. It can commit the bundled pipeline YAML to a
+selected trusted repository and create the definition. `ado-pipelines/review.yml`
+is the packaged broker/manual definition. The runner fetches a bounded set of
+unchanged relative imports, nearby tests and code-search caller candidates at the
+reviewed commit. Code search is advisory and never required for a review. The PR
+tab shows the effective profile, gating state, status, summary, guide and current
+findings.
 
 ## Cross-project behavior
 
