@@ -147,6 +147,9 @@ test("the organization and project pages initialize the ADO host and split setti
   assert.match(orgHtml, /id="install-pipeline"/);
   assert.match(orgHtml, /id="delete-pipeline"/);
   assert.match(orgHtml, /id="pipeline-create-project"/);
+  assert.match(orgHtml, /id="generate-native-webhook"/);
+  assert.match(orgHtml, /id="native-webhook-note"/);
+  assert.match(orgScript, /generateWebhookName/);
   assert.match(orgHtml, /id="hook-project-list"/);
   assert.match(orgHtml, /id="create-hooks"/);
   assert.match(orgHtml, /id="remove-hooks"/);
