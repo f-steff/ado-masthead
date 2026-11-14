@@ -1,11 +1,31 @@
 // Convert a normalized ADO service-hook event into the environment contract
 // used by the review and reply jobs. The event supplies identifiers only.
+import { normalizeEvent } from "../../broker/lib.mjs";
 import type { NormalizedPrEvent } from "../../broker/lib.mjs";
 import { EventEnvelope, isCommentEvent, isReviewEvent } from "./event-envelope";
 
 export interface NativeEventEnvironment {
   env: NodeJS.ProcessEnv;
   envelope: EventEnvelope;
+}
+
+/**
+ * Native payload dates can be reformatted by the pipeline's JSON conversion.
+ * Drop them before normalization; the worker re-fetches the thread comment and
+ * uses its trusted timestamp as the reply revision.
+ */
+export function normalizeNativeEvent(payload: unknown): NormalizedPrEvent {
+  if (isRecord(payload) && isRecord(payload.resource) && isRecord(payload.resource.comment)) {
+    const comment = { ...payload.resource.comment };
+    delete comment.lastContentUpdatedDate;
+    delete comment.lastUpdatedDate;
+    delete comment.publishedDate;
+    return normalizeEvent({
+      ...payload,
+      resource: { ...payload.resource, comment }
+    });
+  }
+  return normalizeEvent(payload);
 }
 
 export function nativeEventEnvironment(
@@ -45,4 +65,8 @@ export function nativeEventEnvironment(
         : {})
     }
   };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

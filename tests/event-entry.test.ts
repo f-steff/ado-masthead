@@ -4,6 +4,7 @@ import {
   classifyComment,
   hasBotReply,
   nativeEventEnvironment,
+  normalizeNativeEvent,
   parseEventEnvelope,
   renderReply,
   truthy
@@ -113,4 +114,26 @@ test("normalized native events become the shared job environment", () => {
   assert.equal(commentEnv.env.MASTHEAD_COMMENT_REVISION, "2026-11-14T00:00:00Z");
   assert.equal(commentEnv.envelope.commentId, 2);
   assert.throws(() => nativeEventEnvironment({}, { ...review, eventType: "git.push" }), /Unsupported/);
+});
+
+test("native comment dates are re-read from the trusted thread, not the payload", () => {
+  const event = normalizeNativeEvent({
+    id: "comment-event-1",
+    eventType: "ms.vss-code.git-pullrequest-comment-event",
+    resource: {
+      pullRequest: {
+        pullRequestId: 2,
+        repository: { id: "repo-1", project: { id: "project-1" } }
+      },
+      thread: { id: 4 },
+      comment: {
+        id: 2,
+        author: { id: "author" },
+        lastUpdatedDate: "11/14/2026 6:12:57 PM"
+      }
+    }
+  });
+  assert.equal(event.comment?.threadId, 4);
+  assert.equal(event.comment?.id, 2);
+  assert.equal(event.comment?.revision, "");
 });

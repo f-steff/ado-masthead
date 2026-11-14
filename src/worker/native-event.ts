@@ -1,8 +1,7 @@
 // Native incoming-webhook entry point. The pipeline passes the raw service-hook
 // payload; the shared normalizer extracts only identifiers before dispatch.
-import { normalizeEvent } from "../../broker/lib.mjs";
 import { isCommentEvent } from "./event-envelope";
-import { nativeEventEnvironment } from "./native-event-envelope";
+import { nativeEventEnvironment, normalizeNativeEvent } from "./native-event-envelope";
 import { runReplyJob } from "./reply";
 import { runReviewJob } from "./review-job";
 
@@ -15,7 +14,7 @@ async function main(): Promise<void> {
   } catch {
     throw new Error("MASTHEAD_EVENT_JSON is not valid JSON.");
   }
-  const event = normalizeEvent(payload);
+  const event = normalizeNativeEvent(payload);
   const { env, envelope } = nativeEventEnvironment(process.env, event);
   console.log(JSON.stringify({ eventType: envelope.eventType, deliveryKey: envelope.deliveryKey }));
   if (isCommentEvent(envelope.eventType)) {
