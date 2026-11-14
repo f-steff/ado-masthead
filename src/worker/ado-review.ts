@@ -62,6 +62,16 @@ export async function runAdoReview(
   if (pr.status !== "active") {
     throw new Error("Pull request is not active.");
   }
+  const forkRepository = pr.forkSource?.repository;
+  const sourceIsFork = Boolean(forkRepository?.id && forkRepository.id !== pr.repository.id);
+  const contentClient = sourceIsFork
+    ? (forkRepository && client.forRepository
+        ? client.forRepository(forkRepository.id, forkRepository.project?.name)
+        : undefined)
+    : client;
+  if (!contentClient) {
+    throw new Error("This pull request comes from a fork repository that this review client cannot read.");
+  }
   const revision: ReviewRevision = {
     source: commitId(pr.lastMergeSourceCommit.commitId, "source"),
     target: commitId(pr.lastMergeTargetCommit.commitId, "target")
@@ -75,15 +85,15 @@ export async function runAdoReview(
       finding: item.finding,
       state: item.state === "active" ? "active" as const : item.state === "dismissed" ? "dismissed" as const : "resolved" as const
     }));
-    const changedFiles = await readChangedFiles(client, options.pullRequestId, revision.source, maxFiles, maxFileCharacters);
-    const relatedFiles = await readRelatedFiles(client, changedFiles, revision.source, {
+    const changedFiles = await readChangedFiles(client, contentClient, options.pullRequestId, revision.source, maxFiles, maxFileCharacters);
+    const relatedFiles = await readRelatedFiles(contentClient, changedFiles, revision.source, {
       maxFiles: maxRelatedFiles,
       maxFileCharacters: maxRelatedFileCharacters,
       maxTotalCharacters: maxRelatedTotalCharacters,
       maxCandidates: maxRelatedCandidates
     }, {
-      projectName: pr.repository.project?.name ?? "",
-      repositoryName: pr.repository.name ?? ""
+      projectName: (sourceIsFork ? forkRepository?.project?.name : pr.repository.project?.name) ?? "",
+      repositoryName: (sourceIsFork ? forkRepository?.name : pr.repository.name) ?? ""
     });
     const repositoryLicense = await readRepositoryLicense(client, revision.target);
     const input: ReviewInput = {
@@ -182,7 +192,8 @@ async function readStoredFindings(
 
 /** Fetch source content for every changed file, with explicit bounds. */
 async function readChangedFiles(
-  client: AdoReviewClient,
+  metadataClient: AdoReviewClient,
+  contentClient: Pick<AdoReviewClient, "getItemContent">,
   pullRequestId: number,
   sourceCommit: string,
   maxFiles: number,
@@ -191,7 +202,7 @@ async function readChangedFiles(
   if (!Number.isSafeInteger(maxFiles) || maxFiles < 1 || !Number.isSafeInteger(maxFileCharacters) || maxFileCharacters < 1) {
     throw new Error("Invalid review file limits.");
   }
-  const changes = await client.listPullRequestChanges(pullRequestId);
+  const changes = await metadataClient.listPullRequestChanges(pullRequestId);
   if (changes.length > maxFiles) {
     throw new Error(`Pull request changes ${maxFiles} file limit.`);
   }
@@ -201,7 +212,7 @@ async function readChangedFiles(
       files.push({ path: change.path, changeType: "delete" });
       continue;
     }
-    const content = await client.getItemContent(sourceCommit, change.path);
+    const content = await contentClient.getItemContent(sourceCommit, change.path);
     if (content === null) {
       throw new Error(`Changed file content is unavailable: ${change.path}`);
     }

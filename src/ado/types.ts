@@ -44,6 +44,12 @@ export interface AdoPullRequest {
   lastMergeSourceCommit: { commitId: string };
   lastMergeTargetCommit: { commitId: string };
   repository: { id: string; name?: string; project?: { id?: string; name?: string } };
+  /** Present when the source branch lives in a fork repository. */
+  forkSource?: {
+    name?: string;
+    objectId?: string;
+    repository?: { id: string; name?: string; project?: { id?: string; name?: string } };
+  };
   createdBy?: { id?: string; displayName?: string };
 }
 

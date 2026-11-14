@@ -177,6 +177,10 @@ not print the provider key, ADO token, prompt or raw repository content.
 - Settings reads depend on the pipeline identity's access to extension data.
   Use a dedicated token or an explicit settings snapshot when that access is
   not available.
+- Fork pull requests read content from the fork source repository and publish
+  threads and statuses on the target repository. The pipeline identity needs
+  read access to the fork. Cross-organization forks require access that the
+  destination project may not grant automatically.
 - The pipeline step should not have source-branch write permission.
 
 ## Expected first-run result

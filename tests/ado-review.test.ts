@@ -9,6 +9,7 @@ import {
   AdoPullRequest,
   AdoReviewClient,
   AdoThread,
+  CodeSearchOptions,
   CreateThreadInput,
   runAdoReview,
   runVerification,
@@ -49,6 +50,7 @@ class FakeReviewClient implements AdoReviewClient {
   comments: AdoComment[] = [];
   statusUpdates: Array<{ threadId: number; status: AdoThread["status"] }> = [];
   pullRequestStatuses: Array<{ state: string; description: string }> = [];
+  itemRequests: string[] = [];
   private nextThreadId = 10;
   private nextCommentId = 100;
 
@@ -69,6 +71,7 @@ class FakeReviewClient implements AdoReviewClient {
   }
 
   async getItemContent(_commitId: string, path: string): Promise<string | null> {
+    this.itemRequests.push(path);
     if (path === "src/user.ts") {
       return "export function normalizeEmail(user: User) { return user.profile.email.toLowerCase(); }";
     }
@@ -192,6 +195,87 @@ test("code search adds same-repository caller files within the related-file budg
   assert.deepEqual(client.searched, ["normalizeEmail"]);
   assert.deepEqual(run.relatedFiles, ["src/user.test.ts", "src/caller.ts"]);
   assert.match(prompts[0].user, /src\/caller\.ts/);
+});
+
+test("a fork pull request reads changed and related content from the fork repository", async () => {
+  class ForkContentClient implements AdoReviewClient {
+    itemRequests: string[] = [];
+    searches: CodeSearchOptions[] = [];
+    async getPullRequest(): Promise<AdoPullRequest> {
+      throw new Error("not used");
+    }
+    async getAuthenticatedIdentity(): Promise<{ id: string }> {
+      throw new Error("not used");
+    }
+    async listThreads(): Promise<AdoThread[]> {
+      throw new Error("not used");
+    }
+    async listPullRequestChanges(): Promise<Array<{ path: string; changeType: "edit" }>> {
+      throw new Error("not used");
+    }
+    async getItemContent(_commitId: string, path: string): Promise<string | null> {
+      this.itemRequests.push(path);
+      if (path === "src/user.ts") {
+        return "export function normalizeEmail(user: User) { return user.profile.email.toLowerCase(); }";
+      }
+      if (path === "src/user.test.ts" || path === "src/fork-caller.ts") {
+        return "import { normalizeEmail } from './user';\nnormalizeEmail(user);";
+      }
+      return null;
+    }
+    async createPullRequestStatus(): Promise<void> {
+      throw new Error("not used");
+    }
+    async createThread(): Promise<AdoThread> {
+      throw new Error("not used");
+    }
+    async addThreadComment(): Promise<{ comment: AdoComment }> {
+      throw new Error("not used");
+    }
+    async updateThreadStatus(): Promise<void> {
+      throw new Error("not used");
+    }
+    async searchCodePaths(searchText: string, options: CodeSearchOptions): Promise<string[]> {
+      assert.equal(searchText, "normalizeEmail");
+      this.searches.push(options);
+      return ["src/fork-caller.ts"];
+    }
+  }
+
+  class ForkReviewClient extends FakeReviewClient {
+    fork = new ForkContentClient();
+    override async getPullRequest(): Promise<AdoPullRequest> {
+      return {
+        ...pr(),
+        repository: { id: "repo-id", name: "destination", project: { id: "project-id", name: "Destination" } },
+        forkSource: {
+          name: "refs/heads/fork-branch",
+          objectId: revision.source,
+          repository: { id: "fork-repo-id", name: "fork", project: { id: "fork-project", name: "ForkProject" } }
+        }
+      };
+    }
+    forRepository(repositoryId: string): AdoReviewClient {
+      assert.equal(repositoryId, "fork-repo-id");
+      return this.fork;
+    }
+  }
+
+  const client = new ForkReviewClient();
+  const prompts: Array<{ system: string; user: string }> = [];
+  const run = await runAdoReview(client, {
+    pullRequestId: 2,
+    profile: { enabledLenses: ["correctness"], reviewGuide: false },
+    model: async (prompt) => {
+      prompts.push(prompt);
+      return { model: "fixture-model", text: JSON.stringify({ summary: "No new findings.", findings: [] }) };
+    }
+  });
+  assert.deepEqual(client.fork.searches, [{ projectName: "ForkProject", repositoryName: "fork" }]);
+  assert.deepEqual(run.relatedFiles, ["src/user.test.ts", "src/fork-caller.ts"]);
+  assert.ok(client.fork.itemRequests.includes("src/user.ts"));
+  assert.ok(!client.itemRequests.includes("src/user.ts"));
+  assert.match(prompts[0].user, /src\/fork-caller\.ts/);
 });
 
 test("a second run reuses published findings instead of creating duplicate threads", async () => {

@@ -49,6 +49,8 @@ export interface AdoReviewClient extends AdoClientLike {
   createPullRequestStatus(pullRequestId: number, input: AdoPullRequestStatusInput): Promise<void>;
   /** Optional because code search is absent on some deployments. */
   searchCodePaths?(searchText: string, options: CodeSearchOptions): Promise<string[]>;
+  /** Optional factory for reading a fork or cross-repository source. */
+  forRepository?(repositoryId: string, project?: string): AdoReviewClient;
 }
 
 export interface CodeSearchOptions {
@@ -83,6 +85,20 @@ export class AdoClient implements AdoReviewClient {
     if (!Number.isSafeInteger(this.timeoutMs) || this.timeoutMs < 1) {
       throw new Error("Azure DevOps timeout must be a positive integer.");
     }
+  }
+
+  /** Create a client that reads a different repository with the same identity. */
+  forRepository(repositoryId: string, project?: string): AdoClient {
+    return new AdoClient({
+      organizationUrl: this.organizationUrl,
+      project: project?.trim() || this.project,
+      repositoryId,
+      token: this.token,
+      tokenScheme: this.tokenScheme,
+      apiVersion: this.apiVersion,
+      fetchImpl: this.fetchImpl,
+      timeoutMs: this.timeoutMs
+    });
   }
 
   /** Resolve the PR's current source and target before any planned action. */
