@@ -151,6 +151,13 @@ tokens. A project-level disable overrides all
 repository switches. Projects added later are reconciled during a settings
 refresh.
 
+Fork pull requests keep their target project and repository settings. Changed
+files, imports and caller candidates are read from the fork repository at the
+fork's source commit, while threads, statuses and repository license evidence
+remain on the target repository. If the pipeline identity cannot read the fork,
+the review fails before a provider call rather than reviewing incomplete
+content.
+
 ## Organization setup action
 
 The organization settings page provides a **Deploy** action for the selected
