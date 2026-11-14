@@ -1,0 +1,71 @@
+# Native incoming-webhook review pipeline. Create this as a YAML pipeline from
+# a trusted repository and point an Incoming Webhook service connection named
+# MastheadPR at the same WebHook Name used by the Masthead settings page.
+# The raw payload is normalized by native-event.mjs; this YAML never
+# interpolates event text into commands.
+trigger: none
+pr: none
+
+resources:
+  webhooks:
+    - webhook: MastheadPR
+      connection: MastheadPR
+
+pool:
+  vmImage: ubuntu-24.04
+
+parameters:
+  - name: mastheadRef
+    type: string
+    default: develop
+  - name: provider
+    type: string
+    default: deepseek
+  - name: model
+    type: string
+    default: deepseek-chat
+  - name: maxTokens
+    type: string
+    default: "8192"
+  - name: forceReview
+    type: boolean
+    default: false
+
+variables:
+  - group: masthead-secrets
+  - name: MASTHEAD_EXTENSION_ID
+    value: masthead-dev
+  - name: MASTHEAD_EXTENSION_PUBLISHER
+    value: f-steff
+
+steps:
+  - checkout: none
+  - bash: |
+      set -euo pipefail
+      case "$MASTHEAD_REF" in
+        ""|*[!A-Za-z0-9._/-]*)
+          echo "Invalid mastheadRef. Use a branch or tag name without shell metacharacters."
+          exit 1
+          ;;
+      esac
+      rm -rf /tmp/masthead
+      git clone --depth 1 --branch "$MASTHEAD_REF" https://github.com/f-steff/ado-masthead.git /tmp/masthead
+      cd /tmp/masthead
+      npm ci
+      node node_modules/esbuild/install.js
+      npm run build:prod
+      node dist/worker/native-event.mjs
+    displayName: Run Masthead native event
+    env:
+      AZURE_DEVOPS_ORG_URL: $(System.CollectionUri)
+      MASTHEAD_REF: ${{ parameters.mastheadRef }}
+      MASTHEAD_PROVIDER: ${{ parameters.provider }}
+      MASTHEAD_MODEL: ${{ parameters.model }}
+      MASTHEAD_MAX_TOKENS: ${{ parameters.maxTokens }}
+      MASTHEAD_FORCE_REVIEW: ${{ parameters.forceReview }}
+      MASTHEAD_EVENT_JSON: |
+        ${{ convertToJson(parameters.MastheadPR) }}
+      DEEPSEEK_API_KEY: $(DEEPSEEK_API_KEY)
+      ANTHROPIC_API_KEY: $(ANTHROPIC_API_KEY)
+      OPENAI_API_KEY: $(OPENAI_API_KEY)
+      SYSTEM_ACCESSTOKEN: $(System.AccessToken)
