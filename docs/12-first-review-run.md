@@ -90,9 +90,11 @@ deployment input, not a second editable settings store.
 ## Pipeline definition installation
 
 The organization Setup page can create or delete an Azure Pipelines definition
-from a selected trusted repository and YAML path. It verifies that the YAML file
-exists, but does not edit the repository or inspect the YAML contents. Use a
-review pipeline that contains the Masthead step and the secret variable group.
+from a selected trusted repository and YAML path. In the default template mode it
+commits the bundled `review.yml` or `review-native.yml` to that path; in existing
+mode it verifies that the file exists. It never inspects or edits application
+files, and it does not create the Incoming Webhook service connection that native
+mode needs.
 
 Deleting from Setup removes only the pipeline definition and clears the saved
 binding. Repositories, YAML files and pull request threads remain.
@@ -165,12 +167,11 @@ not print the provider key, ADO token, prompt or raw repository content.
   the worker. A repository with no stored switch follows the configured
   new-repository default.
 - The PR tab shows review state, the latest `masthead/review` status, the review
-  summary, the guide and current findings. Project settings shows read-only
-  branch-policy state for each repository's default branch and links to the
-  branch-policy page. Service hooks point at an existing native service
-  connection or broker; the extension does not deploy either one. An
-  administrator can require the posted status in a branch policy; the extension
-  does not create or remove the policy.
+  summary, the guide and current findings. Project settings shows branch-policy
+  state for each repository's default branch and can enable or remove only the
+  Masthead status policy. Service hooks point at an existing native service
+  connection or broker; the extension does not create either one. An
+  administrator can also manage the policy directly in Azure DevOps.
 - Settings reads depend on the pipeline identity's access to extension data.
   Use a dedicated token or an explicit settings snapshot when that access is
   not available.

@@ -38,8 +38,13 @@ sh ci/setup-review-pipeline.sh
 ```
 
 The script uses the signed-in Azure CLI identity and creates only the pipeline
-definition. It does not create the repository, copy the YAML or write source
-code. Copying the YAML once is the manual fallback and works the same way.
+definition. It does not create the repository or copy the YAML.
+
+The organization Setup page can also install the pipeline. With the default
+"Write bundled Masthead YAML" source it commits the packaged `review.yml` or
+`review-native.yml` into the selected trusted repository and creates the
+definition. The commit contains only that template. Use "Use existing YAML file"
+to bind a file that is already in the repository.
 
 The first run asks to authorize the `masthead-secrets` variable group. Grant
 that permission to the pipeline, then bind the pipeline in organization Setup.

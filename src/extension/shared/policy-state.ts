@@ -1,6 +1,7 @@
-// Pure helpers for the read-only completion-policy panel. Azure DevOps has no
-// single "protected branch" flag, so the panel resolves the policies that apply
-// to a repository's default branch and looks for the Masthead status policy.
+// Pure helpers for the completion-policy panel. Azure DevOps has no single
+// "protected branch" flag, so the panel resolves the policies that apply to a
+// repository's default branch, looks for the Masthead status policy and builds
+// the create/update request for that one policy.
 export interface MastheadPolicyState {
   enabled: boolean;
   blocking: boolean;
@@ -8,7 +9,11 @@ export interface MastheadPolicyState {
   resetOnSourceUpdate: boolean;
   displayName?: string;
   id?: number;
+  revision?: number;
 }
+
+/** The stable ADO policy type for a pull request status check. */
+export const MASTHEAD_STATUS_POLICY_TYPE = "cbdc66da-9728-4af8-aada-9a5a32e4a226";
 
 export interface BranchPolicySummary {
   total: number;
@@ -53,7 +58,10 @@ export function summarizeBranchPolicies(
       ...(typeof settings.defaultDisplayName === "string" && settings.defaultDisplayName.trim()
         ? { displayName: settings.defaultDisplayName.trim() }
         : {}),
-      ...(typeof value.id === "number" && Number.isSafeInteger(value.id) ? { id: value.id } : {})
+      ...(typeof value.id === "number" && Number.isSafeInteger(value.id) ? { id: value.id } : {}),
+      ...(typeof value.revision === "number" && Number.isSafeInteger(value.revision)
+        ? { revision: value.revision }
+        : {})
     };
     // Prefer an enabled policy, then a blocking one, for duplicate definitions.
     if (!masthead ||
@@ -63,6 +71,47 @@ export function summarizeBranchPolicies(
     }
   }
   return { total, enabled, ...(masthead ? { masthead } : {}) };
+}
+
+/**
+ * Create a required, conditional Masthead status policy for one default branch.
+ * The policy resets on new commits and can be edited in ADO afterwards.
+ */
+export function mastheadPolicyRequestBody(
+  repositoryId: string,
+  refName: string
+): Record<string, unknown> {
+  if (!repositoryId.trim() || !/^refs\/heads\/[^\s]+$/.test(refName)) {
+    throw new Error("A repository and branch ref are required.");
+  }
+  return {
+    isEnabled: true,
+    isBlocking: true,
+    isDeleted: false,
+    type: { id: MASTHEAD_STATUS_POLICY_TYPE },
+    settings: {
+      statusGenre: "masthead",
+      statusName: "review",
+      invalidateOnSourceUpdate: true,
+      // 1 is the Conditional applicability value returned by ADO.
+      policyApplicability: 1,
+      defaultDisplayName: "Masthead review",
+      scope: [{ repositoryId, refName, matchKind: "Exact" }]
+    }
+  };
+}
+
+/** Target the policy collection, or one policy configuration by ID. */
+export function policyManagementUrl(
+  organizationUrl: string,
+  projectName: string,
+  policyId?: number
+): string {
+  const base = `${organizationUrl.replace(/\/+$/, "")}/${encodeURIComponent(projectName)}/` +
+    `_apis/policy/configurations`;
+  return policyId === undefined
+    ? `${base}?api-version=7.1`
+    : `${base}/${policyId}?api-version=7.1`;
 }
 
 /** List policies that apply to one branch, including project-level policies. */

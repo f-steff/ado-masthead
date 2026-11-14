@@ -3,8 +3,10 @@ import test from "node:test";
 import {
   branchPolicyUrl,
   defaultBranchName,
+  mastheadPolicyRequestBody,
   policyAppliesTo,
   policyConfigurationsUrl,
+  policyManagementUrl,
   summarizeBranchPolicies
 } from "../src/extension/shared/policy-state";
 
@@ -83,6 +85,23 @@ test("policy scopes match exact, prefix, default-branch and project-wide entries
   assert.equal(policyAppliesTo(statusPolicy({ scope: [] }), repositoryId, mainRef), false);
 });
 
+test("the Masthead policy request creates a required conditional gate", () => {
+  const body = mastheadPolicyRequestBody("repo-id", "refs/heads/main");
+  assert.equal(body.isEnabled, true);
+  assert.equal(body.isBlocking, true);
+  assert.deepEqual(body.type, { id: "cbdc66da-9728-4af8-aada-9a5a32e4a226" });
+  assert.deepEqual(body.settings, {
+    statusGenre: "masthead",
+    statusName: "review",
+    invalidateOnSourceUpdate: true,
+    policyApplicability: 1,
+    defaultDisplayName: "Masthead review",
+    scope: [{ repositoryId: "repo-id", refName: "refs/heads/main", matchKind: "Exact" }]
+  });
+  assert.throws(() => mastheadPolicyRequestBody("", "refs/heads/main"));
+  assert.throws(() => mastheadPolicyRequestBody("repo-id", "main"));
+});
+
 test("policy and branch-policy URLs encode repository, project and branch", () => {
   const policyUrl = policyConfigurationsUrl(
     "https://dev.azure.com/contoso/",
@@ -103,5 +122,13 @@ test("policy and branch-policy URLs encode repository, project and branch", () =
   assert.equal(
     branchUrl,
     "https://dev.azure.com/contoso/Sample%20Project/_settings/repositories?repo=repo%2Fid&_a=policiesMid&refs=refs%2Fheads%2Frelease%2F1.0"
+  );
+  assert.equal(
+    policyManagementUrl("https://dev.azure.com/contoso/", "Sample Project"),
+    "https://dev.azure.com/contoso/Sample%20Project/_apis/policy/configurations?api-version=7.1"
+  );
+  assert.equal(
+    policyManagementUrl("https://dev.azure.com/contoso/", "Sample Project", 7),
+    "https://dev.azure.com/contoso/Sample%20Project/_apis/policy/configurations/7?api-version=7.1"
   );
 });

@@ -55,6 +55,17 @@ esbuild.buildSync({
   minify: production
 });
 
+// Bundle the trusted pipeline YAML with the extension so Setup can commit the
+// exact canonical template into a repository the administrator selects.
+const templateDirectory = path.join(distDir, "extension", "templates");
+fs.mkdirSync(templateDirectory, { recursive: true });
+for (const template of ["review.yml", "review-native.yml"]) {
+  fs.copyFileSync(
+    path.join(rootDir, "ado-pipelines", template),
+    path.join(templateDirectory, template)
+  );
+}
+
 // The hub is a browser bundle because it must complete the Azure DevOps host
 // handshake before the host stops showing its loading indicator.
 const hubSource = path.join(rootDir, "src", "extension", "hub");

@@ -70,7 +70,7 @@
 
           <section class="panel" aria-labelledby="policies-heading">
             <h2 id="policies-heading">Completion policies</h2>
-            <p class="note">Masthead posts a <code>masthead/review</code> status. A branch policy can require it before a pull request completes. This page checks each repository's default branch and is read-only; setup and removal happen in Azure DevOps branch policies.</p>
+            <p class="note">Masthead posts a <code>masthead/review</code> status. Enable the required gate here to create a conditional status policy on the default branch. Other branch policies remain managed in Azure DevOps.</p>
             <div class="actions">
               <button type="button" class="secondary" id="refresh-policies">Refresh policy state</button>
               <p id="policy-status" class="status-message" role="status" aria-live="polite"></p>
