@@ -79,6 +79,9 @@ test("edition manifests retain one code package and distinct public/private iden
     assert.equal(effective.publisher, "f-steff");
     assert.equal(effective.content.license.path, "LICENSE");
     assert.equal(effective.content.details.path, "marketplace-advertisement.md");
+    assert.match(effective.description, /high-privilege/);
+    assert.match(effective.description, /Code \(read\/write\)/);
+    assert.match(effective.description, /Build \(read\/execute\)/);
     assert.deepEqual(effective.files, base.files);
     assert.ok(effective.files.some((entry) => entry.path === "dist/core/index.mjs" && entry.contentType === "application/javascript"));
     assert.ok(effective.contributions.some((entry) => entry.targets.includes("ms.vss-web.collection-admin-hub-group")));
