@@ -278,6 +278,64 @@ test("a fork pull request reads changed and related content from the fork reposi
   assert.match(prompts[0].user, /src\/fork-caller\.ts/);
 });
 
+test("a fork without readable content fails with an actionable token message", async () => {
+  class MissingForkContent implements AdoReviewClient {
+    async getPullRequest(): Promise<AdoPullRequest> {
+      throw new Error("not used");
+    }
+    async getAuthenticatedIdentity(): Promise<{ id: string }> {
+      throw new Error("not used");
+    }
+    async listThreads(): Promise<AdoThread[]> {
+      throw new Error("not used");
+    }
+    async listPullRequestChanges(): Promise<Array<{ path: string; changeType: "edit" }>> {
+      throw new Error("not used");
+    }
+    async getItemContent(): Promise<string | null> {
+      return null;
+    }
+    async createPullRequestStatus(): Promise<void> {
+      throw new Error("not used");
+    }
+    async createThread(): Promise<AdoThread> {
+      throw new Error("not used");
+    }
+    async addThreadComment(): Promise<{ comment: AdoComment }> {
+      throw new Error("not used");
+    }
+    async updateThreadStatus(): Promise<void> {
+      throw new Error("not used");
+    }
+  }
+
+  class MissingForkReviewClient extends FakeReviewClient {
+    override async getPullRequest(): Promise<AdoPullRequest> {
+      return {
+        ...pr(),
+        forkSource: {
+          name: "refs/heads/fork-branch",
+          repository: { id: "fork-repo-id", name: "fork" }
+        }
+      };
+    }
+    forRepository(): AdoReviewClient {
+      return new MissingForkContent();
+    }
+  }
+
+  await assert.rejects(
+    () => runAdoReview(new MissingForkReviewClient(), {
+      pullRequestId: 2,
+      profile: { enabledLenses: ["correctness"], reviewGuide: false },
+      model: async () => {
+        throw new Error("the model must not be called");
+      }
+    }),
+    /MASTHEAD_ADO_TOKEN/
+  );
+});
+
 test("a second run reuses published findings instead of creating duplicate threads", async () => {
   const client = new FakeReviewClient();
   const model = async (prompt: { system: string }) => prompt.system.includes("rechecking earlier review findings")

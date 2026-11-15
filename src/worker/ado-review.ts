@@ -85,7 +85,7 @@ export async function runAdoReview(
       finding: item.finding,
       state: item.state === "active" ? "active" as const : item.state === "dismissed" ? "dismissed" as const : "resolved" as const
     }));
-    const changedFiles = await readChangedFiles(client, contentClient, options.pullRequestId, revision.source, maxFiles, maxFileCharacters);
+    const changedFiles = await readChangedFiles(client, contentClient, options.pullRequestId, revision.source, maxFiles, maxFileCharacters, sourceIsFork);
     const relatedFiles = await readRelatedFiles(contentClient, changedFiles, revision.source, {
       maxFiles: maxRelatedFiles,
       maxFileCharacters: maxRelatedFileCharacters,
@@ -197,7 +197,8 @@ async function readChangedFiles(
   pullRequestId: number,
   sourceCommit: string,
   maxFiles: number,
-  maxFileCharacters: number
+  maxFileCharacters: number,
+  sourceIsFork: boolean
 ): Promise<ReviewInput["changedFiles"]> {
   if (!Number.isSafeInteger(maxFiles) || maxFiles < 1 || !Number.isSafeInteger(maxFileCharacters) || maxFileCharacters < 1) {
     throw new Error("Invalid review file limits.");
@@ -214,7 +215,10 @@ async function readChangedFiles(
     }
     const content = await contentClient.getItemContent(sourceCommit, change.path);
     if (content === null) {
-      throw new Error(`Changed file content is unavailable: ${change.path}`);
+      throw new Error(sourceIsFork
+        ? `Fork file content is unavailable: ${change.path}. ` +
+          "Use a MASTHEAD_ADO_TOKEN that can read the fork repository; a pipeline-scoped system token cannot read unreferenced fork repositories."
+        : `Changed file content is unavailable: ${change.path}`);
     }
     if (content.length > maxFileCharacters) {
       throw new Error(`Changed file exceeds the content budget: ${change.path}`);

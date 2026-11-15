@@ -46,6 +46,9 @@ authentication; a local manual run may use `AZURE_DEVOPS_TOKEN` as a short-lived
 PAT with basic authentication. Neither token may be committed or placed in the
 extension UI. The provider key and ADO token are separate secrets.
 
+For a dedicated comment author, see
+[13-dedicated-comment-author.md](13-dedicated-comment-author.md).
+
 ## Prompt injection
 
 PR titles, descriptions, comments, code, work items and repository files are
