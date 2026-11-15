@@ -411,6 +411,15 @@ async function installPipeline(): Promise<void> {
   if (installPipelineButton) installPipelineButton.disabled = true;
   try {
     const token = await SDK.getAccessToken();
+    setMessage(createStatus, "Checking for an existing pipeline...");
+    const existing = await findExistingPipeline(project, name, token);
+    if (existing && (!existing.isYaml || existing.yamlPath !== path ||
+        existing.repositoryId !== repositoryId.toLowerCase())) {
+      throw new Error(
+        `A pipeline named "${name}" already exists with a different repository or YAML path. ` +
+        "Delete it or choose another name."
+      );
+    }
     let committed = false;
     if (source === "template") {
       setMessage(createStatus, "Writing the bundled Masthead YAML...");
@@ -423,21 +432,12 @@ async function installPipeline(): Promise<void> {
       );
       if (!item.ok) throw new Error(`YAML file was not found (HTTP ${item.status}).`);
     }
-    setMessage(createStatus, "Checking for an existing pipeline...");
-    const existing = await findExistingPipeline(project, name, token);
     const yamlState = source === "existing"
       ? "the existing YAML file"
       : committed
         ? "the bundled YAML (committed)"
         : "the bundled YAML (already current)";
     if (existing) {
-      if (!existing.isYaml || existing.yamlPath !== path ||
-          existing.repositoryId !== repositoryId.toLowerCase()) {
-        throw new Error(
-          `A pipeline named "${name}" already exists with a different repository or YAML path. ` +
-          "Delete it or choose another name."
-        );
-      }
       selectedPipeline = { project, id: existing.id, name };
       if (pipelineSearch) pipelineSearch.value = pipelineLabel(selectedPipeline);
       if (pipelineProject) pipelineProject.value = project;
