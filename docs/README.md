@@ -17,6 +17,7 @@ This folder is the engineering reference for Masthead. Start with the
 | [10-publishing.md](10-publishing.md) | Editions, versioning and the OIDC release path. |
 | [11-decisions.md](11-decisions.md) | Agreed decisions and open items. |
 | [12-first-review-run.md](12-first-review-run.md) | Manual/pipeline invocation of one ADO review. |
+| [13-dedicated-comment-author.md](13-dedicated-comment-author.md) | Optional service account and PAT for clearly attributed comments. |
 
 ## Terms
 

@@ -179,7 +179,9 @@ not print the provider key, ADO token, prompt or raw repository content.
   not available.
 - Fork pull requests read content from the fork source repository and publish
   threads and statuses on the target repository. The pipeline identity needs
-  read access to the fork. Cross-organization forks require access that the
+  read access to the fork. When the project limits job tokens to referenced
+  repositories, use `MASTHEAD_ADO_TOKEN`; the system token cannot read an
+  unreferenced fork. Cross-organization forks require access that the
   destination project may not grant automatically.
 - The pipeline step should not have source-branch write permission.
 
