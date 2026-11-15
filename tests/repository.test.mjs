@@ -152,6 +152,7 @@ test("the organization and project pages initialize the ADO host and split setti
   assert.match(orgHtml, /vso\.build_execute/);
   assert.match(orgHtml, /High privilege/);
   assert.match(orgHtml, /permissions-panel/);
+  assert.ok(orgHtml.indexOf("permissions-heading") < orgHtml.indexOf("class=\"tabs\""));
   assert.match(projectHtml, /docs\/14-permissions\.md/);
   assert.match(orgHtml, /id="pipeline-create-source"/);
   assert.match(orgHtml, /id="pipeline-create-template"/);

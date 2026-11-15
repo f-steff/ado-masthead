@@ -47,11 +47,11 @@ and after installation. An organization administrator must approve the
 extension. The scopes are installation scopes: they are not granted separately
 per feature after installation.
 
-If an organization cannot grant these scopes, Masthead cannot create its own
-pipeline definition or manage the Masthead status policy. The review worker can
-still be run from a manually created pipeline, but the extension cannot perform
-those administrator actions. Use the manual pipeline setup in
-[ado-pipelines/README.md](../ado-pipelines/README.md) in that case.
+If an organization cannot grant these scopes, it should not install the
+extension. The review worker can still be run from a manually created pipeline,
+but the extension cannot provide its settings UI or administrator actions. Use
+the manual pipeline setup in [ado-pipelines/README.md](../ado-pipelines/README.md)
+in that case.
 
 ## Related documents
 
