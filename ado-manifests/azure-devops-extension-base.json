@@ -1,7 +1,7 @@
 {
   "manifestVersion": 1,
   "name": "Masthead",
-  "description": "Context-aware AI pull request reviews for Azure DevOps. Early development package.",
+  "description": "Context-aware AI pull request reviews for Azure DevOps. Requests high-privilege Code (read/write) and Build (read/execute) scopes; see Permissions.",
   "icons": {
     "default": "images/icon-128.png",
     "large": "images/icon-256.png"
