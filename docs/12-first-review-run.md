@@ -92,9 +92,11 @@ deployment input, not a second editable settings store.
 The organization Setup page can create or delete an Azure Pipelines definition
 from a selected trusted repository and YAML path. In the default template mode it
 commits the bundled `review.yml` or `review-native.yml` to that path; in existing
-mode it verifies that the file exists. It never inspects or edits application
-files, and it does not create the Incoming Webhook service connection that native
-mode needs.
+mode it verifies that the file exists. The commit goes to the default branch, so
+the signed-in administrator must be allowed to push there. If that branch
+requires a pull request, copy the file manually and use existing mode instead.
+It never inspects or edits application files, and it does not create the
+Incoming Webhook service connection that native mode needs.
 
 Deleting from Setup removes only the pipeline definition and clears the saved
 binding. Repositories, YAML files and pull request threads remain.

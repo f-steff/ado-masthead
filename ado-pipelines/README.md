@@ -23,8 +23,14 @@ installed Masthead edition. The template defaults to the dev edition.
 ## Trusted repository and setup script
 
 Keep `review.yml` and, when native delivery is needed, `review-native.yml` in a
-small trusted repository such as `masthead-pipelines`. Protect its default
-branch and review changes like any other pipeline code.
+small trusted repository such as `masthead-pipelines`. Review changes to that
+repository like any other pipeline code.
+
+Extension-managed deployment commits the bundled template to the repository's
+default branch. The signed-in administrator must be allowed to push there. If a
+branch policy requires a pull request for every change, use the one-time manual
+copy and the "Use existing YAML file" option instead, or deliberately allow the
+administrator to bypass that policy for this trusted repository.
 
 An administrator can create the pipeline definition with:
 

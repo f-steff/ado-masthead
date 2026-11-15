@@ -310,7 +310,15 @@ async function writePipelineTemplate(
       redirect: "error"
     }
   );
-  if (!push.ok) throw new Error(`YAML commit failed with HTTP ${push.status}.`);
+  if (!push.ok) {
+    if (push.status === 403 || push.status === 409) {
+      throw new Error(
+        `The YAML commit was rejected (HTTP ${push.status}). ` +
+        "The default branch may require a pull request. Commit the bundled template manually or choose another trusted repository."
+      );
+    }
+    throw new Error(`YAML commit failed with HTTP ${push.status}.`);
+  }
   return true;
 }
 
@@ -413,7 +421,7 @@ async function installPipeline(): Promise<void> {
     const token = await SDK.getAccessToken();
     setMessage(createStatus, "Checking for an existing pipeline...");
     const existing = await findExistingPipeline(project, name, token);
-    if (existing && (!existing.isYaml || existing.yamlPath !== path ||
+    if (existing && (!existing.isYaml || existing.yamlPath.toLowerCase() !== path.toLowerCase() ||
         existing.repositoryId !== repositoryId.toLowerCase())) {
       throw new Error(
         `A pipeline named "${name}" already exists with a different repository or YAML path. ` +
