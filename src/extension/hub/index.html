@@ -32,6 +32,49 @@
         </div>
       </section>
 
+      <section class="panel permissions-panel" aria-labelledby="permissions-heading">
+        <div class="permissions-head">
+          <div>
+            <h2 id="permissions-heading">Permissions Masthead requests</h2>
+            <p class="note">Azure DevOps marks two of these scopes as <strong>High privilege</strong>. They are required for administrator setup actions. Masthead does not approve or merge pull requests.</p>
+          </div>
+          <a class="permissions-link" href="https://github.com/f-steff/ado-masthead/blob/develop/docs/14-permissions.md" target="_blank" rel="noopener noreferrer">Full permission rationale</a>
+        </div>
+        <ul class="permission-list">
+          <li class="permission-row">
+            <span class="permission-name"><code>vso.code_write</code><span>Code (read and write)</span></span>
+            <span class="permission-badge high">High privilege</span>
+            <p>Writes only the bundled Masthead pipeline YAML to the trusted repository you select, and creates or removes only the Masthead status policy. It does not push source branches or merge pull requests.</p>
+          </li>
+          <li class="permission-row">
+            <span class="permission-name"><code>vso.build_execute</code><span>Build (read and execute)</span></span>
+            <span class="permission-badge high">High privilege</span>
+            <p>Creates or deletes the Masthead review pipeline definition. Masthead does not queue builds from this page.</p>
+          </li>
+          <li class="permission-row">
+            <span class="permission-name"><code>vso.build</code><span>Build (read)</span></span>
+            <span class="permission-badge read">Read</span>
+            <p>Lists and validates pipeline definitions during setup.</p>
+          </li>
+          <li class="permission-row">
+            <span class="permission-name"><code>vso.code</code><span>Code (read)</span></span>
+            <span class="permission-badge read">Read</span>
+            <p>Reads pull requests, changed files, related files and code-search results.</p>
+          </li>
+          <li class="permission-row">
+            <span class="permission-name"><code>vso.extension.data_write</code><span>Extension data (read and write)</span></span>
+            <span class="permission-badge read">Read/write</span>
+            <p>Stores organization and project settings, the model catalogue and the revision lock. Provider keys are never stored here.</p>
+          </li>
+          <li class="permission-row">
+            <span class="permission-name"><code>vso.project</code><span>Project and team (read)</span></span>
+            <span class="permission-badge read">Read</span>
+            <p>Lists projects and repositories for settings and policy management.</p>
+          </li>
+        </ul>
+        <p class="note">Code and Build also include Service hooks (read and write), used only to create and remove Masthead's own pull request event subscriptions.</p>
+      </section>
+
       <div class="tabs" role="tablist" aria-label="Masthead organization settings">
         <button type="button" class="tab active" role="tab" aria-selected="true" data-tab="general">General</button>
         <button type="button" class="tab" role="tab" aria-selected="false" data-tab="setup">Setup</button>

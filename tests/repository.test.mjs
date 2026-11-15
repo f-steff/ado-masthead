@@ -147,6 +147,12 @@ test("the organization and project pages initialize the ADO host and split setti
   assert.match(orgHtml, /id="install-pipeline"/);
   assert.match(orgHtml, /id="delete-pipeline"/);
   assert.match(orgHtml, /id="pipeline-create-project"/);
+  assert.match(orgHtml, /id="permissions-heading"/);
+  assert.match(orgHtml, /vso\.code_write/);
+  assert.match(orgHtml, /vso\.build_execute/);
+  assert.match(orgHtml, /High privilege/);
+  assert.match(orgHtml, /permissions-panel/);
+  assert.match(projectHtml, /docs\/14-permissions\.md/);
   assert.match(orgHtml, /id="pipeline-create-source"/);
   assert.match(orgHtml, /id="pipeline-create-template"/);
   assert.match(orgHtml, /value="\/masthead\/review.yml"/);
@@ -290,6 +296,22 @@ test("the pull request tab reads only its current context and exposes review sta
   assert.match(script, /isReviewEnabled/);
   assert.match(script, /latestMastheadStatus/);
   assert.doesNotMatch(html + script, /type="password"/i);
+});
+
+test("public permission disclosure lists every high-privilege scope before features", () => {
+  const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
+  const marketplace = fs.readFileSync(path.join(root, "marketplace-advertisement.md"), "utf8");
+  const permissions = fs.readFileSync(path.join(root, "docs/14-permissions.md"), "utf8");
+  for (const text of [readme, marketplace, permissions]) {
+    for (const scope of ["vso.code_write", "vso.build_execute", "vso.build", "vso.code", "vso.extension.data_write", "vso.project"]) {
+      assert.ok(text.includes(scope), scope);
+    }
+    assert.match(text, /High privilege/);
+  }
+  assert.ok(readme.indexOf("## Permissions") < readme.indexOf("## What it does"));
+  assert.ok(marketplace.indexOf("## Permissions") < marketplace.indexOf("## What it does"));
+  assert.match(permissions, /does not push application source branches/);
+  assert.match(permissions, /does not approve, vote on, complete or merge/);
 });
 
 test("local packaging has no credentials while publishing requires an ephemeral token", () => {

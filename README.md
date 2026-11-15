@@ -8,38 +8,41 @@ commits, and answers questions in its review threads.
 Masthead is in active development. The dev package is available to shared
 organizations; the public stable release is still being prepared.
 
-The current implementation includes the validated review core, provider
-adapters, SDK-initialized organization and project settings hubs, a cached
-provider model catalogue, and a manual/pipeline review path that reads a pull
-request, posts findings as ADO threads and reuses existing Masthead threads on
-retry. The organization page
-has a master switch, delivery mode, central-pipeline binding and review-profile
-defaults. The project page discovers repositories and stores project and
-per-repository review gates and profile overrides. The worker reads the
-persisted organization and project gates before it spends model tokens.
+## Permissions
 
-The organization Setup page can create the project service hooks for a native
-incoming-webhook service connection or an existing broker endpoint. Deployment of
-a trusted pipeline repository/YAML and optional branch-policy completion gating
-are still being built. A Masthead pull request tab shows the effective profile,
-gating state and existing review threads. The features below describe the
-intended complete product.
+Masthead requests two scopes that Azure DevOps labels **High privilege**:
 
-Local tests exercise review validation, repository gating, finding
-reconciliation, ADO publication and the broker's HTTP delivery/retry handling.
-These do not replace installation or end-to-end testing against Azure DevOps.
+| Scope | Azure DevOps name | High privilege | Why |
+| --- | --- | --- | --- |
+| `vso.code_write` | Code (read and write) | Yes | Writes only the bundled pipeline YAML to the trusted repository selected in Setup, and creates or removes only the Masthead status policy. |
+| `vso.build_execute` | Build (read and execute) | Yes | Creates or deletes the Masthead review pipeline definition. The extension does not queue builds. |
+| `vso.build` | Build (read) | No | Lists and validates pipeline definitions. |
+| `vso.code` | Code (read) | No | Reads pull requests, changed files, related files and code-search results. |
+| `vso.extension.data_write` | Extension data (read and write) | No | Stores organization/project settings, the model catalogue and the revision lock. |
+| `vso.project` | Project and team (read) | No | Lists projects and repositories for settings and policy management. |
+
+Code and Build also inherit Service hooks (read and write), used only for
+Masthead's own pull request event subscriptions.
+
+Masthead does not push application source branches, approve or merge pull
+requests, edit other pipelines or edit other branch policies. Provider keys are
+not stored in extension data. The complete rationale and the exact actions
+behind each scope are in [docs/14-permissions.md](docs/14-permissions.md).
 
 ## What it does
 
 - Starts a review when a pull request is created or updated.
 - Reviews across repositories and projects selected during onboarding.
-- Reads related imports and nearby tests, not just the changed diff.
+- Reads related imports, nearby tests and code-search caller candidates, not
+  just the changed diff.
 - Posts inline findings and a durable review summary with the guide.
 - Skips a repeated review when the same source and target revisions were already
   reviewed, while allowing a deliberate forced re-run.
 - Posts a `masthead/review` status that an optional branch policy can require.
-- Shows per-repository policy readiness on the project settings page, with
-  deep links for setting up or removing the Masthead status policy.
+- Can create, require or remove only the Masthead status policy from project
+  settings.
+- Can commit the bundled review pipeline YAML to a trusted repository and create
+  the pipeline definition from organization Setup.
 - Adds a **Masthead** tab to the pull request with a review guide, coverage,
   and the current findings.
 - Answers author comments in its own review threads.

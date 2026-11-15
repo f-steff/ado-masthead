@@ -18,6 +18,7 @@ This folder is the engineering reference for Masthead. Start with the
 | [11-decisions.md](11-decisions.md) | Agreed decisions and open items. |
 | [12-first-review-run.md](12-first-review-run.md) | Manual/pipeline invocation of one ADO review. |
 | [13-dedicated-comment-author.md](13-dedicated-comment-author.md) | Optional service account and PAT for clearly attributed comments. |
+| [14-permissions.md](14-permissions.md) | Every requested scope, high privilege flags and the reason for each. |
 
 ## Terms
 
