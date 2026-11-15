@@ -71,6 +71,7 @@
           <section class="panel" aria-labelledby="policies-heading">
             <h2 id="policies-heading">Completion policies</h2>
             <p class="note">Masthead posts a <code>masthead/review</code> status. Enable the required gate here to create a conditional status policy on the default branch. Other branch policies remain managed in Azure DevOps.</p>
+            <p class="note">Changing this gate uses the high-privilege Code (read and write) scope. <a href="https://github.com/f-steff/ado-masthead/blob/develop/docs/14-permissions.md" target="_blank" rel="noopener noreferrer">See every requested permission and why</a>.</p>
             <div class="actions">
               <button type="button" class="secondary" id="refresh-policies">Refresh policy state</button>
               <p id="policy-status" class="status-message" role="status" aria-live="polite"></p>

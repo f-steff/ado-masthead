@@ -15,6 +15,9 @@ from the form after a successful create.
 
 ## Permissions
 
+The complete scope list, including the two scopes Azure DevOps labels as high
+privilege, is in [14-permissions.md](14-permissions.md).
+
 The extension installation requests the minimum it needs to configure hooks,
 read project settings, manage the Masthead status policy and deploy the bundled
 pipeline YAML. Creating service-hook subscriptions and changing branch policies
