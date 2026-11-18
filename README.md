@@ -58,8 +58,10 @@ Masthead supports two deployment paths:
 - **Native**: Azure DevOps Incoming Webhooks queue Masthead's own pipeline.
   Nothing is hosted outside Azure DevOps.
 - **External broker**: an optional customer-hosted broker receives authenticated
-  PR events and queues the same pipeline. The reference broker is distributed as
-  a Docker image.
+  PR events and queues the same pipeline. It can validate, filter, deduplicate
+  and rate-limit events before queueing, and keeps delivery logs and credentials
+  in one controlled service. The reference broker is distributed as a Docker
+  image.
 
 The organization settings page records the chosen delivery mode, validates the
 central pipeline, and can install or delete a pipeline definition from a trusted

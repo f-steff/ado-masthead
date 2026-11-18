@@ -123,6 +123,8 @@ test("the organization and project pages initialize the ADO host and split setti
   const projectHtml = fs.readFileSync(path.join(root, "src/extension/project/index.html"), "utf8");
   const projectScript = fs.readFileSync(path.join(root, "src/extension/project/index.ts"), "utf8");
   const host = fs.readFileSync(path.join(root, "src/extension/shared/host.ts"), "utf8");
+  const connectivity = fs.readFileSync(path.join(root, "src/extension/shared/connectivity.ts"), "utf8");
+  const hostStatus = fs.readFileSync(path.join(root, "src/extension/shared/host-status.ts"), "utf8");
   const manifest = JSON.parse(fs.readFileSync(path.join(root, "ado-manifests/azure-devops-extension-base.json"), "utf8"));
   assert.match(orgHtml, /Global Settings/);
   assert.match(projectHtml, /Project Settings/);
@@ -137,6 +139,12 @@ test("the organization and project pages initialize the ADO host and split setti
   assert.match(orgHtml, /id="host-status"/);
   assert.match(orgHtml, /class="hero-main"/);
   assert.match(orgHtml, /class="host-chip"/);
+  assert.match(orgHtml, /Azure DevOps host/);
+  assert.match(orgScript, /startHostConnectionMonitor/);
+  assert.match(projectScript, /startHostConnectionMonitor/);
+  assert.match(connectivity, /_apis\/projects\?\$top=1/);
+  assert.match(hostStatus, /Not connected to Azure DevOps/);
+  assert.match(hostStatus, /Retrying automatically/);
   assert.match(orgHtml, /class="page-footer"/);
   assert.doesNotMatch(orgHtml, /id="connection-heading"/);
   assert.ok(orgHtml.indexOf('class="page-footer"') < orgHtml.indexOf('id="host-meta"'));
@@ -179,6 +187,10 @@ test("the organization and project pages initialize the ADO host and split setti
   assert.match(projectHtml, /docs\/14-permissions\.md/);
   assert.match(orgHtml, /External broker/);
   assert.doesNotMatch(orgHtml, /Docker broker/);
+  assert.match(orgHtml, /id="broker-benefits"/);
+  assert.match(orgHtml, /Why use an external broker\?/);
+  assert.match(orgHtml, /Authenticates every event before it can queue a review/);
+  assert.match(orgScript, /brokerBenefits/);
   assert.match(orgHtml, /id="native-delivery-fields"/);
   assert.match(orgHtml, /id="broker-delivery-fields"/);
   assert.match(orgHtml, /id="hook-mode-note"/);
@@ -324,6 +336,7 @@ test("the pull request tab reads only its current context and exposes review sta
   assert.match(html, /id="review-guide"/);
   assert.match(html, /id="finding-list"/);
   assert.match(script, /latestRunSummary/);
+  assert.match(script, /startHostConnectionMonitor/);
   assert.match(script, /latestFindings/);
   assert.match(html, /id="gate-state"/);
   assert.match(html, /id="project-settings-link"/);

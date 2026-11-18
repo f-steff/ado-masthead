@@ -48,8 +48,9 @@ rationale is in the
 - **Native**: Azure DevOps Incoming Webhooks queue Masthead's own pipeline.
   Nothing is hosted outside Azure DevOps.
 - **External broker**: an optional customer-hosted broker receives authenticated
-  pull request events and queues the same pipeline. The reference broker is
-  distributed as a Docker image.
+  pull request events and queues the same pipeline. It can validate, filter,
+  deduplicate and rate-limit events, and keeps delivery logs and credentials in
+  one controlled service. The reference broker is distributed as a Docker image.
 
 Application pipelines are not modified. Masthead uses its own centrally managed
 review pipeline.

@@ -70,6 +70,26 @@ to `true` to run it again.
 
 ## External broker mode
 
+The external broker is the authenticated delivery path. Use it when a public
+Incoming Webhook endpoint is not acceptable.
+
+Benefits:
+
+- every event is authenticated before it can queue a review;
+- Azure DevOps does not need a public incoming-webhook endpoint or an
+  unguessable name as the only protection;
+- the broker can validate, filter, deduplicate and rate-limit events before
+  queueing;
+- retries, delivery logs and health checks stay in one service outside Azure
+  Pipelines;
+- the broker can restrict which projects, repositories and event types are
+  allowed to queue reviews;
+- broker credentials can be rotated without changing the Azure DevOps service
+  hooks.
+
+The trade-off is one more service to host, secure, monitor and back up. Native
+mode needs no external hosting.
+
 Configure the broker with the organization URL, the project that contains this
 pipeline, and this definition ID. Its queue request supplies:
 

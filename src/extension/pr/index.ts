@@ -13,10 +13,14 @@ import {
   reviewSelection
 } from "../../settings";
 import { initializeHost, notifyHostFailed, notifyHostLoaded, organizationUrl } from "../shared/host";
+import { startHostConnectionMonitor } from "../shared/connectivity";
+import { renderHostStatus } from "../shared/host-status";
 import { loadSetting } from "../shared/storage";
 
 const statusText = document.querySelector<HTMLElement>("#host-status");
 const statusDot = document.querySelector<HTMLElement>("#status-dot");
+const hostChip = document.querySelector<HTMLElement>(".host-chip");
+const hostChipNote = document.querySelector<HTMLElement>(".host-chip-note");
 const hostMeta = document.querySelector<HTMLElement>("#host-meta");
 const prLede = document.querySelector<HTMLElement>("#pr-lede");
 const prTitle = document.querySelector<HTMLElement>("#pr-title");
@@ -323,8 +327,10 @@ async function main(): Promise<void> {
     const project = SDK.getWebContext().project;
     projectId = project?.id ?? "";
     projectName = project?.name ?? "";
-    if (statusDot) statusDot.className = "status-dot ready";
-    if (statusText) statusText.textContent = "Connected to Azure DevOps.";
+    renderHostStatus(
+      { dot: statusDot, status: statusText, note: hostChipNote, chip: hostChip },
+      "connecting"
+    );
     if (hostMeta) hostMeta.textContent = projectName
       ? `${hostName} - ${projectName} - Masthead ${context.extension.version}`
       : `${hostName} - Masthead ${context.extension.version}`;
@@ -332,9 +338,22 @@ async function main(): Promise<void> {
       projectSettingsLink.href = settingLink(hostName, projectName, extensionId);
     }
     await notifyHostLoaded();
+    const monitor = startHostConnectionMonitor({
+      organizationUrl: organizationUrl(hostName),
+      getToken: () => SDK.getAccessToken(),
+      onState: (state, checkedAt) => renderHostStatus(
+        { dot: statusDot, status: statusText, note: hostChipNote, chip: hostChip },
+        state,
+        checkedAt
+      )
+    });
+    window.addEventListener("pagehide", () => monitor.stop(), { once: true });
   } catch {
-    if (statusDot) statusDot.className = "status-dot error";
-    if (statusText) statusText.textContent = "Azure DevOps host connection failed.";
+    renderHostStatus(
+      { dot: statusDot, status: statusText, note: hostChipNote, chip: hostChip },
+      "disconnected"
+    );
+    if (hostMeta) hostMeta.textContent = "Reload the page or check that the extension is enabled.";
     await notifyHostFailed("Masthead could not initialize the pull request tab.");
     return;
   }
