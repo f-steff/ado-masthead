@@ -12,8 +12,6 @@ import {
 import { defaultReviewProfile, resolveReviewProfile } from "../../review/lenses";
 import { ModelCatalog, normalizeModelCatalog } from "../../models/catalog";
 import { initializeHost, notifyHostFailed, notifyHostLoaded, organizationUrl } from "../shared/host";
-import { startHostConnectionMonitor } from "../shared/connectivity";
-import { renderHostStatus } from "../shared/host-status";
 import { renderLensExamples } from "../shared/lens-examples";
 import { renderPermissionExplorer } from "../shared/permissions";
 import { fillModelOptions } from "../shared/model-suggestions";
@@ -42,10 +40,7 @@ interface ProjectRow {
   settings: ProjectSettings;
 }
 
-const statusText = document.querySelector<HTMLElement>("#host-status");
-const statusDot = document.querySelector<HTMLElement>("#status-dot");
-const hostChip = document.querySelector<HTMLElement>(".host-chip");
-const hostChipNote = document.querySelector<HTMLElement>(".host-chip-note");
+const hostError = document.querySelector<HTMLElement>("#host-error");
 const hostMeta = document.querySelector<HTMLElement>("#host-meta");
 const form = document.querySelector<HTMLFormElement>("#settings-form");
 const enabled = document.querySelector<HTMLInputElement>("#org-enabled");
@@ -123,11 +118,10 @@ let pipelineRepositories: Array<{ id: string; name: string; defaultBranch?: stri
 
 /** Report host failure without exposing organization details. */
 function showHostFailure(): void {
-  renderHostStatus(
-    { dot: statusDot, status: statusText, note: hostChipNote, chip: hostChip },
-    "disconnected"
-  );
-  if (hostMeta) hostMeta.textContent = "Reload the page or check that the extension is enabled.";
+  if (hostError) {
+    hostError.textContent = "Not connected to Azure DevOps. Reload the page or check that the extension is enabled.";
+    hostError.hidden = false;
+  }
 }
 
 function setMessage(element: HTMLElement | null, message: string, kind: "info" | "success" | "error" = "info"): void {
@@ -1156,25 +1150,12 @@ async function main(): Promise<void> {
   try {
     const context = await initializeHost();
     hostName = context.host.name;
-    renderHostStatus(
-      { dot: statusDot, status: statusText, note: hostChipNote, chip: hostChip },
-      "connecting"
-    );
+    if (hostError) hostError.hidden = true;
     if (hostMeta) hostMeta.textContent = `${hostName} - Masthead ${context.extension.version}`;
     if (aboutVersion) aboutVersion.textContent = context.extension.version;
     if (extensionId) extensionId.textContent = context.extension.extensionId;
     if (extensionPublisher) extensionPublisher.textContent = context.extension.publisherId;
     await notifyHostLoaded();
-    const monitor = startHostConnectionMonitor({
-      organizationUrl: organizationUrl(hostName),
-      getToken: () => SDK.getAccessToken(),
-      onState: (state, checkedAt) => renderHostStatus(
-        { dot: statusDot, status: statusText, note: hostChipNote, chip: hostChip },
-        state,
-        checkedAt
-      )
-    });
-    window.addEventListener("pagehide", () => monitor.stop(), { once: true });
   } catch {
     showHostFailure();
     await notifyHostFailed("Masthead could not initialize the Azure DevOps host.");
