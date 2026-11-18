@@ -36,15 +36,22 @@ export function renderLensExamples(
     const whenLabel = document.createElement("strong");
     whenLabel.textContent = "When to use: ";
     when.append(whenLabel, document.createTextNode(example.whenToUse));
-    const inputHeading = document.createElement("h4");
-    inputHeading.textContent = "Example input";
-    const input = document.createElement("pre");
-    input.textContent = example.input;
-    const outputHeading = document.createElement("h4");
-    outputHeading.textContent = "Expected review finding";
-    const output = document.createElement("pre");
-    output.textContent = example.output;
-    panel.append(heading, summary, when, inputHeading, input, outputHeading, output);
+    panel.append(heading, summary, when);
+    for (const [index, item] of example.cases.entries()) {
+      const caseHeading = document.createElement("h4");
+      caseHeading.textContent = `${index + 1}. ${item.name}`;
+      const inputLabel = document.createElement("p");
+      inputLabel.className = "example-label";
+      inputLabel.textContent = "Example input";
+      const input = document.createElement("pre");
+      input.textContent = item.input;
+      const outputLabel = document.createElement("p");
+      outputLabel.className = "example-label";
+      outputLabel.textContent = "Expected review finding";
+      const output = document.createElement("pre");
+      output.textContent = item.output;
+      panel.append(caseHeading, inputLabel, input, outputLabel, output);
+    }
   };
 
   for (const lens of REVIEW_LENSES) {

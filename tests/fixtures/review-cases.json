@@ -312,5 +312,73 @@
       "mustFind": [],
       "mustNotFind": ["generic supply-chain warning"]
     }
+  },
+  {
+    "id": "architecture-layer-bypass",
+    "lens": "architecture",
+    "title": "Render a report view",
+    "context": "The repository keeps HTTP and UI code behind report_service. Persistence functions in db/internal.h are private to the storage layer.",
+    "changedFiles": [
+      {
+        "path": "src/ui/report_view.c",
+        "changeType": "edit",
+        "diff": "+#include \"db/internal.h\"\n+sqlite3_stmt *stmt = db_prepare_internal(\"SELECT * FROM reports\");"
+      }
+    ],
+    "expected": {
+      "mustFind": ["layer boundary", "private persistence internals"],
+      "mustNotFind": ["naming preference"]
+    }
+  },
+  {
+    "id": "architecture-negative-existing-service",
+    "lens": "architecture",
+    "title": "List reports through the service",
+    "context": "report_service_list_reports is the existing public API for retrieving reports.",
+    "changedFiles": [
+      {
+        "path": "src/ui/report_view.c",
+        "changeType": "edit",
+        "diff": "+struct report_list *reports = report_service_list_reports(limit);"
+      }
+    ],
+    "expected": {
+      "mustFind": [],
+      "mustNotFind": ["layer boundary", "architecture violation"]
+    }
+  },
+  {
+    "id": "architecture-config-bypass",
+    "lens": "architecture",
+    "title": "Connect the HTTP handler",
+    "context": "The repository resolves configuration through config_get_string, which applies defaults and validation.",
+    "changedFiles": [
+      {
+        "path": "src/http/handler.c",
+        "changeType": "edit",
+        "diff": "+const char *dsn = getenv(\"DATABASE_URL\");\n+db_connect(dsn);"
+      }
+    ],
+    "expected": {
+      "mustFind": ["configuration helper bypassed", "existing config_get_string"],
+      "mustNotFind": ["formatting"]
+    }
+  },
+  {
+    "id": "architecture-negative-config-helper",
+    "lens": "architecture",
+    "title": "Resolve the database DSN",
+    "context": "config_get_string is the repository configuration helper and applies validation.",
+    "changedFiles": [
+      {
+        "path": "src/http/handler.c",
+        "changeType": "edit",
+        "diff": "+const char *dsn = config_get_string(\"database.dsn\");\n+db_connect(dsn);"
+      }
+    ],
+    "expected": {
+      "mustFind": [],
+      "mustNotFind": ["configuration helper bypassed"]
+    }
   }
 ]

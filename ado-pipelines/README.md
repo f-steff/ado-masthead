@@ -3,7 +3,7 @@
 ## Central review pipeline
 
 `review.yml` is the fixed pipeline definition for manual reviews and for the
-optional Docker broker. The broker queues this definition with template
+optional external broker. The broker queues this definition with template
 parameters; it never chooses the YAML path or executable code.
 
 Create a pipeline definition from this file in the trusted repository that
@@ -68,7 +68,7 @@ project and repository gates and posts the normal review status. A completed
 review for the same source and target revisions is skipped; set `forceReview`
 to `true` to run it again.
 
-## Broker mode
+## External broker mode
 
 Configure the broker with the organization URL, the project that contains this
 pipeline, and this definition ID. Its queue request supplies:
@@ -111,7 +111,7 @@ Setup:
 5. Push a commit or add a comment to a test PR and verify the review and reply
    paths.
 
-Native mode is public. Use broker mode when authenticated event delivery is
+Native mode is public. Use external broker mode when authenticated event delivery is
 required.
 
 ## Security

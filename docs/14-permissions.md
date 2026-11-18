@@ -5,7 +5,9 @@ and project settings and can install its own review pipeline. Azure DevOps marks
 two of the requested scopes as **High privilege**. That badge is expected and is
 not a sign that Masthead uses the full scope for routine reviews.
 
-The extension requests the following scopes:
+The extension requests the following scopes. The organization settings page
+shows the same list under its **Permissions** tab, with a short explanation for
+each scope.
 
 | Scope | Azure DevOps name | High privilege | Why Masthead needs it |
 | --- | --- | --- | --- |

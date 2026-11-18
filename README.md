@@ -57,9 +57,9 @@ Masthead supports two deployment paths:
 
 - **Native**: Azure DevOps Incoming Webhooks queue Masthead's own pipeline.
   Nothing is hosted outside Azure DevOps.
-- **Broker**: an optional Docker image receives authenticated PR events and
-  queues the same pipeline. This is the safer option when the public incoming
-  webhook endpoint is not acceptable.
+- **External broker**: an optional customer-hosted broker receives authenticated
+  PR events and queues the same pipeline. The reference broker is distributed as
+  a Docker image.
 
 The organization settings page records the chosen delivery mode, validates the
 central pipeline, and can install or delete a pipeline definition from a trusted
@@ -76,6 +76,7 @@ lets an administrator enable or disable PR reviews per repository.
 | License and provenance | On, optional | Licenses, copied files, notices and missing provenance. |
 | Performance and scalability | Off | Work that is wasteful or scales poorly. |
 | Maintainability | Off | Material complexity and duplication. |
+| Architecture and conventions | Off | Conflicts with existing layers, helpers, contracts or ownership rules. |
 | Data and migration safety | Off, path-suggested | Destructive or unsafe schema and data changes. |
 | Dependencies and infrastructure | Off, path-suggested | Packages, build steps and infrastructure changes. |
 

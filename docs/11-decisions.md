@@ -7,8 +7,8 @@ and a short reason.
 | --- | --- |
 | D1 | Product name is **Masthead**. |
 | D2 | Reviews start from PR events across selected projects, not application pipeline changes. |
-| D3 | Two event-delivery modes are supported: native Incoming Webhook and an optional Docker broker. Both queue Masthead's central review pipeline. |
-| D4 | Native mode avoids external hosting; broker mode is the secure option when public Incoming Webhook delivery is not acceptable. |
+| D3 | Two event-delivery modes are supported: native Incoming Webhook and an optional external broker. Both queue Masthead's central review pipeline. |
+| D4 | Native mode avoids external hosting; external broker mode is the secure option when public Incoming Webhook delivery is not acceptable. |
 | D4a | The organization settings page provides a deploy/setup action for the selected mode and reports step-level health. |
 | D4b | Each project lists every repository with an independent PR-review enable/disable switch; new repositories default to disabled. |
 | D5 | Project settings gate which PRs are reviewed; optional branch policy can separately gate completion. |
