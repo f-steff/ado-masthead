@@ -1,6 +1,6 @@
 // Short, synthetic examples for the in-product lens guide. They demonstrate
 // the review contract without reproducing any real pull request or repository.
-// Examples use C and C build files so the guide matches the reviewed code base.
+// Examples use C, RTOS and board-level code so the guide matches embedded work.
 import type { ReviewLensId } from "./lenses";
 
 export interface LensExampleCase {
@@ -16,95 +16,105 @@ export interface LensExample {
 
 export const LENS_EXAMPLES: Record<ReviewLensId, LensExample> = {
   correctness: {
-    whenToUse: "Use this on every review. It is the baseline lens for changed behavior, callers and edge cases.",
+    whenToUse: "Use this on every review. It is the baseline lens for changed behavior, ISR interaction, task interaction and edge cases.",
     cases: [
       {
-        name: "Optional value is dereferenced",
-        input: `src/profile.c
-+ char *normalize_email(const struct user *user) {
-+   return strdup(user->profile->email);
+        name: "Ring buffer treats empty as one stale item",
+        input: `src/uart_ring.c
++ while (ring->head <= ring->tail) {
++   process(ring->data[ring->head]);
++   ring->head = (ring->head + 1) % RING_SIZE;
 + }`,
-        output: `src/profile.c:2 - Major, high confidence
-Trigger: profile is optional in struct user, but the new code dereferences it without a check.
-Consequence: a user without a profile crashes before the email is normalized.
-Suggestion: check user and user->profile, then return an empty value or a documented fallback.`
+        output: `src/uart_ring.c:1 - Major, high confidence
+Trigger: head == tail represents an empty ring, but the loop still processes one slot.
+Consequence: a stale byte is delivered after the buffer drains, and the tail can pass the head.
+Suggestion: loop while head != tail, or use an explicit count protected against the producer.`
       },
       {
-        name: "Off-by-one loop",
-        input: `src/items.c
-+ for (size_t i = 0; i <= items->count; ++i) {
-+   items->values[i] = 0;
+        name: "Ignored UART transmit result",
+        input: `src/console.c
++ int console_send(const char *msg, size_t len) {
++   uart_write(UART_DEBUG, msg, len);
++   return 0;
 + }`,
-        output: `src/items.c:1 - Major, high confidence
-Trigger: the loop condition includes index count.
-Consequence: the loop writes one element past the allocated values array and can corrupt the heap.
-Suggestion: use i < items->count, or a bounds-checked helper that rejects count outside the allocation.`
+        output: `src/console.c:2 - Major, high confidence
+Trigger: uart_write can return a short count when the transmit FIFO is full.
+Consequence: the caller reports success while the tail of a panic or diagnostic message is lost.
+Suggestion: retry until len bytes are queued, or return the short count and let the caller back off.`
       },
       {
-        name: "Ignored write result",
-        input: `src/io.c
-+ write(fd, buffer, length);
-+ close(fd);
-+ return 0;`,
-        output: `src/io.c:1 - Major, high confidence
-Trigger: write can return a short count or an error, but the result is discarded.
-Consequence: the caller reports success even when only part of the payload was written.
-Suggestion: loop until the full buffer is written and return the error or short-write result to the caller.`
+        name: "Torn shared sample",
+        input: `src/sensor.c
++ uint64_t sensor_read(void) {
++   if (latest.valid) {
++     return latest.value;
++   }
++   return 0;
++ }`,
+        output: `src/sensor.c:2 - Major, medium confidence
+Trigger: the ISR updates latest.value as two 32-bit writes on a 32-bit MCU.
+Consequence: the task can read a high word from one sample and a low word from the next.
+Suggestion: read under a short critical section, or use a sequence counter and retry when it changes.`
       }
     ]
   },
   security: {
-    whenToUse: "Use this when a change crosses a trust boundary, handles credentials or personal data, or reaches SQL, commands, templates or file paths.",
+    whenToUse: "Use this when a change crosses a trust boundary, handles credentials, or reaches packets, debug shells, flash, DMA or file paths.",
     cases: [
       {
-        name: "SQL built from request input",
-        input: `src/query.c
-+ char *sql = sqlite3_mprintf(
-+     "SELECT * FROM users WHERE id = '%s'", id);
-+ return db_query(sql);`,
-        output: `src/query.c:2 - Critical, high confidence
-Trigger: id comes from the request and is interpolated into SQL.
-Consequence: an attacker can change the query and read or modify other rows.
-Suggestion: use a prepared statement and bind id as a query parameter.`
+        name: "Packet length exceeds the stack buffer",
+        input: `src/radio_rx.c
++ void radio_rx(const struct packet *pkt) {
++   uint8_t frame[64];
++   memcpy(frame, pkt->payload, pkt->len);
++   handle(frame);
++ }`,
+        output: `src/radio_rx.c:3 - Critical, high confidence
+Trigger: pkt->len comes from the radio packet and is not checked against sizeof frame.
+Consequence: a packet larger than 64 bytes overwrites the stack and can redirect control flow.
+Suggestion: reject len > sizeof frame and copy at most the validated length.`
       },
       {
-        name: "Path traversal",
-        input: `src/files.c
-+ snprintf(path, sizeof path, "/srv/files/%s", name);
-+ FILE *file = fopen(path, "r");`,
-        output: `src/files.c:2 - Critical, high confidence
-Trigger: name comes from the request and is appended to the upload root without validation.
-Consequence: a value such as ../../etc/passwd reads files outside /srv/files.
-Suggestion: reject path separators and parent segments, or use openat with a validated relative path.`
+        name: "Debug shell command injection",
+        input: `src/debug_shell.c
++ void shell_exec(const char *arg) {
++   char cmd[128];
++   snprintf(cmd, sizeof cmd, "selftest %s", arg);
++   system(cmd);
++ }`,
+        output: `src/debug_shell.c:3 - Critical, high confidence
+Trigger: arg comes from the debug UART or network console and is passed to a shell.
+Consequence: a value such as x; reboot runs an unrelated command on the gateway.
+Suggestion: parse a fixed command table, or exec the tool with an argument vector instead of a shell string.`
       }
     ]
   },
   tests: {
-    whenToUse: "Use this when behavior changes, a test is changed, or a new branch or failure mode is introduced.",
+    whenToUse: "Use this when behavior changes, a test is changed, or a new branch, interrupt path or failure mode is introduced.",
     cases: [
       {
-        name: "Regression assertion removed",
-        input: `test/profile_test.c
-- assert_true(normalize_email(NULL) == NULL);
-+ /* removed while the function is rewritten */`,
-        output: `test/profile_test.c:1 - Minor, high confidence
-Trigger: the only assertion for the optional-profile path was removed.
-Consequence: the null-profile path no longer has a regression guard.
-Suggestion: keep a test for the guarded path and add an explicit assertion for the fallback value.`
+        name: "Ring-empty regression assertion removed",
+        input: `test/uart_ring_test.c
+- assert_true(ring_empty(&ring));
++ /* removed while the ring refactor is in progress */`,
+        output: `test/uart_ring_test.c:1 - Minor, high confidence
+Trigger: the only assertion for the empty-ring state was removed.
+Consequence: an off-by-one in the consumer path can ship without a failing test.
+Suggestion: keep the empty-ring assertion and add a case that fills, drains and reads once more.`
       },
       {
-        name: "New branch has no test",
-        input: `src/frame.c
-+ if (frame->len == 0) {
-+   return -EINVAL;
+        name: "Full-ring branch has no test",
+        input: `src/uart_ring.c
++ if (ring_full(ring)) {
++   return -EAGAIN;
 + }
 
-test/frame_test.c
-+ /* only nonempty frames are tested */`,
-        output: `test/frame_test.c:1 - Minor, high confidence
-Trigger: the change adds a zero-length failure branch, but no test exercises it.
+test/uart_ring_test.c
++ /* only the empty and half-full cases are tested */`,
+        output: `test/uart_ring_test.c:1 - Minor, high confidence
+Trigger: the change adds a full-ring backpressure branch, but no test fills the ring.
 Consequence: a later change can remove or invert the branch without a failing test.
-Suggestion: add a test that passes an empty frame and asserts the error and unchanged state.`
+Suggestion: add a test that fills the ring, asserts -EAGAIN, then drains it and asserts recovery.`
       }
     ]
   },
@@ -112,146 +122,134 @@ Suggestion: add a test that passes an empty frame and asserts the error and unch
     whenToUse: "Use this when files are added from another source, dependencies change, or the repository's license and notice obligations need a review.",
     cases: [
       {
-        name: "Vendored file without provenance",
-        input: `src/vendor/chart.c
-+ /* chart drawing */
-+ void draw_chart(const struct chart *chart) { ... }`,
-        output: `src/vendor/chart.c:1 - Warning, medium confidence
-Trigger: a vendored file was added with no copyright, license header or source reference.
+        name: "Vendored HAL glue without provenance",
+        input: `src/vendor/vendor_hal.c
++ /* vendor HAL glue */
++ void vendor_hal_init(void) { ... }`,
+        output: `src/vendor/vendor_hal.c:1 - Warning, medium confidence
+Trigger: a vendored HAL file was added with no copyright, license header or source reference.
 Consequence: the repository may be missing attribution or compatible terms for this code.
-Suggestion: identify the upstream project and license, add the required notice, and confirm redistribution terms.`
+Suggestion: identify the upstream vendor package and license, add the required notice, and confirm redistribution terms.`
       },
       {
-        name: "Conflicting license header",
-        input: `src/vendor/parser.c
+        name: "Conflicting license in an RTOS port",
+        input: `src/port/rtos_port.c
 + // SPDX-License-Identifier: GPL-3.0-or-later
-+ /* copied from an external parser */
-+ int parse_record(const char *input) { ... }`,
-        output: `src/vendor/parser.c:1 - Warning, medium confidence
-Trigger: a new vendored file declares GPL-3.0-or-later while the repository declares MIT.
-Consequence: combining and distributing the file may conflict with the repository's stated terms.
++ /* copied from an RTOS demo port */
++ void port_yield(void) { ... }`,
+        output: `src/port/rtos_port.c:1 - Warning, medium confidence
+Trigger: a new port file declares GPL-3.0-or-later while the repository declares MIT.
+Consequence: linking and distributing the port may conflict with the repository's stated terms.
 Suggestion: identify the exact upstream source and obligations, and replace it or add the required notices before distribution.`
       }
     ]
   },
   performance: {
-    whenToUse: "Use this when a change affects request paths, database access, large collections, caching or other work that grows with input.",
+    whenToUse: "Use this when a change affects interrupt latency, task deadlines, DMA, flash access, large collections or work that grows with input.",
     cases: [
       {
-        name: "Repeated length scan",
-        input: `src/report.c
-+ for (size_t i = 0; i < strlen(text); ++i) {
-+   out[i] = toupper((unsigned char)text[i]);
+        name: "Busy-wait instead of blocking",
+        input: `src/sensor_task.c
++ for (;;) {
++   while (!(SENSOR->STATUS & DATA_READY)) {
++     for (volatile int i = 0; i < 100000; ++i) { }
++   }
++   read_sample();
 + }`,
-        output: `src/report.c:1 - Major, high confidence
-Trigger: strlen scans the full string on every loop iteration.
-Consequence: the transform becomes quadratic in input size and can dominate large reports.
-Suggestion: compute the length once before the loop, or iterate until the terminating NUL.`
+        output: `src/sensor_task.c:2 - Major, high confidence
+Trigger: the task spins on a register instead of sleeping or waiting for an interrupt.
+Consequence: it burns CPU, starves lower-priority tasks and can miss the watchdog deadline.
+Suggestion: wait on the sensor interrupt or an RTOS event with a bounded timeout.`
       },
       {
-        name: "Query per order",
-        input: `src/orders.c
-+ for (size_t i = 0; i < order_count; ++i) {
-+   orders[i].customer = db_find_customer(db, orders[i].customer_id);
+        name: "Blocking flash write in the ISR",
+        input: `src/log_isr.c
++ void log_isr(void) {
++   flash_write(entry, sizeof entry);
 + }`,
-        output: `src/orders.c:2 - Major, high confidence
-Trigger: one customer query runs for every order.
-Consequence: database round trips grow with the result size and can dominate this request.
-Suggestion: collect the customer ids and fetch them in one query, or include the relation in the initial query.`
+        output: `src/log_isr.c:2 - Major, high confidence
+Trigger: the ISR performs a synchronous flash write.
+Consequence: flash erase and program time can exceed the interrupt budget and drop incoming events.
+Suggestion: copy the entry into a queue and let a lower-priority task write flash.`
       }
     ]
   },
   maintainability: {
-    whenToUse: "Use this when a change adds control flow, duplicates a rule, or makes the affected code harder to change safely.",
+    whenToUse: "Use this when a change adds control flow, duplicates a board rule, or makes the affected code harder to change safely.",
     cases: [
       {
-        name: "Duplicated validation rule",
-        input: `src/request.c
-+ if (req->method == HTTP_POST && req->body == NULL) {
-+   return -EINVAL;
-+ }
-+ ...
-+ if (req->method == HTTP_POST && req->body == NULL) {
-+   return -EINVAL;
-+ }`,
-        output: `src/request.c:5 - Minor, high confidence
-Trigger: the same request validation is written twice in one path.
-Consequence: a future rule change can update one copy and leave the other inconsistent.
-Suggestion: move the check into the existing request_validate helper and call it once.`
+        name: "LED pin mask duplicated",
+        input: `src/board/led.c
++ #define LED_MASK (1u << 5)
++ GPIOA->ODR |= LED_MASK;
+
+src/app/status.c
++ GPIOA->ODR |= (1u << 5);`,
+        output: `src/app/status.c:1 - Minor, high confidence
+Trigger: the LED pin mask is defined in the board file and repeated as a literal in the application.
+Consequence: moving the LED to another pin updates one path and leaves the other writing the old pin.
+Suggestion: expose board_led_set from the board layer and use it from both paths.`
       },
       {
-        name: "Confusing cleanup path",
-        input: `src/session.c
-+ if (session) {
-+   if (session->user) {
-+     if (session->user->token) {
-+       revoke(session->user->token);
-+     } else {
-+       free(session);
-+       return;
-+     }
-+   } else {
-+     free(session);
-+     return;
-+   }
-+ }
-+ free(session);`,
-        output: `src/session.c:1 - Minor, high confidence
-Trigger: cleanup is repeated in several nested branches and then again at the end.
-Consequence: a future early return can skip or repeat free, causing a leak or double free.
-Suggestion: use one cleanup label and a single free path after the nested checks.`
+        name: "DMA release repeated on every error",
+        input: `src/dma.c
++ if (!dma_start(ch)) { dma_release(ch); return -EIO; }
++ if (!dma_wait(ch)) { dma_release(ch); return -ETIMEDOUT; }
++ if (!dma_check(ch)) { dma_release(ch); return -EINVAL; }`,
+        output: `src/dma.c:2 - Minor, high confidence
+Trigger: cleanup is repeated in every error branch instead of following one exit path.
+Consequence: a future branch can return without releasing the channel and leave DMA ownership stuck.
+Suggestion: keep one cleanup label and release the channel there after setting the result.`
       }
     ]
   },
   architecture: {
-    whenToUse: "Use this when a change crosses an existing layer, bypasses an established helper, or changes a shared contract. The correctness lens covers behavior; this lens covers conformance to the repository's design.",
+    whenToUse: "Use this when a change crosses an existing board, driver or RTOS boundary, bypasses a helper, or changes a shared contract. Correctness covers behavior; this lens covers conformance to the repository's design.",
     cases: [
       {
-        name: "Presentation layer reaches into persistence",
-        input: `src/ui/report_view.c
-+ #include "db/internal.h"
-+ void render_report(void) {
-+   sqlite3_stmt *stmt = db_prepare_internal("SELECT ...");
-+   ...
-+ }`,
-        output: `src/ui/report_view.c:2 - Major, medium confidence
-Trigger: the UI layer now calls private database internals instead of the existing report_service API.
-Consequence: the UI bypasses transaction and validation rules, and a schema change can break the view directly.
-Suggestion: call report_service_list_reports and keep database access inside the persistence layer.`
+        name: "Application writes a GPIO register directly",
+        input: `src/app/led.c
++ #include "board/gpio_regs.h"
++ GPIOA->ODR |= (1u << 5);`,
+        output: `src/app/led.c:2 - Major, medium confidence
+Trigger: the application writes the GPIO register directly, while the board layer owns pinmux and active-low handling through board_led_set.
+Consequence: this path skips the board rules and writes the wrong electrical level when the LED polarity changes.
+Suggestion: call board_led_set from the application and keep register access inside the board layer.`
       },
       {
-        name: "Configuration helper bypassed",
-        input: `src/http/handler.c
-+ const char *dsn = getenv("DATABASE_URL");
-+ db_connect(dsn);`,
-        output: `src/http/handler.c:1 - Major, medium confidence
-Trigger: the new path reads DATABASE_URL directly, while the repository resolves configuration through config_get_string.
-Consequence: this path ignores the existing validation and defaults, so one deployment source can silently differ from the rest.
-Suggestion: use config_get_string("database.dsn") and the existing connection helper.`
+        name: "Blocking RTOS call inside an ISR",
+        input: `src/drivers/uart.c
++ void uart_isr(void) {
++   xQueueSend(log_queue, &byte, portMAX_DELAY);
++ }`,
+        output: `src/drivers/uart.c:2 - Major, medium confidence
+Trigger: the interrupt handler calls a blocking queue API, while the repository convention is the FromISR variant plus a yield.
+Consequence: the ISR can block or invert priority, delaying every interrupt at or below its level.
+Suggestion: use xQueueSendFromISR and portYIELD_FROM_ISR with a higher-priority task flag.`
       }
     ]
   },
   data: {
-    whenToUse: "Use this for schema changes, data movement, migrations, backfills and changes that must survive a rolling deployment.",
+    whenToUse: "Use this for persistent configuration, NVS or flash layout changes, migrations, backfills and changes that must survive power loss or a rolling update.",
     cases: [
       {
-        name: "Destructive column drop",
-        input: `migrations/042_drop_customer_notes.sql
-+ ALTER TABLE customers DROP COLUMN notes;
-+ -- No backfill or retention period.`,
-        output: `migrations/042_drop_customer_notes.sql:1 - Major, high confidence
-Trigger: a populated column is dropped in the same release that stops reading it.
-Consequence: customer notes are permanently lost and rollback cannot restore them.
-Suggestion: retain the column for a compatibility window, back up the data, and drop it only after the new path is verified.`
+        name: "Calibration key erased before migration",
+        input: `src/storage/nvs_schema.c
++ nvs_erase_key("cal_v1");
++ /* no migration to cal_v2 */`,
+        output: `src/storage/nvs_schema.c:1 - Major, high confidence
+Trigger: the old calibration key is erased before any code reads it into the new layout.
+Consequence: devices updated in the field lose factory calibration and may fail accuracy checks.
+Suggestion: read and migrate cal_v1 first, verify the new record, then erase the old key.`
       },
       {
-        name: "Required column without a backfill",
-        input: `migrations/043_add_customer_region.sql
-+ ALTER TABLE customers ADD COLUMN region TEXT NOT NULL;`,
-        output: `migrations/043_add_customer_region.sql:1 - Major, high confidence
-Trigger: the migration adds a required column without a default or backfill.
-Consequence: existing rows fail the migration, and a locked table can block writes during rollout.
-Suggestion: add the column as nullable, backfill it in batches, then enforce NOT NULL in a later migration.`
+        name: "Required configuration without a default",
+        input: `src/config/defaults.c
++ config_require("radio.tx_power");`,
+        output: `src/config/defaults.c:1 - Major, high confidence
+Trigger: the update makes an existing configuration key mandatory without a default or migration.
+Consequence: devices with an older configuration fail validation and can stop booting after the update.
+Suggestion: provide a safe default or migrate the stored configuration before requiring the key.`
       }
     ]
   },
@@ -269,14 +267,14 @@ Consequence: the build can run unreviewed code with repository and CI credential
 Suggestion: pin a reviewed artifact or dependency, verify its checksum, and avoid network install scripts.`
       },
       {
-        name: "Unpinned build dependency",
+        name: "Unpinned vendor SDK",
         input: `CMakeLists.txt
-+ FetchContent_Declare(json
-+   GIT_REPOSITORY https://example.test/json.git
++ FetchContent_Declare(vendor_hal
++   GIT_REPOSITORY https://example.test/vendor-hal.git
 +   GIT_TAG main)`,
         output: `CMakeLists.txt:1 - Warning, high confidence
 Trigger: the build fetches a moving branch instead of a fixed commit or release.
-Consequence: the same source revision can build with different dependency content and hide a supply-chain change.
+Consequence: the same source revision can build with different vendor code and hide a supply-chain change.
 Suggestion: fetch a tagged release or pinned commit and record the expected checksum or lockfile.`
       }
     ]

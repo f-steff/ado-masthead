@@ -39,7 +39,7 @@ export const REVIEW_LENSES: readonly ReviewLensDefinition[] = [
     suggestedPathPatterns: [],
     checks: [
       "logic errors, inverted conditions, off-by-one errors and missing null handling",
-      "async ordering, missing awaits and swallowed errors",
+      "async ordering, missing awaits, ISR/shared-state races and swallowed errors",
       "removed guards or behavior that the change does not restore",
       "direct callers, contracts and data shapes affected by the change",
       "edge cases supported by a concrete failure path"
@@ -67,8 +67,8 @@ export const REVIEW_LENSES: readonly ReviewLensDefinition[] = [
     checks: [
       "injection, authorization and authentication mistakes",
       "unsafe handling of secrets, credentials and personal data",
-      "unsafe deserialization, path handling and shell construction",
-      "missing validation at trust boundaries"
+      "unsafe deserialization, packet lengths, path handling and shell construction",
+      "missing validation at trust boundaries, including debug and field interfaces"
     ],
     ignore: [
       "generic hardening that is unrelated to the changed behavior",
@@ -134,7 +134,8 @@ export const REVIEW_LENSES: readonly ReviewLensDefinition[] = [
     suggestedPathPatterns: ["**/*repository*", "**/*service*"],
     checks: [
       "unbounded queries or work proportional to unexpected input",
-      "blocking I/O on a hot path",
+      "blocking I/O on a hot path, including flash access in an ISR",
+      "interrupt latency, task starvation and missed deadlines with a concrete trigger",
       "repeated work that should be computed once",
       "avoidable allocations or round trips with a concrete impact"
     ],
@@ -182,7 +183,7 @@ export const REVIEW_LENSES: readonly ReviewLensDefinition[] = [
   {
     id: "data",
     name: "Data and migration safety",
-    summary: "Schema changes and data movement that may lose data or fail during rollout.",
+    summary: "Persistent configuration, flash/NVS layout and data movement that may lose data or fail during rollout.",
     defaultEnabled: false,
     mandatory: false,
     suggestedPathPatterns: [
@@ -190,11 +191,15 @@ export const REVIEW_LENSES: readonly ReviewLensDefinition[] = [
       "**/migration/**",
       "**/*.sql",
       "**/schema.*",
-      "**/alembic.ini"
+      "**/alembic.ini",
+      "**/nvs/**",
+      "**/storage/**",
+      "**/config/**"
     ],
     checks: [
       "data loss, destructive changes and unsafe backfills",
       "migration ordering, rollback and deployment compatibility",
+      "flash or NVS writes that can lose data on power failure",
       "locking or long-running operations with a concrete risk",
       "code and schema deployed in an incompatible order"
     ],

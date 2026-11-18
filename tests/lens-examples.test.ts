@@ -14,15 +14,31 @@ test("every review lens has complete in-product examples in C", () => {
       assert.ok(item.input.trim(), `${lens.id} input`);
       assert.ok(item.output.trim(), `${lens.id} output`);
       assert.match(item.output, /Suggestion:/i);
-      assert.match(item.output, /src|migrations|test|CMake/i);
+      assert.match(item.output, /src|migrations|test|CMake|config/i);
     }
   }
 });
 
-test("the examples include harder C failure classes", () => {
-  const correctness = LENS_EXAMPLES.correctness.cases.map((item) => item.name.toLowerCase()).join(" ");
-  assert.match(correctness, /off-by-one|deref|ignored/);
-  const security = LENS_EXAMPLES.security.cases.map((item) => item.name.toLowerCase()).join(" ");
-  assert.match(security, /sql|traversal/);
-  assert.ok(LENS_EXAMPLES.architecture.cases.length >= 2);
+test("examples stay printable ASCII so copied code is unambiguous", () => {
+  for (const lens of REVIEW_LENSES) {
+    const example = LENS_EXAMPLES[lens.id];
+    const values = [
+      example.whenToUse,
+      ...example.cases.flatMap((item) => [item.name, item.input, item.output])
+    ];
+    for (const value of values) {
+      assert.match(value, /^[\x09\x0A\x0D\x20-\x7E]*$/, lens.id);
+    }
+  }
+});
+
+test("the examples use embedded and RTOS failure classes", () => {
+  const text = (lens: (typeof REVIEW_LENSES)[number]["id"]): string =>
+    LENS_EXAMPLES[lens].cases.map((item) => `${item.name} ${item.input} ${item.output}`).join(" ").toLowerCase();
+  assert.match(text("correctness"), /ring buffer|uart|isr|shared sample/);
+  assert.match(text("security"), /radio|packet|debug shell/);
+  assert.match(text("performance"), /busy-wait|flash|interrupt/);
+  assert.match(text("architecture"), /gpio|rtos|isr/);
+  assert.match(text("data"), /nvs|configuration|calibration/);
+  assert.match(text("dependencies"), /vendor|cmake/);
 });
