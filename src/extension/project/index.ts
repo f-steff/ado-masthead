@@ -14,8 +14,6 @@ import {
 import { defaultReviewProfile, resolveReviewProfile } from "../../review/lenses";
 import { ModelCatalog, normalizeModelCatalog } from "../../models/catalog";
 import { initializeHost, notifyHostFailed, notifyHostLoaded, organizationUrl } from "../shared/host";
-import { startHostConnectionMonitor } from "../shared/connectivity";
-import { renderHostStatus } from "../shared/host-status";
 import { renderLensExamples } from "../shared/lens-examples";
 import { fillModelOptions } from "../shared/model-suggestions";
 import {
@@ -42,10 +40,7 @@ interface PolicyRead {
   error?: string;
 }
 
-const statusText = document.querySelector<HTMLElement>("#host-status");
-const statusDot = document.querySelector<HTMLElement>("#status-dot");
-const hostChip = document.querySelector<HTMLElement>(".host-chip");
-const hostChipNote = document.querySelector<HTMLElement>(".host-chip-note");
+const hostError = document.querySelector<HTMLElement>("#host-error");
 const hostMeta = document.querySelector<HTMLElement>("#host-meta");
 const projectEnabled = document.querySelector<HTMLInputElement>("#project-enabled");
 const newRepositoryDefault = document.querySelector<HTMLSelectElement>("#new-repository-default");
@@ -88,11 +83,10 @@ let policiesLoading = false;
 
 /** Report host failure without exposing organization details. */
 function showHostFailure(): void {
-  renderHostStatus(
-    { dot: statusDot, status: statusText, note: hostChipNote, chip: hostChip },
-    "disconnected"
-  );
-  if (hostMeta) hostMeta.textContent = "Reload the page or check that the extension is enabled.";
+  if (hostError) {
+    hostError.textContent = "Not connected to Azure DevOps. Reload the page or check that the extension is enabled.";
+    hostError.hidden = false;
+  }
 }
 
 function setMessage(element: HTMLElement | null, message: string, kind: "info" | "success" | "error" = "info"): void {
@@ -797,23 +791,10 @@ async function main(): Promise<void> {
     if (!project?.id || !project.name) throw new Error("No project context.");
     projectId = project.id;
     projectName = project.name;
-    renderHostStatus(
-      { dot: statusDot, status: statusText, note: hostChipNote, chip: hostChip },
-      "connecting"
-    );
+    if (hostError) hostError.hidden = true;
     if (hostMeta) hostMeta.textContent = `${hostName} - ${project.name} - Masthead ${context.extension.version}`;
     if (aboutVersion) aboutVersion.textContent = context.extension.version;
     await notifyHostLoaded();
-    const monitor = startHostConnectionMonitor({
-      organizationUrl: organizationUrl(hostName),
-      getToken: () => SDK.getAccessToken(),
-      onState: (state, checkedAt) => renderHostStatus(
-        { dot: statusDot, status: statusText, note: hostChipNote, chip: hostChip },
-        state,
-        checkedAt
-      )
-    });
-    window.addEventListener("pagehide", () => monitor.stop(), { once: true });
   } catch {
     showHostFailure();
     await notifyHostFailed("Masthead could not initialize the project settings page.");

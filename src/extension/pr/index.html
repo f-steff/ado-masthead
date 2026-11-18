@@ -9,24 +9,16 @@
   <body>
     <main class="page">
       <header class="hero">
-        <div class="hero-main">
-          <div class="mark" aria-hidden="true">
-            <img src="../../../images/icon-128.png" alt="">
-          </div>
-          <div>
-            <p class="eyebrow">Pull request review</p>
-            <h1>Masthead</h1>
-            <p class="lede" id="pr-lede">Loading pull request context...</p>
-          </div>
+        <div class="mark" aria-hidden="true">
+          <img src="../../../images/icon-128.png" alt="">
         </div>
-        <div class="host-chip" role="status" aria-live="polite" title="Reports only the Azure DevOps host connection.">
-          <span class="status-dot" id="status-dot" aria-hidden="true"></span>
-          <div>
-            <p id="host-status">Connecting to Azure DevOps...</p>
-            <span class="host-chip-note">Azure DevOps host</span>
-          </div>
+        <div>
+          <p class="eyebrow">Pull request review</p>
+          <h1>Masthead</h1>
+          <p class="lede" id="pr-lede">Loading pull request context...</p>
         </div>
       </header>
+      <p id="host-error" class="host-error" role="alert" hidden></p>
 
       <section class="panel" aria-labelledby="summary-heading">
         <h2 id="summary-heading">Review status</h2>
