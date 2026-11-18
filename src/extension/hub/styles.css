@@ -161,6 +161,24 @@ h1 {
   font-size: 13px;
 }
 
+.benefit-box {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-left: 3px solid #0e7490;
+  border-radius: 0 8px 8px 0;
+  background: rgba(14, 116, 144, 0.06);
+  font-size: 13px;
+}
+
+.benefit-box ul {
+  margin: 8px 0 0 20px;
+  padding: 0;
+}
+
+.benefit-box li {
+  margin: 4px 0;
+}
+
 .status-list {
   margin: 0;
   padding: 0;

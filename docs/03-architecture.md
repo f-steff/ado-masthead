@@ -59,6 +59,13 @@ receive provider keys. The reference broker is distributed as a Docker image for
 self-hosting. Provider keys remain in the central pipeline's ADO secret variable
 group.
 
+The external broker is the authenticated delivery path. It validates every event
+before queueing, keeps a public Incoming Webhook endpoint out of the trust model,
+and centralizes filtering, deduplication, retries, delivery logs, health checks
+and credential rotation. It can also restrict which projects, repositories and
+event types are allowed to queue reviews. The trade-off is one more service to
+host, secure and monitor.
+
 ### Central review pipeline
 
 The central pipeline is a trusted Masthead component. It:
