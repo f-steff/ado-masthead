@@ -239,6 +239,9 @@ test("the organization and project pages initialize the ADO host and split setti
   assert.match(styles, /\.policy-card/);
   assert.match(styles, /\.policy-badge/);
   assert.match(styles, /\.policy-help/);
+  assert.match(styles, /\[hidden\]\s*\{[^}]*display:\s*none\s*!important/);
+  assert.match(styles, /font-variant-ligatures:\s*none/);
+  assert.match(styles, /font-feature-settings:\s*"liga" 0, "calt" 0/);
   const org = manifest.contributions.find((entry) => entry.targets.includes("ms.vss-web.collection-admin-hub-group"));
   const project = manifest.contributions.find((entry) => entry.targets.includes("ms.vss-web.project-admin-hub-group"));
   assert.equal(org.properties.uri, "dist/extension/hub/index.html");

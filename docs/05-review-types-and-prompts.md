@@ -50,15 +50,15 @@ automatic repository retrieval and tool-driven investigation are not wired yet.
 
 ## Correctness and impact
 
-**Catches:** null dereferences, wrong conditions, missing awaits, removed
-guards, broken callers, changed contracts.
+**Catches:** null dereferences, wrong conditions, removed guards, broken
+callers, changed contracts and ISR/shared-state ordering mistakes.
 
 **Ignores:** unchanged old code, style and speculative concerns without a
 failure path.
 
-**Example:** a changed expression reads `user.profile.email` without checking
-that `profile` can be absent. The finding names the input that creates the
-failure and suggests guarding it.
+**Example:** a ring buffer uses `head <= tail` for the consumer loop, so an empty
+ring still delivers one stale slot. The finding names the overwrite or stale-read
+path and suggests an explicit count or `head != tail`.
 
 **Not a finding:** renaming a local variable when no behavior changes.
 
@@ -67,13 +67,15 @@ failure and suggests guarding it.
 ## Security and privacy
 
 **Catches:** injection, authorization mistakes, unsafe secrets, dangerous
-deserialization and missing validation at trust boundaries.
+deserialization, unchecked packet lengths and missing validation at trust
+boundaries including debug and field interfaces.
 
 **Ignores:** generic hardening unrelated to the change, and dependency
 vulnerability claims without evidence.
 
-**Example:** a query is built by concatenating `req.query.id` into SQL. The
-finding identifies the injection path and recommends a parameterized query.
+**Example:** a radio packet length is copied into a fixed stack buffer without a
+bound check. The finding identifies the overflow and recommends rejecting lengths
+larger than the destination.
 
 **Not a finding:** a parameterized query with no changed authorization behavior.
 
@@ -87,7 +89,9 @@ cases for a changed failure mode.
 **Ignores:** missing tests for mechanical changes and coverage-percentage
 requests that do not indicate risk.
 
-**Example:** empty input now returns `null`, but no test exercises it.
+**Example:** a full-ring backpressure branch is added, but no test fills the
+ring. The finding names the untested branch and the recovery behavior it should
+assert.
 
 **Not a finding:** a test file rename that changes no behavior.
 
@@ -115,13 +119,15 @@ test is not a declaration that the test file or repository is GPL-licensed.
 
 ## Performance and scalability
 
-**Catches:** N+1 queries, unbounded work, blocking I/O and repeated costly work
-with a concrete workload.
+**Catches:** N+1 queries, unbounded work, busy-wait loops, blocking I/O in an
+ISR, interrupt-latency or task-deadline risks and repeated costly work with a
+concrete workload.
 
 **Ignores:** micro-optimizations and theoretical races without a trigger.
 
-**Example:** a loop performs one database lookup per order. The finding names
-the request path and suggests a batched lookup or join.
+**Example:** a task spins on a sensor status register instead of waiting for an
+interrupt. The finding names the wasted CPU and the deadline or watchdog risk,
+and recommends an event wait with a timeout.
 
 **Not a finding:** a three-item in-memory loop that performs no I/O.
 
@@ -134,8 +140,9 @@ context and documentation that contradicts behavior.
 
 **Ignores:** formatting, naming preference and unrelated refactoring.
 
-**Example:** new code recalculates tax even though a tested helper already
-exists. The finding names the helper and the behavior that may diverge.
+**Example:** an application repeats a LED pin mask that the board layer already
+defines. The finding names the board helper and the pin-move behavior that can
+diverge.
 
 **Not a finding:** whitespace or import ordering.
 
@@ -151,9 +158,9 @@ risk.
 **Ignores:** naming, formatting, speculative restructuring and code unrelated
 to the change.
 
-**Example:** a UI module calls private persistence internals instead of the
-existing report service. The finding names the boundary, the bypassed helper and
-the validation or schema coupling the new path inherits.
+**Example:** an application writes a GPIO register directly instead of using the
+board layer that owns pinmux and active-low handling. The finding names the
+bypassed helper and the electrical or portability consequence.
 
 **Not a finding:** a new file that follows the existing module pattern, or a
 different but internally consistent style choice.
@@ -165,15 +172,17 @@ different but internally consistent style choice.
 ## Data and migration safety
 
 **Catches:** destructive changes, unsafe backfills, incompatible deployment
-order and migration locking risks.
+order, flash/NVS writes that can lose data on power failure and migration
+locking risks.
 
 **Ignores:** migration style and environment assumptions not in evidence.
 
-**Example:** a migration drops a populated column without a backfill or
-retention plan. The finding identifies possible data loss and requires a safe
-rollout plan.
+**Example:** a firmware update erases the old calibration key before migrating it
+to the new layout. The finding identifies possible calibration loss and requires
+a read-migrate-verify sequence.
 
-**Not a finding:** adding a nullable column with no destructive operation.
+**Not a finding:** adding a nullable column or a new optional configuration key
+with a safe default.
 
 **Fixtures:** `data-destructive-migration`,
 `data-negative-additive-column`.
