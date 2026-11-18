@@ -189,6 +189,7 @@ test("the organization and project pages initialize the ADO host and split setti
   assert.doesNotMatch(orgHtml, /Docker broker/);
   assert.match(orgHtml, /id="broker-benefits"/);
   assert.match(orgHtml, /Why use an external broker\?/);
+  assert.match(orgHtml, /Broker reachability and model-provider access are validated separately/);
   assert.match(orgHtml, /Authenticates every event before it can queue a review/);
   assert.match(orgScript, /brokerBenefits/);
   assert.match(orgHtml, /id="native-delivery-fields"/);
