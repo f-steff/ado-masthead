@@ -60,6 +60,7 @@ evaluation, GitHub Actions run or ADO installation was performed in this step.
 | License | `license-missing-root-license`, `license-gpl-file-in-mit-repository` | `license-negative-mit-compatible`, `license-negative-spdx-test-data` |
 | Performance | `performance-n-plus-one` | `performance-negative-small-loop` |
 | Maintainability | `maintainability-duplicated-logic` | `maintainability-negative-formatting` |
+| Architecture | `architecture-layer-bypass`, `architecture-config-bypass` | `architecture-negative-existing-service`, `architecture-negative-config-helper` |
 | Data | `data-destructive-migration` | `data-negative-additive-column` |
 | Dependencies | `dependencies-untrusted-install` | `dependencies-negative-lockfile-refresh` |
 

@@ -166,6 +166,7 @@ form {
 /* Tab bar mirrors the project-settings surface used elsewhere. */
 .tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   margin: 18px 0 0;
   padding: 4px;
@@ -436,6 +437,24 @@ select {
 
 .example-panel h4 {
   margin: 18px 0 6px;
+}
+
+.example-panel .example-label {
+  margin: 10px 0 4px;
+  color: var(--text-secondary-color, #57606a);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.example-panel ul {
+  margin: 6px 0 0 20px;
+  padding: 0;
+}
+
+.example-panel li {
+  margin: 4px 0;
 }
 
 .example-panel pre {
@@ -849,62 +868,9 @@ button:disabled {
   color: #1a7f37;
 }
 
-.permissions-panel {
-  border-left: 4px solid #bf8700;
-}
-
-.permissions-head {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 24px;
-  align-items: flex-start;
-  justify-content: space-between;
-}
-
-.permissions-head > div {
-  flex: 1 1 420px;
-}
-
-.permissions-link {
-  flex: 0 0 auto;
-  color: var(--communication-foreground, #0969da);
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.permission-list {
-  margin: 14px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.permission-row {
-  display: grid;
-  grid-template-columns: minmax(210px, 1fr) auto;
-  gap: 4px 16px;
-  align-items: center;
-  padding: 10px 0;
-  border-top: 1px solid var(--callout-border-color, #eaeef2);
-}
-
-.permission-name {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  align-items: baseline;
-}
-
-.permission-name code {
-  font-size: 12px;
-}
-
-.permission-name span {
-  color: var(--text-secondary-color, #57606a);
-  font-size: 12px;
-}
-
 .permission-badge {
-  justify-self: start;
+  display: inline-block;
+  margin: 6px 0 10px;
   padding: 2px 8px;
   border: 1px solid var(--callout-border-color, #d0d7de);
   border-radius: 999px;
@@ -922,13 +888,6 @@ button:disabled {
 .permission-badge.read {
   background: rgba(14, 116, 144, 0.06);
   color: #0e7490;
-}
-
-.permission-row p {
-  grid-column: 1 / -1;
-  margin: 0;
-  color: var(--text-secondary-color, #57606a);
-  font-size: 13px;
 }
 
 @media (max-width: 560px) {
@@ -953,10 +912,6 @@ button:disabled {
   .field-grid,
   .lens-list,
   .hook-project-list {
-    grid-template-columns: 1fr;
-  }
-
-  .permission-row {
     grid-template-columns: 1fr;
   }
 

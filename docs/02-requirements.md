@@ -23,7 +23,7 @@ on credentials or the hosted service being available.
 | FR-14 | Review execution has token, turn, time and cost limits and can be cancelled when superseded. |
 | FR-15 | An optional pipeline task can run a deeper or on-demand review later. |
 | FR-16 | Publishing uses the same dev/stable OIDC model as ado-static. |
-| FR-17 | The organization can choose native Incoming Webhooks or an optional Docker broker. |
+| FR-17 | The organization can choose native Incoming Webhooks or an optional external broker. |
 | FR-18 | The organization settings page provides a deploy/setup action for the selected mode and reports connection health. |
 | FR-19 | Each project lists its repositories with an individual enable/disable switch for PR reviews. |
 

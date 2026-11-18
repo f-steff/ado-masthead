@@ -14,13 +14,14 @@ There are two event delivery paths:
 - **Native Incoming Webhook**: a project service hook posts the PR event to
   the public ADO distributed-task webhook endpoint. A pipeline with a
   `resources.webhooks` resource runs Masthead's review pipeline.
-- **Optional Docker broker**: a service hook posts to a customer-hosted
-  container. The broker authenticates the request and queues the same review
-  pipeline.
+- **Optional external broker**: a service hook posts to a customer-hosted
+  broker. The broker authenticates the request and queues the same review
+  pipeline. The reference broker is distributed as a Docker image.
 
 The organization chooses the mode from organization settings. The native mode
-is zero external hosting but the endpoint must be treated as public. The broker
-mode is the safer choice when authenticated event delivery is required.
+is zero external hosting but the endpoint must be treated as public. The
+external broker mode is the safer choice when authenticated event delivery is
+required.
 
 ## Components
 
@@ -47,15 +48,16 @@ must warn about this and should generate a high-entropy webhook name. The
 pipeline must treat the payload as untrusted and never interpolate it into YAML
 or shell text.
 
-### Optional Docker broker
+### Optional external broker
 
 A service hook posts to the customer-hosted broker. The broker authenticates
 the request, validates the event type, deduplicates it and queues the central
 pipeline with the project, repository, PR, revision and event identifiers.
 
 The broker has a narrow Azure DevOps identity for queueing work. It does not
-receive provider keys. It is distributed as a Docker image for self-hosting.
-Provider keys remain in the central pipeline's ADO secret variable group.
+receive provider keys. The reference broker is distributed as a Docker image for
+self-hosting. Provider keys remain in the central pipeline's ADO secret variable
+group.
 
 ### Central review pipeline
 
@@ -166,13 +168,13 @@ mode:
 1. Native: create or validate the Incoming Webhook service connection, create
    the trusted review pipeline repository/resource, and create the selected
    project service hooks.
-2. Broker: verify the configured broker URL and authentication, then create
-   or validate the project service hooks.
+2. External broker: verify the configured broker URL and authentication, then
+   create or validate the project service hooks.
 3. Show the result of each step and allow retrying a failed step.
 
-The extension cannot deploy the Docker image into an arbitrary customer host.
-For broker mode it provides the image and validates the endpoint; the customer
-supplies the hosting target. The deploy action records configuration, not
+The extension cannot deploy the external broker into an arbitrary customer host.
+The reference image is published separately, and the customer supplies the
+hosting target. Setup records configuration and validates the endpoint, not
 provider secrets.
 
 ## Project and branch gating
@@ -201,7 +203,7 @@ but it is not the automatic baseline.
 ## Deployment boundary
 
 Native mode needs only Azure DevOps: the service connection, pipeline and
-service hooks all live in the organization. The optional broker mode needs a
+service hooks all live in the organization. The optional external broker needs a
 customer-supplied container host and a small queueing identity. The central
 review pipeline needs compute for every review in both modes.
 

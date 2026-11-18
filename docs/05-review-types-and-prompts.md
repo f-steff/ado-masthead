@@ -8,8 +8,9 @@ lens. Selecting a lens changes what the reviewer looks for; it does not create
 a separate review run by default.
 
 The organization and project settings pages include an **Examples** tab. It
-shows one lens at a time with when-to-use guidance, a synthetic input and the
-expected finding shape. Correctness and impact is mandatory. Other lenses can be
+shows one lens at a time with when-to-use guidance, several synthetic C input
+examples and the expected finding shape for each. Correctness and impact is
+mandatory. Other lenses can be
 selected globally, per project or per repository. The organization profile is the default; a
 project can inherit or override it, and an enabled repository can override the
 project. Provider and model names follow the same order, while the provider key
@@ -19,7 +20,8 @@ separate `ado-pipelines/model-catalogue.yml` pipeline, plus a custom model name.
 OpenAI reasoning effort and Anthropic thinking budget are stored only as
 non-secret provider options. DeepSeek's reasoning behavior is selected by model,
 for example `deepseek-v4-pro`. Data and dependency lenses are suggested by paths
-but are not automatically enabled.
+but are not automatically enabled. Architecture and conventions is opt-in and
+not path-suggested.
 
 ## Prompt rules
 
@@ -139,6 +141,26 @@ exists. The finding names the helper and the behavior that may diverge.
 
 **Fixtures:** `maintainability-duplicated-logic`,
 `maintainability-negative-formatting`.
+
+## Architecture and conventions
+
+**Catches:** new code that bypasses an existing layer, helper, public contract
+or ownership rule when the change creates a concrete maintenance or behavior
+risk.
+
+**Ignores:** naming, formatting, speculative restructuring and code unrelated
+to the change.
+
+**Example:** a UI module calls private persistence internals instead of the
+existing report service. The finding names the boundary, the bypassed helper and
+the validation or schema coupling the new path inherits.
+
+**Not a finding:** a new file that follows the existing module pattern, or a
+different but internally consistent style choice.
+
+**Fixtures:** `architecture-layer-bypass`,
+`architecture-negative-existing-service`, `architecture-config-bypass`,
+`architecture-negative-config-helper`.
 
 ## Data and migration safety
 

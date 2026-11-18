@@ -7,6 +7,7 @@ export type ReviewLensId =
   | "license"
   | "performance"
   | "maintainability"
+  | "architecture"
   | "data"
   | "dependencies";
 
@@ -158,6 +159,24 @@ export const REVIEW_LENSES: readonly ReviewLensDefinition[] = [
     ignore: [
       "naming preference, formatting and import ordering",
       "broad refactoring unrelated to the change"
+    ]
+  },
+  {
+    id: "architecture",
+    name: "Architecture and conventions",
+    summary: "Changes that conflict with the repository's existing boundaries, helpers or ownership rules.",
+    defaultEnabled: false,
+    mandatory: false,
+    suggestedPathPatterns: [],
+    checks: [
+      "new code that bypasses an existing module boundary, layer or dependency direction",
+      "a new pattern where the repository already provides an established helper or abstraction",
+      "public contracts or extension points changed without updating affected implementations",
+      "ownership, error handling or lifecycle conventions that the change contradicts with a concrete consequence"
+    ],
+    ignore: [
+      "naming, formatting and import ordering",
+      "requests to restructure unrelated code or prepare for speculative future needs"
     ]
   },
   {

@@ -13,6 +13,7 @@ import { defaultReviewProfile, resolveReviewProfile } from "../../review/lenses"
 import { ModelCatalog, normalizeModelCatalog } from "../../models/catalog";
 import { initializeHost, notifyHostFailed, notifyHostLoaded, organizationUrl } from "../shared/host";
 import { renderLensExamples } from "../shared/lens-examples";
+import { renderPermissionExplorer } from "../shared/permissions";
 import { fillModelOptions } from "../shared/model-suggestions";
 import { filterPipelines, pipelineLabel, PipelineOption } from "../shared/pipelines";
 import {
@@ -54,9 +55,12 @@ const nativeChoice = document.querySelector<HTMLElement>("#native-choice");
 const brokerChoice = document.querySelector<HTMLElement>("#broker-choice");
 const nativeWebhook = document.querySelector<HTMLInputElement>("#native-webhook");
 const nativeWebhookNote = document.querySelector<HTMLElement>("#native-webhook-note");
+const nativeDeliveryFields = document.querySelector<HTMLElement>("#native-delivery-fields");
+const brokerDeliveryFields = document.querySelector<HTMLElement>("#broker-delivery-fields");
+const brokerSecretNote = document.querySelector<HTMLElement>("#broker-secret-note");
+const hookModeNote = document.querySelector<HTMLElement>("#hook-mode-note");
 const generateNativeWebhookButton = document.querySelector<HTMLButtonElement>("#generate-native-webhook");
 const brokerUrl = document.querySelector<HTMLInputElement>("#broker-url");
-const brokerSecretField = document.querySelector<HTMLElement>("#broker-secret-field");
 const brokerSecret = document.querySelector<HTMLInputElement>("#broker-secret");
 const hookProjectList = document.querySelector<HTMLElement>("#hook-project-list");
 const createHooksButton = document.querySelector<HTMLButtonElement>("#create-hooks");
@@ -95,6 +99,8 @@ const orgLensList = document.querySelector<HTMLElement>("#org-lens-list");
 const orgReviewGuide = document.querySelector<HTMLInputElement>("#org-review-guide");
 const orgExampleTabs = document.querySelector<HTMLElement>("#org-example-tabs");
 const orgExamplePanel = document.querySelector<HTMLElement>("#org-example-panel");
+const orgPermissionTabs = document.querySelector<HTMLElement>("#org-permission-tabs");
+const orgPermissionPanel = document.querySelector<HTMLElement>("#org-permission-panel");
 const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-tab]"));
 const panels = Array.from(document.querySelectorAll<HTMLElement>("[data-panel]"));
 
@@ -709,9 +715,18 @@ function syncProviderOptions(): void {
 }
 
 function syncDeliveryChoice(): void {
-  nativeChoice?.classList.toggle("selected", nativeRadio?.checked === true);
-  brokerChoice?.classList.toggle("selected", brokerRadio?.checked === true);
-  if (brokerSecretField) brokerSecretField.hidden = brokerRadio?.checked !== true;
+  const native = nativeRadio?.checked === true;
+  nativeChoice?.classList.toggle("selected", native);
+  brokerChoice?.classList.toggle("selected", !native);
+  if (nativeDeliveryFields) nativeDeliveryFields.hidden = !native;
+  if (brokerDeliveryFields) brokerDeliveryFields.hidden = native;
+  if (nativeWebhookNote) nativeWebhookNote.hidden = !native;
+  if (brokerSecretNote) brokerSecretNote.hidden = native;
+  if (hookModeNote) {
+    hookModeNote.textContent = native
+      ? "Native mode creates subscriptions that post to the public Incoming Webhook endpoint. Create an Incoming Webhook service connection named MastheadPR with the same WebHook Name first. Creating hooks requires project administrator permission."
+      : "External broker mode creates subscriptions that post to the broker's /event route with Basic authentication. The broker secret above is used only for this browser request, and creating hooks requires project administrator permission.";
+  }
 }
 
 /** A public webhook endpoint needs an unguessable name, not a secret in the URL. */
@@ -1082,6 +1097,7 @@ async function main(): Promise<void> {
 
   const initialTab = window.location.hash.replace(/^#/, "");
   renderLensExamples(orgExampleTabs, orgExamplePanel);
+  renderPermissionExplorer(orgPermissionTabs, orgPermissionPanel);
   activateTab(initialTab);
 
   try {
