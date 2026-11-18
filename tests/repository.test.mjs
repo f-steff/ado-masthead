@@ -148,8 +148,10 @@ test("the organization and project pages initialize the ADO host and split setti
   assert.match(projectHtml, /id="save-project" disabled/);
   assert.match(orgScript, /syncSaveButton/);
   assert.match(orgScript, /isSavedSettingTarget/);
+  assert.match(orgScript, /refreshSaveDirty/);
   assert.match(orgScript, /SAVE_TABS/);
   assert.match(projectScript, /syncSaveButton/);
+  assert.match(projectScript, /refreshSaveDirty/);
   assert.match(projectScript, /SAVE_TABS/);
   assert.match(orgHtml, /masthead-secrets/);
   assert.match(orgHtml, /ado-pipelines\/README\.md#central-review-pipeline/);

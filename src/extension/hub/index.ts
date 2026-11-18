@@ -108,6 +108,7 @@ const panels = Array.from(document.querySelectorAll<HTMLElement>("[data-panel]")
 let hostName = "";
 let currentTab = "general";
 let saveDirty = false;
+let saveBaseline = "";
 let modelCatalog: ModelCatalog = {};
 let settings = defaultOrganizationSettings();
 let projects: ProjectRow[] = [];
@@ -138,6 +139,32 @@ function syncSaveButton(): void {
 function setSaveDirty(value: boolean): void {
   saveDirty = value;
   syncSaveButton();
+}
+
+/** Compare persisted form values with the last saved snapshot. */
+function orgFormSnapshot(): string {
+  return JSON.stringify({
+    enabled: enabled?.checked === true,
+    defaultProject: defaultProject?.value ?? "",
+    defaultRepository: defaultRepository?.value ?? "",
+    mode: brokerRadio?.checked ? "broker" : "native",
+    nativeWebhook: nativeWebhook?.value.trim() ?? "",
+    brokerUrl: brokerUrl?.value.trim() ?? "",
+    pipeline: selectedPipeline
+      ? { project: selectedPipeline.project, id: selectedPipeline.id, name: selectedPipeline.name }
+      : null,
+    provider: reviewProvider?.value ?? "",
+    model: reviewModel?.value.trim() ?? "",
+    reasoningEffort: reasoningEffort?.value ?? "",
+    thinkingBudget: thinkingBudget?.value ?? "",
+    lenses: selectedLenses(orgLensList),
+    reviewGuide: orgReviewGuide?.checked === true,
+    projects: projects.map((project) => ({ id: project.id, enabled: project.settings.enabled }))
+  });
+}
+
+function refreshSaveDirty(): void {
+  setSaveDirty(orgFormSnapshot() !== saveBaseline);
 }
 
 /** Hook selections, the broker secret and installer fields are not settings. */
@@ -1036,6 +1063,7 @@ async function save(): Promise<void> {
     await saveSetting("organization", next);
     await Promise.all(projects.map((project) => saveSetting(`project.${project.id}`, project.settings)));
     settings = next;
+    saveBaseline = orgFormSnapshot();
     setSaveDirty(false);
     setMessage(saveStatus, "Settings saved.", "success");
   } catch {
@@ -1155,10 +1183,10 @@ async function main(): Promise<void> {
     void save();
   });
   form?.addEventListener("input", (event) => {
-    if (isSavedSettingTarget(event.target)) setSaveDirty(true);
+    if (isSavedSettingTarget(event.target)) refreshSaveDirty();
   });
   form?.addEventListener("change", (event) => {
-    if (isSavedSettingTarget(event.target)) setSaveDirty(true);
+    if (isSavedSettingTarget(event.target)) refreshSaveDirty();
   });
   validateButton?.addEventListener("click", () => {
     void validatePipeline();
@@ -1167,7 +1195,7 @@ async function main(): Promise<void> {
     selectedPipeline = undefined;
     if (pipelineSearch) pipelineSearch.value = "";
     if (pipelineSelected) pipelineSelected.textContent = "No central pipeline selected.";
-    setSaveDirty(true);
+    refreshSaveDirty();
     setMessage(pipelineStatus, "Pipeline binding cleared. Save setup to persist it.");
   });
   createProject?.addEventListener("change", () => {
@@ -1190,7 +1218,7 @@ async function main(): Promise<void> {
     if (!nativeWebhook) return;
     nativeWebhook.value = generateWebhookName();
     renderNativeWebhookNote();
-    setSaveDirty(true);
+    refreshSaveDirty();
     nativeWebhook.focus();
   });
   createHooksButton?.addEventListener("click", () => {
@@ -1217,6 +1245,7 @@ async function main(): Promise<void> {
   for (const tab of tabs) {
     tab.addEventListener("click", () => activateTab(tab.dataset.tab ?? "general"));
   }
+  saveBaseline = orgFormSnapshot();
   setSaveDirty(false);
 }
 
