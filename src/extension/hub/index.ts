@@ -71,6 +71,7 @@ const pipelineProject = document.querySelector<HTMLSelectElement>("#pipeline-pro
 const pipelineOptions = document.querySelector<HTMLDataListElement>("#pipeline-options");
 const pipelineSelected = document.querySelector<HTMLElement>("#pipeline-selected");
 const saveStatus = document.querySelector<HTMLElement>("#save-status");
+const saveBar = document.querySelector<HTMLElement>(".save-bar");
 const pipelineStatus = document.querySelector<HTMLElement>("#pipeline-status");
 const validateButton = document.querySelector<HTMLButtonElement>("#validate-pipeline");
 const clearPipelineButton = document.querySelector<HTMLButtonElement>("#clear-pipeline");
@@ -106,6 +107,7 @@ const panels = Array.from(document.querySelectorAll<HTMLElement>("[data-panel]")
 
 let hostName = "";
 let currentTab = "general";
+let saveDirty = false;
 let modelCatalog: ModelCatalog = {};
 let settings = defaultOrganizationSettings();
 let projects: ProjectRow[] = [];
@@ -126,6 +128,27 @@ function setMessage(element: HTMLElement | null, message: string, kind: "info" |
   element.className = `status-message${kind === "info" ? "" : ` ${kind}`}`;
 }
 
+const SAVE_TABS = new Set(["general", "setup", "profile"]);
+
+/** Enable Save only when a persisted field differs from the loaded settings. */
+function syncSaveButton(): void {
+  if (saveButton) saveButton.disabled = !saveDirty;
+}
+
+function setSaveDirty(value: boolean): void {
+  saveDirty = value;
+  syncSaveButton();
+}
+
+/** Hook selections, the broker secret and installer fields are not settings. */
+function isSavedSettingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false;
+  if (target.closest("#broker-secret")) return false;
+  if (target.closest("#hook-project-list")) return false;
+  if (target.closest('[aria-labelledby="install-heading"]')) return false;
+  return true;
+}
+
 /** Switch the visible settings tab and preserve it in the iframe hash. */
 function activateTab(tab: string): void {
   const known = tabs.some((button) => button.dataset.tab === tab) ? tab : "general";
@@ -138,6 +161,20 @@ function activateTab(tab: string): void {
     panel.hidden = panel.dataset.panel !== known;
   }
   currentTab = known;
+  if (saveBar) {
+    const panel = panels.find((item) => item.dataset.panel === known);
+    if (panel && SAVE_TABS.has(known)) {
+      panel.append(saveBar);
+      saveBar.hidden = false;
+      if (saveButton) {
+        saveButton.textContent = known === "general" ? "Save settings"
+          : known === "setup" ? "Save setup"
+            : "Save profile";
+      }
+    } else {
+      saveBar.hidden = true;
+    }
+  }
   if (window.location.hash !== `#${known}`) {
     history.replaceState(null, "", `#${known}`);
   }
@@ -999,11 +1036,12 @@ async function save(): Promise<void> {
     await saveSetting("organization", next);
     await Promise.all(projects.map((project) => saveSetting(`project.${project.id}`, project.settings)));
     settings = next;
+    setSaveDirty(false);
     setMessage(saveStatus, "Settings saved.", "success");
   } catch {
     setMessage(saveStatus, "Settings could not be saved. Reload and try again.", "error");
   } finally {
-    if (saveButton) saveButton.disabled = false;
+    syncSaveButton();
   }
 }
 
@@ -1116,6 +1154,12 @@ async function main(): Promise<void> {
     event.preventDefault();
     void save();
   });
+  form?.addEventListener("input", (event) => {
+    if (isSavedSettingTarget(event.target)) setSaveDirty(true);
+  });
+  form?.addEventListener("change", (event) => {
+    if (isSavedSettingTarget(event.target)) setSaveDirty(true);
+  });
   validateButton?.addEventListener("click", () => {
     void validatePipeline();
   });
@@ -1123,7 +1167,8 @@ async function main(): Promise<void> {
     selectedPipeline = undefined;
     if (pipelineSearch) pipelineSearch.value = "";
     if (pipelineSelected) pipelineSelected.textContent = "No central pipeline selected.";
-    setMessage(pipelineStatus, "Pipeline binding cleared. Save settings to persist it.");
+    setSaveDirty(true);
+    setMessage(pipelineStatus, "Pipeline binding cleared. Save setup to persist it.");
   });
   createProject?.addEventListener("change", () => {
     void loadPipelineRepositories(createProject.value);
@@ -1145,6 +1190,7 @@ async function main(): Promise<void> {
     if (!nativeWebhook) return;
     nativeWebhook.value = generateWebhookName();
     renderNativeWebhookNote();
+    setSaveDirty(true);
     nativeWebhook.focus();
   });
   createHooksButton?.addEventListener("click", () => {
@@ -1171,6 +1217,7 @@ async function main(): Promise<void> {
   for (const tab of tabs) {
     tab.addEventListener("click", () => activateTab(tab.dataset.tab ?? "general"));
   }
+  setSaveDirty(false);
 }
 
 void main();

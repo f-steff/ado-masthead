@@ -326,8 +326,8 @@ async function main(): Promise<void> {
     if (statusDot) statusDot.className = "status-dot ready";
     if (statusText) statusText.textContent = "Connected to Azure DevOps.";
     if (hostMeta) hostMeta.textContent = projectName
-      ? `${hostName} - ${projectName}`
-      : `${hostName}`;
+      ? `${hostName} - ${projectName} - Masthead ${context.extension.version}`
+      : `${hostName} - Masthead ${context.extension.version}`;
     if (projectSettingsLink && projectName && extensionId) {
       projectSettingsLink.href = settingLink(hostName, projectName, extensionId);
     }

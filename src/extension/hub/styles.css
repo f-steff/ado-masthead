@@ -28,11 +28,55 @@ body {
 .hero {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 20px;
   padding: 28px;
   border: 1px solid var(--callout-border-color, #d0d7de);
   border-radius: 12px;
   background: linear-gradient(135deg, rgba(14, 116, 144, 0.16), rgba(14, 116, 144, 0.03));
+}
+
+.hero-main {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  min-width: 0;
+}
+
+.host-chip {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 280px;
+  padding: 10px 12px;
+  border: 1px solid var(--callout-border-color, #d0d7de);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.host-chip #host-status {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.host-chip-note {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-secondary-color, #57606a);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.page-footer {
+  margin-top: 28px;
+  padding-top: 12px;
+  border-top: 1px solid var(--callout-border-color, #eaeef2);
+  color: var(--text-secondary-color, #57606a);
+  font-size: 12px;
+  text-align: right;
 }
 
 .mark {
@@ -83,12 +127,6 @@ h1 {
 .panel h2 {
   margin: 0 0 10px;
   font-size: 17px;
-}
-
-.connection {
-  display: flex;
-  gap: 14px;
-  align-items: flex-start;
 }
 
 .status-dot {
@@ -898,7 +936,16 @@ button:disabled {
 
 @media (max-width: 560px) {
   .hero {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .hero-main {
     align-items: flex-start;
+  }
+
+  .host-chip {
+    max-width: none;
   }
 
   .mark {

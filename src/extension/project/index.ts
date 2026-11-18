@@ -53,6 +53,7 @@ const policyStatus = document.querySelector<HTMLElement>("#policy-status");
 const refreshPoliciesButton = document.querySelector<HTMLButtonElement>("#refresh-policies");
 const saveStatus = document.querySelector<HTMLElement>("#save-status");
 const saveButton = document.querySelector<HTMLButtonElement>("#save-project");
+const saveBar = document.querySelector<HTMLElement>(".save-bar");
 const aboutVersion = document.querySelector<HTMLElement>("#about-version");
 const inheritProfile = document.querySelector<HTMLInputElement>("#inherit-profile");
 const orgProfileSummary = document.querySelector<HTMLElement>("#org-profile-summary");
@@ -72,6 +73,7 @@ const panels = Array.from(document.querySelectorAll<HTMLElement>("[data-panel]")
 let hostName = "";
 let projectId = "";
 let projectName = "";
+let saveDirty = false;
 let settings: ProjectSettings = defaultProjectSettings();
 let organization: OrganizationSettings = defaultOrganizationSettings();
 let modelCatalog: ModelCatalog = {};
@@ -92,6 +94,18 @@ function setMessage(element: HTMLElement | null, message: string, kind: "info" |
   element.className = `status-message${kind === "info" ? "" : ` ${kind}`}`;
 }
 
+const SAVE_TABS = new Set(["general", "profile"]);
+
+/** Enable Save only when a persisted field differs from the loaded settings. */
+function syncSaveButton(): void {
+  if (saveButton) saveButton.disabled = !saveDirty;
+}
+
+function setSaveDirty(value: boolean): void {
+  saveDirty = value;
+  syncSaveButton();
+}
+
 /** Switch the visible project tab and preserve it in the iframe hash. */
 function activateTab(tab: string): void {
   const known = tabs.some((button) => button.dataset.tab === tab) ? tab : "general";
@@ -102,6 +116,16 @@ function activateTab(tab: string): void {
   }
   for (const panel of panels) {
     panel.hidden = panel.dataset.panel !== known;
+  }
+  if (saveBar) {
+    const panel = panels.find((item) => item.dataset.panel === known);
+    if (panel && SAVE_TABS.has(known)) {
+      panel.append(saveBar);
+      saveBar.hidden = false;
+      if (saveButton) saveButton.textContent = known === "general" ? "Save settings" : "Save profile";
+    } else {
+      saveBar.hidden = true;
+    }
   }
   if (window.location.hash !== `#${known}`) {
     history.replaceState(null, "", `#${known}`);
@@ -716,11 +740,12 @@ async function save(): Promise<void> {
     await saveSetting(`project.${projectId}`, next);
     settings = next;
     renderPolicies();
+    setSaveDirty(false);
     setMessage(saveStatus, "Settings saved.", "success");
   } catch {
     setMessage(saveStatus, "Settings could not be saved. Reload and try again.", "error");
   } finally {
-    if (saveButton) saveButton.disabled = false;
+    syncSaveButton();
   }
 }
 
@@ -780,6 +805,8 @@ async function main(): Promise<void> {
     event.preventDefault();
     void save();
   });
+  form?.addEventListener("input", () => setSaveDirty(true));
+  form?.addEventListener("change", () => setSaveDirty(true));
   projectEnabled?.addEventListener("change", () => {
     syncProjectState();
     renderPolicies();
@@ -794,6 +821,7 @@ async function main(): Promise<void> {
   for (const tab of tabs) {
     tab.addEventListener("click", () => activateTab(tab.dataset.tab ?? "general"));
   }
+  setSaveDirty(false);
 }
 
 void main();
