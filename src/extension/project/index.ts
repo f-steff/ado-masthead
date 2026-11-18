@@ -74,6 +74,7 @@ let hostName = "";
 let projectId = "";
 let projectName = "";
 let saveDirty = false;
+let saveBaseline = "";
 let settings: ProjectSettings = defaultProjectSettings();
 let organization: OrganizationSettings = defaultOrganizationSettings();
 let modelCatalog: ModelCatalog = {};
@@ -104,6 +105,38 @@ function syncSaveButton(): void {
 function setSaveDirty(value: boolean): void {
   saveDirty = value;
   syncSaveButton();
+}
+
+/** Compare persisted project form values with the last saved snapshot. */
+function projectFormSnapshot(): string {
+  const repositoriesState = Array.from(
+    repositoryList?.querySelectorAll<HTMLInputElement>("input[data-repository-id]") ?? []
+  ).map((input) => ({ id: input.dataset.repositoryId ?? "", enabled: input.checked }));
+  const profiles = Array.from(
+    repoProfileList?.querySelectorAll<HTMLDetailsElement>("details[data-repository-id]") ?? []
+  ).map((details) => ({
+    id: details.dataset.repositoryId ?? "",
+    inherit: details.querySelector<HTMLInputElement>(".repo-profile-inherit")?.checked !== false,
+    provider: details.querySelector<HTMLSelectElement>(".repo-profile-provider")?.value ?? "",
+    model: details.querySelector<HTMLInputElement>(".repo-profile-model")?.value.trim() ?? "",
+    lenses: selectedLenses(details.querySelector<HTMLElement>(".repo-profile-lenses")),
+    reviewGuide: details.querySelector<HTMLInputElement>(".repo-profile-guide")?.checked !== false
+  }));
+  return JSON.stringify({
+    enabled: projectEnabled?.checked === true,
+    defaultRepository: newRepositoryDefault?.value ?? "",
+    inheritProfile: inheritProfile?.checked !== false,
+    provider: projectProvider?.value ?? "",
+    model: projectModel?.value.trim() ?? "",
+    lenses: selectedLenses(projectLensList),
+    reviewGuide: projectReviewGuide?.checked !== false,
+    repositories: repositoriesState,
+    profiles
+  });
+}
+
+function refreshSaveDirty(): void {
+  setSaveDirty(projectFormSnapshot() !== saveBaseline);
 }
 
 /** Switch the visible project tab and preserve it in the iframe hash. */
@@ -740,6 +773,7 @@ async function save(): Promise<void> {
     await saveSetting(`project.${projectId}`, next);
     settings = next;
     renderPolicies();
+    saveBaseline = projectFormSnapshot();
     setSaveDirty(false);
     setMessage(saveStatus, "Settings saved.", "success");
   } catch {
@@ -805,8 +839,8 @@ async function main(): Promise<void> {
     event.preventDefault();
     void save();
   });
-  form?.addEventListener("input", () => setSaveDirty(true));
-  form?.addEventListener("change", () => setSaveDirty(true));
+  form?.addEventListener("input", () => refreshSaveDirty());
+  form?.addEventListener("change", () => refreshSaveDirty());
   projectEnabled?.addEventListener("change", () => {
     syncProjectState();
     renderPolicies();
@@ -821,6 +855,7 @@ async function main(): Promise<void> {
   for (const tab of tabs) {
     tab.addEventListener("click", () => activateTab(tab.dataset.tab ?? "general"));
   }
+  saveBaseline = projectFormSnapshot();
   setSaveDirty(false);
 }
 
